@@ -108,7 +108,7 @@ const Login = () => {
 
       <View>
         <PrimaryButton
-          text={loading ? "Loading..." : "Login"}
+          text={loading ? "Loading...." : "Login"}
           onPressHandler={LoginHandler}
         />
       </View>
