@@ -9,7 +9,10 @@ export default function RootLayout() {
         <StatusBar barStyle={"dark-content"} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="SignUp" options={{ headerShown: false }} />
-        <Stack.Screen name="Login" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="Login"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
         <Stack.Screen name="ResetPassword" options={{ headerShown: false }} />
         <Stack.Screen
           name="CustomerProfile"

@@ -52,7 +52,6 @@ const Login = () => {
       }
 
       if (data?.user) {
-        Alert.alert("Success", "Logged in successfully!");
         // Navigate to home screen here
         router.navigate("/CustomerProfile");
       }
