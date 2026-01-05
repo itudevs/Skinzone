@@ -3,7 +3,7 @@ const Colors = {
     SecondaryColour100: "#1D361D",
     TextColour: "#c4c4c4ff",
     PrimaryBackground: "#191919ff",
-    bordercolor: "#6c6b6bff",
+    bordercolor: "#5f5e5eff",
     background100: "#282828ff"
 }
 

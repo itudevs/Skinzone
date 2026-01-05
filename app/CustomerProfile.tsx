@@ -6,7 +6,9 @@ import { Session } from "@supabase/supabase-js";
 import Colors from "@/components/utils/Colours";
 import ProfileImage from "../components/ProfileImage";
 import EditModal from "@/components/EditModal";
+import { useRouter } from "expo-router";
 const CustomerProfile = () => {
+  const router = useRouter();
   //session logic
   const [session, setSession] = useState<Session | null>(null);
   useEffect(() => {
@@ -20,6 +22,10 @@ const CustomerProfile = () => {
   //end of session logic
   const addimage = () => {
     console.log("image added");
+  };
+  const SignOutHandler = () => {
+    supabase.auth.signOut();
+    router.navigate("/Login");
   };
   return (
     <View style={styles.Container}>
@@ -35,7 +41,7 @@ const CustomerProfile = () => {
           Tap to change photo
         </Text>
         <View>
-          <EditModal />
+          <EditModal Signout={SignOutHandler} />
         </View>
       </View>
     </View>
@@ -55,7 +61,7 @@ const styles = StyleSheet.create({
   },
   CardContainer: {
     flex: 1,
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: "#000000ff",
     alignItems: "center",
     borderColor: Colors.bordercolor,
     borderWidth: 1,

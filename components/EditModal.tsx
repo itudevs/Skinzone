@@ -10,8 +10,10 @@ import {
   FlatList,
 } from "react-native";
 import Colors from "./utils/Colours";
-
-const EditModal = () => {
+interface EditModalprops {
+  Signout: () => void;
+}
+const EditModal = ({ Signout }: EditModalprops) => {
   interface ProfileData {
     name: string;
     surname: string;
@@ -102,7 +104,10 @@ const EditModal = () => {
             <Text style={styles.buttonPassword}>Change Password</Text>
           </Pressable>
 
-          <Pressable style={({ pressed }) => pressed && styles.presseditem}>
+          <Pressable
+            onPress={Signout}
+            style={({ pressed }) => pressed && styles.presseditem}
+          >
             <Text style={styles.editBtn}>Sign Out</Text>
           </Pressable>
         </View>
