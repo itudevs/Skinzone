@@ -9,6 +9,7 @@ import Link from "@/components/Link";
 import PrimaryButton from "@/components/PrimaryButton";
 import PrimaryLink from "@/components/PrimaryLink";
 import PasswordInput from "@/components/PasswordInput";
+import { useRouter } from "expo-router";
 
 const Login = () => {
   const insets = useSafeAreaInsets();
@@ -20,7 +21,7 @@ const Login = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
-
+  const router = useRouter();
   const LoginHandler = async () => {
     try {
       // Validation
@@ -53,6 +54,7 @@ const Login = () => {
       if (data?.user) {
         Alert.alert("Success", "Logged in successfully!");
         // Navigate to home screen here
+        router.navigate("/CustomerProfile");
       }
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");

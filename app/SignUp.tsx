@@ -18,6 +18,12 @@ import PrimaryButton from "@/components/PrimaryButton";
 import PrimaryLink from "@/components/PrimaryLink";
 import DatePicker from "@/components/DatePicker";
 import PasswordInput from "@/components/PasswordInput";
+import { Button } from "react-native";
+import { makeRedirectUri } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+import { Href, useRouter } from "expo-router";
 
 const SignUp = () => {
   const insets = useSafeAreaInsets();
@@ -28,12 +34,14 @@ const SignUp = () => {
   const [dob, setDob] = useState<Date | undefined>(undefined);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const router = useRouter();
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
-
+  const redirect = (url: Href) => {
+    router.navigate(url);
+  };
   const validatePhone = (phone: string): boolean => {
     const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
     return phoneRegex.test(phone);
@@ -116,6 +124,7 @@ const SignUp = () => {
             },
           ]
         );
+        redirect("/Login");
       }
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");
@@ -125,6 +134,7 @@ const SignUp = () => {
     }
   };
 
+  //end magic link handling function
   const renderContent = () => (
     <View style={styles.content}>
       <View style={{ alignItems: "center" }}>
@@ -184,7 +194,7 @@ const SignUp = () => {
         <View style={styles.inputcontainer}>
           <PrimaryText children="PHONE" />
           <Input
-            text="+1 (555) 000-0000"
+            text="+27 (81) 555-4444"
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
