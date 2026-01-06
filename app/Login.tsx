@@ -53,7 +53,7 @@ const Login = () => {
 
       if (data?.user) {
         // Navigate to home screen here
-        router.navigate("/CustomerProfile");
+        router.navigate("/Home");
       }
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");

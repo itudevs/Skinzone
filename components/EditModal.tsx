@@ -1,19 +1,22 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { supabase } from "@/lib/supabase";
 import {
   View,
   Text,
-  TouchableOpacity,
   Modal,
   TextInput,
   StyleSheet,
   Pressable,
   FlatList,
+  Alert,
 } from "react-native";
 import Colors from "./utils/Colours";
 interface EditModalprops {
   Signout: () => void;
+  userId?: string;
 }
-const EditModal = ({ Signout }: EditModalprops) => {
+const EditModal = ({ Signout, userId }: EditModalprops) => {
   interface ProfileData {
     name: string;
     surname: string;
@@ -21,34 +24,119 @@ const EditModal = ({ Signout }: EditModalprops) => {
     phone: string;
     dob: Date;
   }
+  const defaultDob = new Date("1900-01-01");
+  const parseDob = (value: string | Date | null | undefined) => {
+    if (value instanceof Date) return value;
+    if (!value) return defaultDob;
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? defaultDob : parsed;
+  };
   // Your user data
   const [profile, setProfile] = useState<ProfileData>({
-    name: "John",
-    surname: "Doe",
-    email: "Johndoe@example.com",
-    phone: "+27 82 555 444",
-    dob: new Date("1995-12-17"),
+    name: "-",
+    surname: "-",
+    email: "-",
+    phone: "- ",
+    dob: new Date("-"),
   });
+  const router = useRouter();
 
+  const loadProfile = useCallback(
+    async (isActive: () => boolean) => {
+      if (!userId) return;
+      try {
+        const { data: userData, error: dbError } = await supabase
+          .from("User")
+          .select("*")
+          .eq("id", userId)
+          .single();
+
+        if (dbError || !userData) {
+          console.error("Database error:", dbError);
+          return;
+        }
+
+        if (isActive()) {
+          setProfile({
+            name: userData.name,
+            surname: userData.surname,
+            email: userData.email,
+            phone: userData.phone,
+            dob: parseDob(userData.dob),
+          });
+        }
+      } catch (error) {
+        Alert.alert("Error", "An unexpected error occurred.");
+        router.navigate("/Login");
+      }
+    },
+    [router, userId]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      loadProfile(() => active);
+      return () => {
+        active = false;
+      };
+    }, [loadProfile])
+  );
+
+  const updateField = async (FieldtoUpdate: string, newField: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase
+      .from("User")
+      .update({ [FieldtoUpdate]: newField }) // Only include the field you want to change
+      .eq("id", userId)
+      .select(); // Returns the updated row so you can verify the change
+
+    if (error) {
+      console.error("Update failed:", error.message);
+    } else {
+      console.log("Updated successfully:", data);
+    }
+  };
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
-  const [activeField, setActiveField] = useState(""); // 'name' or 'bio'
+  const [activeField, setActiveField] = useState<keyof ProfileData | "">(""); // 'name' or 'bio'
   const [tempValue, setTempValue] = useState(""); // Holds text while typing
 
-  const openEditModal = (field: string) => {
+  const openEditModal = (field: keyof ProfileData) => {
     setActiveField(field);
-    setTempValue(field); // Pre-fill with current value
+    const currentValue = profile[field];
+    const valueAsString =
+      field === "dob" && currentValue instanceof Date
+        ? currentValue.toISOString().slice(0, 10) // simple YYYY-MM-DD
+        : String(currentValue ?? "");
+    setTempValue(valueAsString);
     setModalVisible(true);
   };
 
   const handleSave = () => {
-    setProfile({ ...profile, [activeField]: tempValue });
+    if (!activeField) {
+      setModalVisible(false);
+
+      return;
+    }
+
+    if (activeField === "dob") {
+      setProfile({ ...profile, dob: parseDob(tempValue) });
+      updateField("dob", tempValue);
+    } else {
+      setProfile({ ...profile, [activeField]: tempValue });
+      updateField(activeField, tempValue);
+    }
     setModalVisible(false);
   };
 
   const formatDate = (dateValue: Date | string): string => {
     const date =
       typeof dateValue === "string" ? new Date(dateValue) : dateValue;
+    if (isNaN(date.getTime())) return "Invalid date";
 
     return new Intl.DateTimeFormat("en-US", {
       month: "short", // "Jan"
@@ -56,8 +144,11 @@ const EditModal = ({ Signout }: EditModalprops) => {
       year: "numeric", // "1992"
     }).format(date);
   };
+
+  type PropertyItem = { key: keyof ProfileData; label: string; value: string };
+
   // Define properties data for FlatList
-  const properties = [
+  const properties: PropertyItem[] = [
     { key: "name", label: "NAME", value: profile.name },
     { key: "surname", label: "SURNAME", value: profile.surname },
     { key: "email", label: "EMAIL", value: profile.email },
@@ -69,7 +160,7 @@ const EditModal = ({ Signout }: EditModalprops) => {
     },
   ];
 
-  const renderProperty = ({ item }: { item: (typeof properties)[0] }) => (
+  const renderProperty = ({ item }: { item: PropertyItem }) => (
     <View style={styles.row}>
       <Text style={{ color: Colors.TextColour }}>{item.label}</Text>
       <Pressable onPress={() => openEditModal(item.key)}>
@@ -91,10 +182,10 @@ const EditModal = ({ Signout }: EditModalprops) => {
     <View style={styles.container}>
       {/* Properties - Using FlatList for scrollability */}
       <View style={styles.flatListWrapper}>
-        <FlatList
+        <FlatList<PropertyItem>
           data={properties}
           renderItem={renderProperty}
-          keyExtractor={(item) => item.key}
+          keyExtractor={(item) => item.key as string}
           scrollEnabled={true}
           nestedScrollEnabled={true}
         />

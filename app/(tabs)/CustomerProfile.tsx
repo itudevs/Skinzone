@@ -18,7 +18,7 @@ const CustomerProfile = () => {
     supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
-  }, [session]);
+  }, []);
   //end of session logic
   const addimage = () => {
     console.log("image added");
@@ -41,7 +41,7 @@ const CustomerProfile = () => {
           Tap to change photo
         </Text>
         <View>
-          <EditModal Signout={SignOutHandler} />
+          <EditModal Signout={SignOutHandler} userId={session?.user.id} />
         </View>
       </View>
     </View>
