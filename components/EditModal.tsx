@@ -145,7 +145,7 @@ const EditModal = ({ Signout }: EditModalprops) => {
 
 export default EditModal;
 const styles = StyleSheet.create({
-  container: { padding: 10 },
+  container: { padding: 5 },
   flatListWrapper: {
     marginBottom: 10,
   },

@@ -1,12 +1,11 @@
 import { Stack } from "expo-router";
-import { View, StyleSheet, SafeAreaView, StatusBar } from "react-native";
-import { SafeAreaInsetsContext } from "react-native-safe-area-context";
+import { StatusBar, StyleSheet, View } from "react-native";
 
 export default function RootLayout() {
   return (
     <View style={styles.main}>
+      <StatusBar barStyle={"dark-content"} />
       <Stack>
-        <StatusBar barStyle={"dark-content"} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="SignUp" options={{ headerShown: false }} />
         <Stack.Screen
@@ -16,6 +15,10 @@ export default function RootLayout() {
         <Stack.Screen name="ResetPassword" options={{ headerShown: false }} />
         <Stack.Screen
           name="CustomerProfile"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
+        <Stack.Screen
+          name="(tabs)"
           options={{ headerShown: false, gestureEnabled: false }}
         />
       </Stack>

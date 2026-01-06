@@ -1,10 +1,10 @@
 import "react-native-url-polyfill/auto";
 import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 import { View, Text, StyleSheet } from "react-native";
 import { Session } from "@supabase/supabase-js";
 import Colors from "@/components/utils/Colours";
-import ProfileImage from "../components/ProfileImage";
+import ProfileImage from "../../components/ProfileImage";
 import EditModal from "@/components/EditModal";
 import { useRouter } from "expo-router";
 const CustomerProfile = () => {
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
   Container: {
     backgroundColor: "#000000ff",
     paddingTop: 40,
-    paddingBottom: 60,
+    paddingBottom: 85,
     paddingLeft: 7,
     paddingRight: 7,
     flex: 1,
