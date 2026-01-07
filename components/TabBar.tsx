@@ -5,6 +5,7 @@ import { Text, PlatformPressable } from "@react-navigation/elements";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import Colors from "./utils/Colours";
 import { Home, User, Settings, Heart, History } from "lucide-react-native";
+import HistoryPage from "@/app/(tabs)/HistoryPage";
 
 const TabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { colors } = useTheme();
@@ -15,10 +16,9 @@ const TabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   > = {
     index: Home,
     Home,
-    History,
+    HistoryPage: History,
     CustomerProfile: User,
     Settings,
-    Favorites: Heart,
   };
   return (
     <View style={styles.tabbar}>
