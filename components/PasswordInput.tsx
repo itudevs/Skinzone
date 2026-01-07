@@ -6,6 +6,7 @@ import {
   View,
   Text,
 } from "react-native";
+import { Lock, Eye, EyeOff } from "lucide-react-native";
 import Colors from "./utils/Colours";
 
 interface PasswordInputProps {
@@ -27,7 +28,9 @@ const PasswordInput = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.iconContainer}></View>
+      <View style={styles.iconContainer}>
+        <Lock color={"#999999"} size={18} />
+      </View>
       <TextInput
         style={styles.input}
         placeholder={placeholder}
@@ -41,7 +44,11 @@ const PasswordInput = ({
         style={styles.eyeContainer}
         onPress={togglePasswordVisibility}
       >
-        <Text style={styles.eyeIcon}>{isPasswordVisible ? "👁" : "🔘"}</Text>
+        {isPasswordVisible ? (
+          <Eye color={"#cccccc"} size={20} />
+        ) : (
+          <EyeOff color={"#cccccc"} size={20} />
+        )}
       </TouchableOpacity>
     </View>
   );

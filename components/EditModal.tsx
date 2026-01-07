@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, memo } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import {
@@ -82,12 +82,30 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       };
     }, [loadProfile])
   );
-
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  const validatePhone = (phone: string): boolean => {
+    const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
+    return phoneRegex.test(phone);
+  };
   const updateField = async (FieldtoUpdate: string, newField: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    if (FieldtoUpdate === "email") {
+      if (!validateEmail(newField)) {
+        Alert.alert("Error", "Enter a valid email address");
+        return;
+      }
+    }
+    if (FieldtoUpdate === "phone") {
+      if (!validatePhone(newField)) {
+        Alert.alert(
+          "Error",
+          "Please enter a valid phone number (at least 10 digits)"
+        );
+        return;
+      }
+    }
     const { data, error } = await supabase
       .from("User")
       .update({ [FieldtoUpdate]: newField }) // Only include the field you want to change
@@ -100,6 +118,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       console.log("Updated successfully:", data);
     }
   };
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [activeField, setActiveField] = useState<keyof ProfileData | "">(""); // 'name' or 'bio'
@@ -116,19 +135,39 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     setModalVisible(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!activeField) {
       setModalVisible(false);
+      return;
+    }
 
+    const previousValue = profile[activeField];
+
+    // Validate email before saving
+    if (activeField === "email" && !validateEmail(tempValue)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      setTempValue(String(previousValue ?? ""));
+      setModalVisible(false);
+      return;
+    }
+
+    // Validate phone before saving
+    if (activeField === "phone" && !validatePhone(tempValue)) {
+      Alert.alert(
+        "Invalid Phone",
+        "Please enter a valid phone number (at least 10 digits)."
+      );
+      setTempValue(String(previousValue ?? ""));
+      setModalVisible(false);
       return;
     }
 
     if (activeField === "dob") {
       setProfile({ ...profile, dob: parseDob(tempValue) });
-      updateField("dob", tempValue);
+      await updateField("dob", tempValue);
     } else {
       setProfile({ ...profile, [activeField]: tempValue });
-      updateField(activeField, tempValue);
+      await updateField(activeField, tempValue);
     }
     setModalVisible(false);
   };
@@ -191,9 +230,13 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
         />
         {/* Buttons */}
         <View style={styles.buttonsSection}>
-          <Pressable style={({ pressed }) => pressed && styles.presseditem}>
+          <Pressable
+            onPress={() => router.navigate("/ChangePassword")}
+            style={({ pressed }) => pressed && styles.presseditem}
+          >
             <Text style={styles.buttonPassword}>Change Password</Text>
           </Pressable>
+          {/* Change Password Modal */}
 
           <Pressable
             onPress={Signout}
@@ -207,7 +250,12 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       </View>
 
       {/* REUSABLE MODAL */}
-      <Modal visible={modalVisible} animationType="fade" transparent={true}>
+      <Modal
+        style={{ flex: 1 }}
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={{ color: Colors.TextColour }}>Edit {activeField}</Text>

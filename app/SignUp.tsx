@@ -33,6 +33,7 @@ const SignUp = () => {
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState<Date | undefined>(undefined);
   const [password, setPassword] = useState("");
+  const [confirmpassword, setconfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const validateEmail = (email: string): boolean => {
@@ -78,8 +79,13 @@ const SignUp = () => {
         return;
       }
 
-      if (password.length < 6) {
-        Alert.alert("Error", "Password must be at least 6 characters");
+      if (password.length < 13) {
+        Alert.alert("Error", "Password must be at least 13 characters");
+        return;
+      }
+
+      if (password !== confirmpassword) {
+        Alert.alert("Error", "Passwords Do No Match");
         return;
       }
 
@@ -218,6 +224,16 @@ const SignUp = () => {
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
+          />
+        </View>
+
+        {/*Confirm Password Field */}
+        <View style={styles.inputcontainer}>
+          <PrimaryText children="CONFIRM PASSWORD" />
+          <PasswordInput
+            placeholder="••••••••"
+            value={confirmpassword}
+            onChangeText={setconfirmPassword}
           />
         </View>
 

@@ -10,6 +10,7 @@ import PrimaryButton from "@/components/PrimaryButton";
 import PrimaryLink from "@/components/PrimaryLink";
 import PasswordInput from "@/components/PasswordInput";
 import { useRouter } from "expo-router";
+import { Lock, User, Eye, EyeOff } from "lucide-react-native";
 
 const Login = () => {
   const insets = useSafeAreaInsets();
@@ -35,8 +36,8 @@ const Login = () => {
         return;
       }
 
-      if (password.length < 6) {
-        Alert.alert("Error", "Password must be at least 6 characters");
+      if (password.length < 13) {
+        Alert.alert("Error", "Password must be at least 13 characters");
         return;
       }
 
@@ -87,12 +88,14 @@ const Login = () => {
 
       <View style={styles.inputcontainer}>
         <PrimaryText children="Email" />
+
         <Input
           text="user@example.com"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          showUserIcon
         />
         <PrimaryText children="Password" />
         <PasswordInput
