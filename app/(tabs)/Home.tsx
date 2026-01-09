@@ -13,6 +13,7 @@ import { useFocusEffect } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import Colors from "@/components/utils/Colours";
 import { Bell, TrendingUp } from "lucide-react-native";
+import Visitation from "@/components/utils/Visitation";
 
 const Home = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -69,29 +70,6 @@ const Home = () => {
     }, [getUserData])
   );
 
-  // Mock data - replace with real data from Supabase
-  const visitations = [
-    {
-      date: "OCT\n24",
-      service: "Haircut & Style",
-      stylist: "Sarah M.",
-      points: 100,
-    },
-    { date: "SEP\n12", service: "Beard Trim", stylist: "Mike R.", points: 50 },
-    {
-      date: "AUG\n30",
-      service: "Color Treatment",
-      stylist: "Sarah M.",
-      points: 200,
-    },
-    {
-      date: "AUG\n05",
-      service: "Consultation",
-      stylist: "Alex T.",
-      points: 10,
-    },
-  ];
-
   return (
     <ScrollView
       style={styles.container}
@@ -143,21 +121,7 @@ const Home = () => {
         </Pressable>
       </View>
 
-      {/* Visitation List */}
-      {visitations.map((visit, index) => (
-        <View key={index} style={styles.visitCard}>
-          <View style={styles.visitDate}>
-            <Text style={styles.visitDateText}>{visit.date}</Text>
-          </View>
-          <View style={styles.visitInfo}>
-            <Text style={styles.visitService}>{visit.service}</Text>
-            <Text style={styles.visitStylist}>Stylist: {visit.stylist}</Text>
-          </View>
-          <View style={styles.pointsBadge}>
-            <Text style={styles.pointsBadgeText}>+{visit.points} pts</Text>
-          </View>
-        </View>
-      ))}
+      <Visitation />
     </ScrollView>
   );
 };
@@ -277,53 +241,5 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "600",
-  },
-  visitCard: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 15,
-    padding: 18,
-    marginBottom: 12,
-    alignItems: "center",
-  },
-  visitDate: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 10,
-    width: 50,
-    height: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-  visitDateText: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#666666",
-    textAlign: "center",
-    lineHeight: 16,
-  },
-  visitInfo: {
-    flex: 1,
-  },
-  visitService: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000000",
-    marginBottom: 4,
-  },
-  visitStylist: {
-    fontSize: 13,
-    color: "#666666",
-  },
-  pointsBadge: {
-    backgroundColor: Colors.Primary900,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  pointsBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "bold",
   },
 });

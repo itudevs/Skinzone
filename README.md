@@ -23,7 +23,14 @@ SkinZone Digital Loyalty Platform addresses these challenges through:
 
 - **Secure Authentication**: User registration and login with email verification via Supabase Auth
 - **Digital Loyalty Tracking**: Replace physical punch cards with digital visit records
-- **User Profiles**: Centralized customer data including personal information, treatment history, and loyalty points
+- **User Profiles**: Centralized customer data with editable fields (name, surname, email, phone, date of birth)
+- **Profile Management**: Full CRUD operations on user data with validation
+- **Password Management**: Secure password change and reset functionality
+- **Home Dashboard**: Personalized welcome screen showing user name, balance, and recent visits
+- **History Tracking**: View past visitations with service details and points earned
+- **Session Persistence**: Automatic login state management across app restarts
+- **Input Validation**: Real-time validation for email addresses, phone numbers, and passwords
+- **Profile Images**: User avatar support with image upload capability
 - **Real-Time Notifications**: Alert customers of loyalty milestones and promotions (future phase)
 - **Admin Dashboard**: Staff access to manage customers, verify visits, and track metrics (future phase)
 - **Appointment Booking**: Integrated scheduling system (planned for Phase 2)
@@ -38,18 +45,28 @@ SkinZone Digital Loyalty Platform addresses these challenges through:
 
 ## Project Vision
 
-### Phase 1 (Current)
+### Phase 1 (Current) ✅
 
-- Authentication (Login, Sign Up, Password Reset)
-- Basic user profile creation
-- Foundation for loyalty tracking
+- ✅ Authentication (Login, Sign Up, Password Reset)
+- ✅ User profile management with edit capabilities
+- ✅ Password change functionality
+- ✅ Profile image support
+- ✅ Customer Profile screen with editable fields
+- ✅ Home screen with welcome dashboard
+- ✅ History/Visitations tracking UI
+- ✅ Bottom tab navigation
+- ✅ Input validation (email, phone, password)
+- ✅ Supabase database integration
+- ✅ Session management
 
-### Phase 2 (Planned)
+### Phase 2 (In Progress)
 
-- Appointment booking system
-- Loyalty points accumulation and redemption
-- Admin/staff dashboard
-- Visit verification workflow
+- 🚧 Loyalty points accumulation and tracking
+- 🚧 Visit history with detailed records
+- 🚧 Balance/points display system
+- ⏳ Appointment booking system
+- ⏳ Admin/staff dashboard
+- ⏳ Visit verification workflow
 
 ### Phase 3 (Planned)
 
@@ -63,10 +80,14 @@ SkinZone Digital Loyalty Platform addresses these challenges through:
 - **Frontend Framework**: React Native with Expo
 - **Language**: TypeScript
 - **Backend & Auth**: Supabase (PostgreSQL + Authentication)
-- **Navigation**: Expo Router
+- **Navigation**: Expo Router with bottom tabs
 - **State Management**: React Hooks + Async Storage
 - **UI Components**: Custom reusable component library
+- **Icons**: Lucide React Native
+- **Image Handling**: Expo Image Picker
 - **Security**: Supabase Auth with email verification
+- **Form Validation**: Custom validation for email, phone, and password fields
+- **Date Handling**: React Native DateTimePicker
 
 ## Key Design Principles
 
@@ -82,21 +103,31 @@ SkinZone Digital Loyalty Platform addresses these challenges through:
 ```
 SkinzoneProject/
 ├── app/                    # Screen components & navigation
+│   ├── (tabs)/            # Bottom tab navigation screens
+│   │   ├── _layout.tsx    # Tab bar configuration
+│   │   ├── Home.tsx       # Home dashboard with balance & visits
+│   │   ├── CustomerProfile.tsx  # User profile screen
+│   │   └── History.tsx    # Visit history & logs
 │   ├── index.tsx          # Root entry point
-│   ├── Login.tsx          # Login screen with Supabase auth
+│   ├── Login.tsx          # Login screen with Supabase auth & icons
 │   ├── SignUp.tsx         # Registration with validation
+│   ├── ChangePassword.tsx # Password change functionality
 │   ├── ResetPassword.tsx  # Password recovery
 │   └── _layout.tsx        # Route configuration
 ├── components/            # Reusable UI components
-│   ├── Input.tsx          # Text input with validation
-│   ├── PasswordInput.tsx   # Password field with toggle
+│   ├── Input.tsx          # Text input with user icon & validation
+│   ├── PasswordInput.tsx  # Password field with lock & eye toggle
 │   ├── DatePicker.tsx     # Date selection component
+│   ├── EditModal.tsx      # Profile edit modal with validation
+│   ├── ProfileImage.tsx   # User avatar with image picker
 │   ├── PrimaryButton.tsx  # Primary action button
 │   ├── PrimaryText.tsx    # Typography component
-│   └── utils/             # Utilities (colors, etc.)
+│   ├── TabBar.tsx         # Custom tab bar component
+│   └── utils/             # Utilities (colors, helpers)
 ├── lib/
 │   └── supabase.ts        # Supabase client initialization
-├── .env                   # Environment variables
+├── assets/                # Images & static files
+├── .env                   # Environment variables (Supabase keys)
 ├── app.json              # Expo configuration
 └── package.json          # Dependencies
 ```
@@ -159,17 +190,21 @@ Users' personal information is **never shared with third parties** without expli
 
 ## Future Roadmap
 
-- [ ] Multi-language support
+- [ ] Real-time sync for profile updates across devices
+- [ ] Multi-language support (English, Afrikaans, Zulu)
 - [ ] Payment integration for package purchases
-- [ ] SMS/Email notifications
-- [ ] Advanced analytics dashboard
+- [ ] SMS/Email notifications for appointments & promotions
+- [ ] Advanced analytics dashboard (admin side)
 - [ ] API for third-party integrations
 - [ ] Mobile app store publication (iOS/Android)
 - [ ] Staff mobile app for visit verification
 - [ ] Loyalty tier system (Silver, Gold, Platinum)
 - [ ] Referral program tracking
+- [ ] In-app chat/support
+- [ ] Offline mode improvements
+- [ ] Biometric authentication (Face ID/Fingerprint)
 
 ---
 
-**Last Updated**: December 31, 2025  
-**Project Status**: Active Development (Phase 1)
+**Last Updated**: January 7, 2026  
+**Project Status**: Active Development (Phase 1 → Phase 2 Transition)
