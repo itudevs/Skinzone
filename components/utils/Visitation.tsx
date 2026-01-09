@@ -117,6 +117,25 @@ const Visitation = () => {
               </View>
             </View>
           </View>
+          <View style={styles.therapistcontainer}>
+            <Image
+              style={styles.therapistLogo}
+              source={require("../../assets/images/AltSkinzoneLogo.png")}
+            />
+            <View style={styles.DetailsContainer}>
+              <PrimaryText children="THERAPIST" />
+              <Text
+                style={{
+                  color: "white",
+                  padding: 5,
+                  fontWeight: "bold",
+                  fontSize: 15,
+                }}
+              >
+                {visit.stylist}
+              </Text>
+            </View>
+          </View>
           <PrimaryButton
             text="Close Details"
             onPressHandler={() => setisModalActive(false)}
@@ -238,4 +257,19 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     width: "100%",
   },
+  therapistLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 40,
+  },
+  therapistcontainer: {
+    marginVertical: 5,
+    marginHorizontal: 12,
+    backgroundColor: "#222c26ff",
+    borderRadius: 15,
+    padding: 10,
+    paddingHorizontal: 30,
+    flexDirection: "row",
+  },
+  DetailsContainer: {},
 });
