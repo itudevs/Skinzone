@@ -8,13 +8,21 @@ import {
   Button,
 } from "react-native";
 import Colors from "./Colours";
-import { useState } from "react";
+import { use, useState } from "react";
 import PrimaryButton from "../PrimaryButton";
 import PrimaryText from "../PrimaryText";
-import DatePicker from "../DatePicker";
-
+import { Star, Notebook, PartyPopper } from "lucide-react-native";
+interface visitation {
+  date: string;
+  service: string;
+  stylist: string;
+  points: number;
+  Duration: string;
+  comments: string;
+}
 const Visitation = () => {
   const [isModalActive, setisModalActive] = useState(false);
+  const [selectedvisit, setselectedvisit] = useState<visitation | null>(null);
   // Mock data - replace with real data from Supabase
   const visitations = [
     {
@@ -23,6 +31,8 @@ const Visitation = () => {
       stylist: "Sarah M.",
       Duration: "60 Mins",
       points: 100,
+      comments:
+        "Customer preferred firm pressure on shoulders. No essential oils due to allergy. Requested Sarah for next booking.",
     },
     {
       date: "SEP-12",
@@ -30,6 +40,8 @@ const Visitation = () => {
       stylist: "Mike R.",
       Duration: "10 Mins",
       points: 50,
+      comments:
+        "Trim tapered tighter around jawline. Keep length on moustache.",
     },
     {
       date: "AUG-30",
@@ -37,6 +49,7 @@ const Visitation = () => {
       stylist: "Sarah M.",
       Duration: "25 Mins",
       points: 200,
+      comments: "Warm chestnut tone matched to client swatch #432.",
     },
     {
       date: "AUG-05",
@@ -44,106 +57,147 @@ const Visitation = () => {
       stylist: "Alex T.",
       Duration: "30 Mins",
       points: 10,
+      comments: "Discussed scalp care routine. Follow-up booked for 09/10.",
     },
   ];
 
-  return visitations.map((visit, index) => (
-    <Pressable
-      key={index}
-      style={({ pressed }) => pressed && styles.presseditem}
-      onPress={() => setisModalActive(true)}
-    >
-      <View style={styles.visitCard}>
-        <View style={styles.visitDate}>
-          <Text style={styles.visitDateText}>{visit.date}</Text>
-        </View>
-        <View style={styles.visitInfo}>
-          <Text style={styles.visitService}>{visit.service}</Text>
-          <Text style={styles.visitStylist}>Stylist: {visit.stylist}</Text>
-        </View>
-        <View style={styles.pointsBadge}>
-          <Text style={styles.pointsBadgeText}>+{visit.points} pts</Text>
-        </View>
-      </View>
-      <Modal
-        visible={isModalActive}
-        onRequestClose={() => setisModalActive(false)}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.ModalContainer}>
-          <View></View>
-          <View style={styles.TreatmentCard}>
-            <View
-              style={{
-                padding: 1,
-                height: 5,
-                paddingHorizontal: 20,
-                backgroundColor: Colors.TextColour,
-                borderRadius: 20,
-                marginTop: 3,
-                marginBottom: 8,
-              }}
-            >
-              <Button title="" />
+  return (
+    <View>
+      {visitations.map((visit, index) => (
+        <Pressable
+          key={index}
+          style={({ pressed }) => pressed && styles.presseditem}
+          onPress={() => {
+            setisModalActive(true);
+            setselectedvisit(visit);
+          }}
+        >
+          <View style={styles.visitCard}>
+            <View style={styles.visitDate}>
+              <Text style={styles.visitDateText}>{visit.date}</Text>
             </View>
-            <Text style={{ color: "white", fontSize: 32, fontWeight: "bold" }}>
-              Visit Details
-            </Text>
-            <PrimaryText children="Reciept ID:" />
-            <View style={styles.IconCard}>
-              <View style={styles.TreatmentRow1}>
-                <Image
-                  style={styles.logo}
-                  source={require("../../assets/images/AltSkinzoneLogo.png")}
-                />
-                <View style={styles.treatmentTitleWrapper}>
-                  <Text style={styles.treatmentTitle}>{visit.service}</Text>
-                </View>
-              </View>
-              <View style={styles.TreatmentRow2}>
-                <View style={styles.halfinput}>
-                  <PrimaryText children="DATE" />
-                  <Text style={{ color: "white" }}>{visit.date}</Text>
-                </View>
-                <View style={styles.halfinput}>
-                  <PrimaryText children="TIME" />
-                  <Text style={{ color: "white" }}>----</Text>
-                </View>
-              </View>
-              <View style={styles.fullinput}>
-                <PrimaryText children="DURATION" />
-                <Text style={{ color: "white" }}>{visit.Duration}</Text>
-              </View>
+            <View style={styles.visitInfo}>
+              <Text style={styles.visitService}>{visit.service}</Text>
+              <Text style={styles.visitStylist}>Stylist: {visit.stylist}</Text>
+            </View>
+            <View style={styles.pointsBadge}>
+              <Text style={styles.pointsBadgeText}>+{visit.points} pts</Text>
             </View>
           </View>
-          <View style={styles.therapistcontainer}>
-            <Image
-              style={styles.therapistLogo}
-              source={require("../../assets/images/AltSkinzoneLogo.png")}
-            />
-            <View style={styles.DetailsContainer}>
-              <PrimaryText children="THERAPIST" />
-              <Text
+        </Pressable>
+      ))}
+      {selectedvisit && (
+        <Modal
+          visible={isModalActive}
+          onRequestClose={() => setisModalActive(false)}
+          animationType="slide"
+          presentationStyle="pageSheet"
+        >
+          <View style={styles.ModalContainer}>
+            <View></View>
+            <View style={styles.TreatmentCard}>
+              <View
                 style={{
-                  color: "white",
-                  padding: 5,
-                  fontWeight: "bold",
-                  fontSize: 15,
+                  padding: 1,
+                  height: 5,
+                  paddingHorizontal: 20,
+                  backgroundColor: Colors.TextColour,
+                  borderRadius: 20,
+                  marginTop: 3,
+                  marginBottom: 8,
                 }}
               >
-                {visit.stylist}
+                <Button title="" />
+              </View>
+              <Text
+                style={{ color: "white", fontSize: 32, fontWeight: "bold" }}
+              >
+                Visit Details
               </Text>
+              <PrimaryText children="Reciept ID:" />
+              <View style={styles.IconCard}>
+                <View style={styles.TreatmentRow1}>
+                  <Image
+                    style={styles.logo}
+                    source={require("../../assets/images/AltSkinzoneLogo.png")}
+                  />
+                  <View style={styles.treatmentTitleWrapper}>
+                    <Text style={styles.treatmentTitle}>
+                      {selectedvisit.service}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.TreatmentRow2}>
+                  <View style={styles.halfinput}>
+                    <PrimaryText children="DATE" />
+                    <Text style={{ color: "white" }}>{selectedvisit.date}</Text>
+                  </View>
+                  <View style={styles.halfinput}>
+                    <PrimaryText children="TIME" />
+                    <Text style={{ color: "white" }}>----</Text>
+                  </View>
+                </View>
+                <View style={styles.fullinput}>
+                  <PrimaryText children="DURATION" />
+                  <Text style={{ color: "white" }}>
+                    {selectedvisit.Duration}
+                  </Text>
+                </View>
+              </View>
             </View>
+            <View style={styles.pointsCard}>
+              <View style={styles.pointsRow}>
+                <Text style={styles.pointsIcon}>
+                  <Star color={"white"} />
+                </Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.pointsValue}>
+                    +{selectedvisit.points} Points
+                  </Text>
+                  <Text style={styles.pointsSubtitle}>Earned this visit</Text>
+                </View>
+                <Text style={styles.pointsEmoji}>
+                  <PartyPopper color={"white"} />
+                </Text>
+              </View>
+            </View>
+            <View style={styles.notesCard}>
+              <View style={styles.notesHeader}>
+                <Text style={styles.notesIcon}>
+                  <Notebook color={"white"} />
+                </Text>
+                <Text style={styles.notesHeaderText}>COMMENTS / NOTES</Text>
+              </View>
+              <Text style={styles.notesCopy}>"{selectedvisit.comments}"</Text>
+            </View>
+            <View style={styles.therapistcontainer}>
+              <Image
+                style={styles.therapistLogo}
+                source={require("../../assets/images/AltSkinzoneLogo.png")}
+              />
+              <View style={styles.DetailsContainer}>
+                <PrimaryText children="THERAPIST" />
+                <Text
+                  style={{
+                    color: "white",
+                    padding: 5,
+                    fontWeight: "bold",
+                    fontSize: 15,
+                  }}
+                >
+                  {selectedvisit.stylist}
+                </Text>
+              </View>
+            </View>
+            <PrimaryButton
+              text="Close Details"
+              onPressHandler={() => setisModalActive(false)}
+            />
           </View>
-          <PrimaryButton
-            text="Close Details"
-            onPressHandler={() => setisModalActive(false)}
-          />
-        </View>
-      </Modal>
-    </Pressable>
-  ));
+        </Modal>
+      )}
+    </View>
+  );
 };
 export default Visitation;
 
@@ -256,6 +310,61 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     paddingVertical: 15,
     width: "100%",
+  },
+  pointsCard: {
+    marginVertical: 8,
+    marginHorizontal: 12,
+    backgroundColor: "#0F6B38",
+    borderRadius: 18,
+    padding: 18,
+  },
+  pointsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  pointsIcon: {
+    fontSize: 28,
+  },
+  pointsValue: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  pointsSubtitle: {
+    color: "#B8F0CD",
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  pointsEmoji: {
+    fontSize: 24,
+  },
+  notesCard: {
+    marginVertical: 8,
+    marginHorizontal: 12,
+    backgroundColor: "#111A16",
+    borderRadius: 18,
+    padding: 18,
+  },
+  notesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  notesIcon: {
+    fontSize: 18,
+  },
+  notesHeaderText: {
+    color: "#8FA399",
+    fontSize: 12,
+    letterSpacing: 1,
+    marginLeft: 8,
+  },
+  notesCopy: {
+    color: "white",
+    fontSize: 14,
+    lineHeight: 20,
+    fontStyle: "italic",
   },
   therapistLogo: {
     width: 40,
