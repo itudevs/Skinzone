@@ -47,14 +47,26 @@ const Login = () => {
         password: password,
       });
 
+      const { data: userData, error: dbError } = await supabase
+        .from("User")
+        .select("role")
+        .eq("id", data.user?.id)
+        .single();
+
       if (error) {
         Alert.alert("Login Failed", error.message);
         return;
       }
 
       if (data?.user) {
-        // Navigate to home screen here
-        router.navigate("/Home");
+        if (userData?.role === "staff") {
+          // Navigate to Staff screen here
+
+          router.navigate("/StaffDashBoard");
+        } else {
+          // Navigate to home screen here
+          router.navigate("/Home");
+        }
       }
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");

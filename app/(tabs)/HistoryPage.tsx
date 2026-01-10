@@ -43,7 +43,7 @@ const HistoryPage = () => {
               paddingBottom: 10,
             }}
           >
-            -------------------------------------------------
+            ---------------------------------------------
           </Text>
           <View></View>
           <Text
@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 90,
     paddingLeft: 35,
+    paddingHorizontal: 20,
   },
   header: {},
   CardContainer: {

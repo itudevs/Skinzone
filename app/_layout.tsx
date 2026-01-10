@@ -22,6 +22,10 @@ export default function RootLayout() {
           options={{ headerShown: false, gestureEnabled: false }}
         />
         <Stack.Screen name="ChangePassword" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(Admintab)"
+          options={{ headerShown: false, gestureEnabled: false }}
+        />
       </Stack>
     </View>
   );

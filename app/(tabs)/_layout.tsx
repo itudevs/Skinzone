@@ -17,6 +17,14 @@ const TabLayout = () => {
         name="CustomerProfile"
         options={{ headerShown: false, title: "Profile" }}
       />
+      <Tabs.Screen
+        name="StaffDashBoard"
+        options={{
+          headerShown: false,
+          title: "Staff DashBoard",
+          tabBarStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 };

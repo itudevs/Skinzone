@@ -14,19 +14,17 @@ import { supabase } from "@/lib/supabase";
 import Colors from "@/components/utils/Colours";
 import { Bell, TrendingUp } from "lucide-react-native";
 import Visitation from "@/components/utils/Visitation";
+import { userSessionService } from "@/components/utils/GetUsersession";
 
 const Home = () => {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(
+    userSessionService.getSession()
+  );
   const [username, setUsername] = useState("-");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    setSession(userSessionService.getSession());
   }, []);
 
   const getUserData = useCallback(
