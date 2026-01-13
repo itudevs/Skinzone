@@ -4,8 +4,14 @@ import { useLinkBuilder, useTheme } from "@react-navigation/native";
 import { Text, PlatformPressable } from "@react-navigation/elements";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import Colors from "./utils/Colours";
-import { Home, User, Settings, Heart, History } from "lucide-react-native";
-import HistoryPage from "@/app/(tabs)/HistoryPage";
+import {
+  Home,
+  User,
+  Settings,
+  History,
+  Stethoscope,
+} from "lucide-react-native";
+import StaffDashBoard from "@/app/(Admintab)/StaffDashBoard";
 
 const TabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { colors } = useTheme();
@@ -18,7 +24,9 @@ const TabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
     Home,
     HistoryPage: History,
     CustomerProfile: User,
-    Settings,
+    StaffDashBoard: Home,
+    StaffProfile: Settings,
+    AddTreatment: Stethoscope,
   };
   return (
     <View style={styles.tabbar}>

@@ -22,7 +22,7 @@ const TabLayout = () => {
         options={{
           headerShown: false,
           title: "Staff DashBoard",
-          tabBarStyle: { display: "none" },
+          
         }}
       />
     </Tabs>

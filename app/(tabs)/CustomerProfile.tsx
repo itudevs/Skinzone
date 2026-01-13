@@ -7,18 +7,10 @@ import Colors from "@/components/utils/Colours";
 import ProfileImage from "../../components/ProfileImage";
 import EditModal from "@/components/EditModal";
 import { useRouter } from "expo-router";
+import { userSessionService } from "@/components/utils/GetUsersession";
 const CustomerProfile = () => {
   const router = useRouter();
-  //session logic
-  const [session, setSession] = useState<Session | null>(null);
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-  }, []);
+  const session=userSessionService
   //end of session logic
   const addimage = () => {
     console.log("image added");
@@ -41,7 +33,7 @@ const CustomerProfile = () => {
           Tap to change photo
         </Text>
         <View>
-          <EditModal Signout={SignOutHandler} userId={session?.user.id} />
+          <EditModal Signout={SignOutHandler} userId={session?.getSession()?.user.id} />
         </View>
       </View>
     </View>

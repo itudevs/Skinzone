@@ -15,7 +15,7 @@ const ProfileImage = ({ imagehandler }: Profileprops) => {
       onPress={imagehandler}
     >
       <View>
-        <Image style={styles.ImgContainer} source={{ uri: imgurl }} />
+        <Image style={styles.ImgContainer} source={{ uri: imgurl }}  />
       </View>
     </Pressable>
   );

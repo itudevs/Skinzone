@@ -7,7 +7,15 @@ const TabLayout = () => {
     <Tabs tabBar={(props) => <TabBar {...props} />}>
       <Tabs.Screen
         name="StaffDashBoard"
-        options={{ headerShown: false, title: "DashBoard" }}
+        options={{ headerShown: false, title: "Home" }}
+      />
+      <Tabs.Screen
+        name="AddTreatment"
+        options={{ headerShown: false, title: "Treatment" }}
+      />
+      <Tabs.Screen
+        name="StaffProfile"
+        options={{ headerShown: false, title: "Settings" }}
       />
     </Tabs>
   );
