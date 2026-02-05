@@ -4,7 +4,6 @@ import {
   TextInput,
   StyleSheet,
   FlatList,
-  Platform,
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,16 +12,10 @@ import { supabase } from "../lib/supabase";
 import Colors from "@/components/utils/Colours";
 import PrimaryText from "@/components/PrimaryText";
 import Input from "../components/Input";
-import Link from "@/components/Link";
 import PrimaryButton from "@/components/PrimaryButton";
 import PrimaryLink from "@/components/PrimaryLink";
 import DatePicker from "@/components/DatePicker";
 import PasswordInput from "@/components/PasswordInput";
-import { Button } from "react-native";
-import { makeRedirectUri } from "expo-auth-session";
-import * as QueryParams from "expo-auth-session/build/QueryParams";
-import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
 import { Href, useRouter } from "expo-router";
 
 const SignUp = () => {
@@ -74,7 +67,7 @@ const SignUp = () => {
       if (!validatePhone(phone)) {
         Alert.alert(
           "Error",
-          "Please enter a valid phone number (at least 10 digits)"
+          "Please enter a valid phone number (at least 10 digits)",
         );
         return;
       }
@@ -128,7 +121,7 @@ const SignUp = () => {
                 // Navigate to login or verification screen
               },
             },
-          ]
+          ],
         );
         redirect("/Login");
       }

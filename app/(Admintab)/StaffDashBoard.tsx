@@ -1,9 +1,45 @@
 import Colors from "@/components/utils/Colours";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, FlatList, Alert } from "react-native";
 import SearchBar from "../../components/SearchBar";
 import PrimaryText from "@/components/PrimaryText";
-
+import Customer from "@/components/Customer";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+interface Customer {
+  id: string;
+  Name: string;
+  Surname: string;
+  Phone: string;
+}
 const StaffDashBoard = () => {
+  const [users, setusers] = useState<any>();
+  const GetUserDetails = async () => {
+    const { data, error } = await supabase
+      .from("User")
+      .select("id,name,surname,phone")
+      .eq("role", "user");
+
+    if (data?.length != 0) {
+      console.log(data);
+      return data;
+    }
+    if (error) {
+      Alert.alert("Error", "error occured while fetching Users");
+    } else {
+      return null;
+    }
+  };
+  useEffect(() => {
+    let mounted = true;
+    GetUserDetails().then((u) => {
+      if (mounted) {
+        setusers(u);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
   return (
     <View style={{ backgroundColor: Colors.PrimaryBackground, flex: 1 }}>
       <View style={styles.Main}>
@@ -42,8 +78,24 @@ const StaffDashBoard = () => {
               marginLeft: "10%",
             }}
           >
-            RECENT RESULTS
+            CUSTOMERS
           </Text>
+        </View>
+        <View>
+          <FlatList
+            data={users}
+            renderItem={(itemData) => {
+              return (
+                <Customer
+                  Name={itemData.item.name}
+                  Surname={itemData.item.surname}
+                  Phone={itemData.item.phone}
+                />
+              );
+            }}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={{ paddingBottom: 300 }}
+          />
         </View>
       </View>
     </View>

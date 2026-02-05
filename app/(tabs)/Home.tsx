@@ -13,18 +13,18 @@ import { useFocusEffect } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import Colors from "@/components/utils/Colours";
 import { Bell, TrendingUp } from "lucide-react-native";
-import Visitation from "@/components/utils/Visitation";
-import { userSessionService } from "@/components/utils/GetUsersession";
+import Visitation from "@/components/Visitation";
+import { UserSession } from "@/components/utils/GetUsersession";
 
 const Home = () => {
   const [session, setSession] = useState<Session | null>(
-    userSessionService.getSession()
+    UserSession.getSession(),
   );
   const [username, setUsername] = useState("-");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setSession(userSessionService.getSession());
+    setSession(UserSession.getSession());
   }, []);
 
   const getUserData = useCallback(
@@ -55,7 +55,7 @@ const Home = () => {
         }
       }
     },
-    [session?.user.id]
+    [session?.user.id],
   );
 
   useFocusEffect(
@@ -65,7 +65,7 @@ const Home = () => {
       return () => {
         active = false;
       };
-    }, [getUserData])
+    }, [getUserData]),
   );
 
   return (

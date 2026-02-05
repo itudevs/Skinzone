@@ -54,4 +54,4 @@ class UserSessionService {
     }
 }
 
-export const userSessionService = UserSessionService.getInstance();
+export const UserSession = UserSessionService.getInstance();

@@ -7,10 +7,10 @@ import {
   Image,
   Button,
 } from "react-native";
-import Colors from "./Colours";
-import { use, useState } from "react";
-import PrimaryButton from "../PrimaryButton";
-import PrimaryText from "../PrimaryText";
+import Colors from "./utils/Colours";
+import { useState } from "react";
+import PrimaryButton from "./PrimaryButton";
+import PrimaryText from "./PrimaryText";
 import { Star, Notebook, PartyPopper } from "lucide-react-native";
 interface visitation {
   date: string;
@@ -119,7 +119,7 @@ const Visitation = () => {
                 <View style={styles.TreatmentRow1}>
                   <Image
                     style={styles.logo}
-                    source={require("../../assets/images/AltSkinzoneLogo.png")}
+                    source={require("../assets/images/AltSkinzoneLogo.png")}
                   />
                   <View style={styles.treatmentTitleWrapper}>
                     <Text style={styles.treatmentTitle}>
@@ -173,7 +173,7 @@ const Visitation = () => {
             <View style={styles.therapistcontainer}>
               <Image
                 style={styles.therapistLogo}
-                source={require("../../assets/images/AltSkinzoneLogo.png")}
+                source={require("../assets/images/AltSkinzoneLogo.png")}
               />
               <View style={styles.DetailsContainer}>
                 <PrimaryText children="THERAPIST" />
