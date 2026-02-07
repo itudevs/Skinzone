@@ -20,7 +20,6 @@ const StaffDashBoard = () => {
       .eq("role", "user");
 
     if (data?.length != 0) {
-      console.log(data);
       return data;
     }
     if (error) {
@@ -87,6 +86,7 @@ const StaffDashBoard = () => {
             renderItem={(itemData) => {
               return (
                 <Customer
+                  id={itemData.item.id}
                   Name={itemData.item.name}
                   Surname={itemData.item.surname}
                   Phone={itemData.item.phone}

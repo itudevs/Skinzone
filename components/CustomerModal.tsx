@@ -6,6 +6,8 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import Colors from "./utils/Colours";
 import { CustomerModalprops } from "./utils/CustomerInterface";
@@ -16,17 +18,82 @@ import DropDownInput from "./DropDownInput";
 import { DropDownItems } from "./utils/utilinterfaces";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
+import {
+  CustomerVisitLineInsert,
+  CustomerVisitInsert,
+} from "./utils/DatabaseTypes";
 
 const CustomerModal = ({
   Visible,
   Onclose,
+  id,
   Name,
   Surname,
   Phone,
 }: CustomerModalprops) => {
-  const AddVisitHandler = () => {};
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [selectedTreatmentId, setSelectedTreatmentId] = useState("");
+  const [clicked, setclicked] = useState(false);
   const [staff, setstaff] = useState<DropDownItems[]>([]);
   const [treatment, settreatment] = useState<DropDownItems[]>([]);
+  const [amountpaid, setamountpaid] = useState("");
+  const [notes, setnotes] = useState("");
+  const handleStaffSelect = (id: string, value: string) => {
+    setSelectedStaffId(id);
+  };
+
+  const handleTreatmentSelect = (id: string, value: string) => {
+    setSelectedTreatmentId(id);
+  };
+
+  const AddVisitHandler = async () => {
+    if (clicked) return; // Prevent multiple submissions
+    setclicked(true);
+
+    let visitData: CustomerVisitInsert;
+    let visitLine: CustomerVisitLineInsert;
+
+    visitData = {
+      customerid: id,
+      staffid: selectedStaffId,
+      totalamountpaid: +amountpaid,
+      notes: notes,
+    };
+    const { data, error } = await supabase
+      .from("customervisits")
+      .insert(visitData)
+      .select("csid")
+      .single();
+    if (error) {
+      Alert.alert("Error", "error while adding customer visit");
+      setclicked(false); // Reset on error
+      return;
+    }
+    console.log(data.csid);
+    //insert visitline
+    visitLine = {
+      quantity: 1,
+      treatmentid: +selectedTreatmentId,
+      csid: data.csid,
+    };
+    console.log(visitLine.treatmentid);
+    const { error: line } = await supabase
+      .from("customervisitlines")
+      .insert(visitLine)
+      .select()
+      .single();
+    if (line) {
+      await supabase.from("customervisits").delete().eq("id", visitLine.csid);
+      Alert.alert("Error", line.message);
+      setclicked(false); // Reset on error
+      return;
+    }
+
+    Alert.alert("Success", "Visit added successfully!");
+    setclicked(false); // Reset on success
+    Onclose(); // Close the modal on success
+  };
+
   const GetStaff = async () => {
     const { data, error } = await supabase
       .from("User")
@@ -39,7 +106,6 @@ const CustomerModal = ({
     }
 
     if (data && data.length > 0) {
-      console.log(data);
       // Map data to match DropDownItems interface
       return data.map((staff) => ({
         id: staff.id,
@@ -58,7 +124,6 @@ const CustomerModal = ({
     });
     GetTreatments().then((y) => {
       if (mounted) {
-        console.log("eish");
         settreatment(y);
       }
     });
@@ -86,6 +151,12 @@ const CustomerModal = ({
 
     return [];
   };
+  const HandleAmountpaid = (text: string) => {
+    setamountpaid(text);
+  };
+  const HandleNotes = (text: string) => {
+    setnotes(text);
+  };
   return (
     <Modal
       visible={Visible}
@@ -93,137 +164,157 @@ const CustomerModal = ({
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <View style={styles.Main}>
-        <ScrollView style={{ flex: 1 }}>
-          <Text
-            style={{
-              paddingHorizontal: "5%",
-              paddingVertical: "3%",
-              color: "#ffffff",
-              borderRadius: 50,
-            }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <View style={styles.Main}>
+          <ScrollView
+            style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 20 }}
           >
-            Staff Access
-          </Text>
-          <Text
-            style={{
-              paddingHorizontal: "5%",
-              paddingVertical: "2%",
-              color: "#ffffff",
-              fontWeight: "bold",
-              fontSize: 22,
-            }}
-          >
-            Loaded Customer Information
-          </Text>
-          <View style={{ paddingHorizontal: "5%", paddingVertical: "1%" }}>
-            <PrimaryText children="Add New Visit For Users" />
-          </View>
-          <View style={styles.CustomerDetails}>
-            <View style={styles.CustomerCard}>
-              <View style={styles.CustomerInfo}>
-                <Text style={styles.Label}>CUSTOMER</Text>
-                <Text style={styles.CustomerName}>
-                  {Name} {Surname}
-                </Text>
-                <Text style={styles.Label}>CONTACT</Text>
-                <View style={{ flexDirection: "row" }}>
-                  <PhoneIcon size={14} color={Colors.Primary900} />
-                  <Text style={styles.ContactNumber}>{Phone}</Text>
+            <Text
+              style={{
+                paddingHorizontal: "5%",
+                paddingVertical: "3%",
+                color: "#ffffff",
+                borderRadius: 50,
+              }}
+            >
+              Staff Access
+            </Text>
+            <Text
+              style={{
+                paddingHorizontal: "5%",
+                paddingVertical: "2%",
+                color: "#ffffff",
+                fontWeight: "bold",
+                fontSize: 22,
+              }}
+            >
+              Loaded Customer Information
+            </Text>
+            <View style={{ paddingHorizontal: "5%", paddingVertical: "1%" }}>
+              <PrimaryText children="Add New Visit For Users" />
+            </View>
+            <View style={styles.CustomerDetails}>
+              <View style={styles.CustomerCard}>
+                <View style={styles.CustomerInfo}>
+                  <Text style={styles.Label}>CUSTOMER</Text>
+                  <Text style={styles.CustomerName}>
+                    {Name} {Surname}
+                  </Text>
+                  <Text style={styles.Label}>CONTACT</Text>
+                  <View style={{ flexDirection: "row" }}>
+                    <PhoneIcon size={14} color={Colors.Primary900} />
+                    <Text style={styles.ContactNumber}>{Phone}</Text>
+                  </View>
+                </View>
+                <View style={styles.IconContainer}>
+                  <User size={24} color={"white"} />
                 </View>
               </View>
-              <View style={styles.IconContainer}>
-                <User size={24} color={"white"} />
-              </View>
+              <View style={styles.Verticalline}></View>
             </View>
-            <View style={styles.Verticalline}></View>
-          </View>
-          <View style={styles.TreatmentContainer}>
-            <View style={styles.VisitHeader}>
-              <PlusCircle color={Colors.Primary900} size={24} />
-              <Text
-                style={{
-                  fontWeight: "bold",
-                  fontSize: 20,
-                  paddingLeft: 10,
-                  color: "white",
-                }}
-              >
-                Add New Visit
-              </Text>
-            </View>
-            <View style={styles.VisitHolder}>
-              <PrimaryText children="TREATMENT" />
-
-              <DropDownInput
-                value="Select Treatment"
-                id="Treatment select"
-                DropDownItem={treatment}
-              />
-            </View>
-            <View style={styles.VisitHolder}>
-              <PrimaryText children="STAFF MEMBER" />
-              <DropDownInput
-                value="Select User"
-                id="staff-select"
-                DropDownItem={staff}
-              />
-            </View>
-
-            <View style={styles.VisitHolder}>
-              <PrimaryText children="AMOUNT PAID" />
-              <View
-                style={{
-                  flexDirection: "row",
-
-                  paddingVertical: 10,
-                  marginVertical: 10,
-
-                  marginRight: 20,
-                  backgroundColor: Colors.PrimaryBackground,
-                  borderRadius: 10,
-                }}
-              >
+            <View style={styles.TreatmentContainer}>
+              <View style={styles.VisitHeader}>
+                <PlusCircle color={Colors.Primary900} size={24} />
                 <Text
                   style={{
-                    paddingHorizontal: 10,
-                    color: Colors.TextColour,
                     fontWeight: "bold",
+                    fontSize: 20,
+                    paddingLeft: 10,
+                    color: "white",
                   }}
                 >
-                  R
+                  Add New Visit
                 </Text>
+              </View>
+              <View style={styles.VisitHolder}>
+                <PrimaryText children="TREATMENT" />
+
+                <DropDownInput
+                  value="Select Treatment"
+                  id="Treatment select"
+                  DropDownItem={treatment}
+                  onSelect={handleTreatmentSelect}
+                />
+              </View>
+              <View style={styles.VisitHolder}>
+                <PrimaryText children="STAFF MEMBER" />
+                <DropDownInput
+                  value="Select User"
+                  id="staff-select"
+                  DropDownItem={staff}
+                  onSelect={handleStaffSelect}
+                />
+              </View>
+
+              <View style={styles.VisitHolder}>
+                <PrimaryText children="AMOUNT PAID" />
+                <View
+                  style={{
+                    flexDirection: "row",
+
+                    paddingVertical: 10,
+                    marginVertical: 10,
+
+                    marginRight: 20,
+                    backgroundColor: Colors.PrimaryBackground,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text
+                    style={{
+                      paddingHorizontal: 10,
+                      color: Colors.TextColour,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    R
+                  </Text>
+                  <TextInput
+                    placeholder="  0.00"
+                    style={{ color: Colors.TextColour, paddingLeft: 10 }}
+                    blurOnSubmit={true}
+                    value={amountpaid}
+                    onChangeText={HandleAmountpaid}
+                    keyboardType="number-pad"
+                  ></TextInput>
+                </View>
+              </View>
+              <View style={styles.VisitHolder}>
+                <PrimaryText children="NOTES" />
+
                 <TextInput
-                  placeholder="  0.00"
-                  style={{ color: Colors.TextColour, paddingLeft: 10 }}
+                  multiline={true}
+                  placeholder="    Add Treatment Notes"
+                  style={{
+                    color: Colors.TextColour,
+                    paddingVertical: 10,
+                    paddingLeft: 10,
+                    paddingBottom: 50,
+                    marginVertical: 10,
+                    marginRight: 20,
+                    backgroundColor: Colors.PrimaryBackground,
+                    borderRadius: 10,
+                  }}
                   blurOnSubmit={true}
+                  value={notes}
+                  onChangeText={HandleNotes}
                 ></TextInput>
               </View>
-            </View>
-            <View style={styles.VisitHolder}>
-              <PrimaryText children="NOTES" />
 
-              <TextInput
-                multiline={true}
-                placeholder="    Add Treatment Notes"
-                style={{
-                  color: Colors.TextColour,
-                  paddingVertical: 10,
-                  paddingLeft: 10,
-                  paddingBottom: 50,
-                  marginVertical: 10,
-                  marginRight: 20,
-                  backgroundColor: Colors.PrimaryBackground,
-                  borderRadius: 10,
-                }}
-                blurOnSubmit={true}
-              ></TextInput>
+              <PrimaryButton
+                text={!clicked ? "ADD VISIT" : "ADDING..."}
+                onPressHandler={AddVisitHandler}
+              />
             </View>
-
-            <PrimaryButton text="ADD VISIT" onPressHandler={AddVisitHandler} />
-          </View>
-        </ScrollView>
-      </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

@@ -3,7 +3,7 @@ import Colors from "./utils/Colours";
 import CustomerModal from "./CustomerModal";
 import { useState } from "react";
 import { CustomerDetails } from "./utils/CustomerInterface";
-const Customer = ({ Name, Surname, Phone }: CustomerDetails) => {
+const Customer = ({ id, Name, Surname, Phone }: CustomerDetails) => {
   const [visible, setVisible] = useState(false);
   const togglemodal = () => {
     if (visible === true) {
@@ -34,6 +34,7 @@ const Customer = ({ Name, Surname, Phone }: CustomerDetails) => {
       <CustomerModal
         Visible={visible}
         Onclose={togglemodal}
+        id={id}
         Name={Name}
         Phone={Phone}
         Surname={Surname}

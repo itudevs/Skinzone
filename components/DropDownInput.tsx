@@ -7,13 +7,18 @@ interface DropDownValues {
   value: string;
   id: string;
   DropDownItem: DropDownItems[];
+  onSelect: (id: string, value: string) => void;
 }
-const DropDownInput = ({ value, DropDownItem }: DropDownValues) => {
+const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
   const [expanded, setexpanded] = useState(false);
-
+  const [selectedValue, setselectedValue] = useState(value);
   var Caret = expanded ? ChevronUp : ChevronDown;
   let DATA = DropDownItem;
-
+  const handlepressitem = (item: DropDownItems) => {
+    setselectedValue(item.value);
+    onSelect(item.id, item.value);
+    setexpanded(false);
+  };
   const OpenCloseList = () => {
     if (expanded === false) {
       setexpanded(true);
@@ -28,7 +33,7 @@ const DropDownInput = ({ value, DropDownItem }: DropDownValues) => {
         style={({ pressed }) => pressed && styles.presseditem}
       >
         <View style={styles.dropdown}>
-          <Text style={styles.text}>{value}</Text>
+          <Text style={styles.text}>{selectedValue}</Text>
           <View style={styles.careticon}>
             <Caret size={15} color={Colors.TextColour} />
           </View>
@@ -40,7 +45,10 @@ const DropDownInput = ({ value, DropDownItem }: DropDownValues) => {
             keyExtractor={(item) => item.value}
             data={DATA}
             renderItem={({ item }) => (
-              <Pressable style={({ pressed }) => pressed && styles.presseditem}>
+              <Pressable
+                onPress={() => handlepressitem(item)}
+                style={({ pressed }) => pressed && styles.presseditem}
+              >
                 <Text style={{ color: "white", padding: 10 }}>
                   {item.value}
                 </Text>
