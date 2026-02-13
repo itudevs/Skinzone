@@ -7,10 +7,10 @@ import Colors from "@/components/utils/Colours";
 import ProfileImage from "../../components/ProfileImage";
 import EditModal from "@/components/EditModal";
 import { useRouter } from "expo-router";
-import { userSessionService } from "@/components/utils/GetUsersession";
+import { UserSession } from "@/components/utils/GetUsersession";
 const CustomerProfile = () => {
   const router = useRouter();
-  const session=userSessionService
+  const session = UserSession;
   //end of session logic
   const addimage = () => {
     console.log("image added");
@@ -33,7 +33,10 @@ const CustomerProfile = () => {
           Tap to change photo
         </Text>
         <View>
-          <EditModal Signout={SignOutHandler} userId={session?.getSession()?.user.id} />
+          <EditModal
+            Signout={SignOutHandler}
+            userId={session?.getSession()?.user.id}
+          />
         </View>
       </View>
     </View>
