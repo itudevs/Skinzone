@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, View, StyleSheet, Pressable, FlatList } from "react-native";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import Colors from "./utils/Colours";
@@ -13,7 +13,6 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
   const [expanded, setexpanded] = useState(false);
   const [selectedValue, setselectedValue] = useState(value);
   var Caret = expanded ? ChevronUp : ChevronDown;
-  let DATA = DropDownItem;
   const handlepressitem = (item: DropDownItems) => {
     setselectedValue(item.value);
     onSelect(item.id, item.value);
@@ -26,6 +25,7 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
       setexpanded(false);
     }
   };
+
   return (
     <View style={{ marginVertical: 5 }}>
       <Pressable
@@ -43,7 +43,7 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
         <View style={styles.listitems}>
           <FlatList
             keyExtractor={(item) => item.value}
-            data={DATA}
+            data={DropDownItem}
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => handlepressitem(item)}

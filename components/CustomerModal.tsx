@@ -22,6 +22,7 @@ import {
   CustomerVisitLineInsert,
   CustomerVisitInsert,
 } from "./utils/DatabaseTypes";
+import { GetTreatments } from "./utils/Gettreatment";
 
 const CustomerModal = ({
   Visible,
@@ -116,6 +117,7 @@ const CustomerModal = ({
     return [];
   };
   useEffect(() => {
+    if (!Visible) return;
     let mounted = true;
     GetStaff().then((u) => {
       if (mounted) {
@@ -130,33 +132,23 @@ const CustomerModal = ({
     return () => {
       mounted = false;
     };
-  }, []);
-  const GetTreatments = async () => {
-    const { data, error } = await supabase
-      .from("treatments")
-      .select("treatmentid,treatmentname");
-
-    if (error) {
-      Alert.alert("Error", "error occured while fetching Users");
-      return [];
-    }
-
-    if (data && data.length > 0) {
-      // Map data to match DropDownItems interface
-      return data.map((treatment) => ({
-        id: treatment.treatmentid,
-        value: treatment.treatmentname,
-      }));
-    }
-
-    return [];
-  };
+  }, [Visible]);
+  GetTreatments();
   const HandleAmountpaid = (text: string) => {
     setamountpaid(text);
   };
   const HandleNotes = (text: string) => {
     setnotes(text);
   };
+  useEffect(() => {
+    if (!Visible) {
+      // Reset form when modal is closed
+      setSelectedStaffId("");
+      setSelectedTreatmentId("");
+      setamountpaid("");
+      setnotes("");
+    }
+  }, [Visible]);
   return (
     <Modal
       visible={Visible}
