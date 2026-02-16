@@ -119,7 +119,7 @@ const Home = () => {
         </Pressable>
       </View>
 
-      <Visitation />
+      <Visitation id={session?.user.id} />
     </ScrollView>
   );
 };

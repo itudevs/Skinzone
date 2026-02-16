@@ -8,10 +8,13 @@ import {
   Button,
 } from "react-native";
 import Colors from "./utils/Colours";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PrimaryButton from "./PrimaryButton";
 import PrimaryText from "./PrimaryText";
 import { Star, Notebook, PartyPopper } from "lucide-react-native";
+import { supabase } from "@/lib/supabase";
+import { customervisitsline } from "./utils/DatabaseTypes";
+import { CustomerDetails } from "./utils/CustomerInterface";
 interface visitation {
   date: string;
   service: string;
@@ -20,46 +23,40 @@ interface visitation {
   Duration: string;
   comments: string;
 }
-const Visitation = () => {
+
+const Visitation = ({ id }: CustomerDetails) => {
   const [isModalActive, setisModalActive] = useState(false);
-  const [selectedvisit, setselectedvisit] = useState<visitation | null>(null);
+  const [selectedvisit, setselectedvisit] = useState<any | null>(null);
+  const [visitations, setvisitations] = useState<any[]>([]);
+  //get customer visits
+  const Getvisitations = async () => {
+    const { data, error } = await supabase
+      .from("customervisits")
+      .select(
+        `visit_date,notes,csid
+      customer:User!customerid (
+        name,surname
+      ),
+      staff:User!staffid (
+        name,surname
+      ),customervisitlines(
+        treatments(treatmentname,duration_minutes,points))`,
+      )
+      .eq("customerid", id)
+      .limit(5);
+
+    if (data) {
+      //store data in visitation array
+      setvisitations(data);
+      console.log(data);
+    } else if (error) {
+      console.log(error.message);
+    }
+  };
+  useEffect(() => {
+    Getvisitations();
+  }, []);
   // Mock data - replace with real data from Supabase
-  const visitations = [
-    {
-      date: "OCT-24",
-      service: "Haircut & Style",
-      stylist: "Sarah M.",
-      Duration: "60 Mins",
-      points: 100,
-      comments:
-        "Customer preferred firm pressure on shoulders. No essential oils due to allergy. Requested Sarah for next booking.",
-    },
-    {
-      date: "SEP-12",
-      service: "Beard Trim",
-      stylist: "Mike R.",
-      Duration: "10 Mins",
-      points: 50,
-      comments:
-        "Trim tapered tighter around jawline. Keep length on moustache.",
-    },
-    {
-      date: "AUG-30",
-      service: "Color Treatment",
-      stylist: "Sarah M.",
-      Duration: "25 Mins",
-      points: 200,
-      comments: "Warm chestnut tone matched to client swatch #432.",
-    },
-    {
-      date: "AUG-05",
-      service: "Consultation",
-      stylist: "Alex T.",
-      Duration: "30 Mins",
-      points: 10,
-      comments: "Discussed scalp care routine. Follow-up booked for 09/10.",
-    },
-  ];
 
   return (
     <View>
@@ -74,14 +71,29 @@ const Visitation = () => {
         >
           <View style={styles.visitCard}>
             <View style={styles.visitDate}>
-              <Text style={styles.visitDateText}>{visit.date}</Text>
+              <Text style={styles.visitDateText}>
+                {" "}
+                {new Date(visit.visit_date)
+                  .toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "2-digit",
+                  })
+                  .toUpperCase()}
+              </Text>
             </View>
             <View style={styles.visitInfo}>
-              <Text style={styles.visitService}>{visit.service}</Text>
-              <Text style={styles.visitStylist}>Stylist: {visit.stylist}</Text>
+              <Text style={styles.visitService}>
+                {visit.customervisitlines?.[0]?.treatments?.treatmentname ||
+                  "Unknown Service"}
+              </Text>
+              <Text style={styles.visitStylist}>
+                Stylist: {visit.staff?.name} {visit.staff?.surname[0]}
+              </Text>
             </View>
             <View style={styles.pointsBadge}>
-              <Text style={styles.pointsBadgeText}>+{visit.points} pts</Text>
+              <Text style={styles.pointsBadgeText}>
+                +{visit.customervisitlines?.[0]?.treatments.points} pts
+              </Text>
             </View>
           </View>
         </Pressable>
@@ -114,7 +126,7 @@ const Visitation = () => {
               >
                 Visit Details
               </Text>
-              <PrimaryText children="Reciept ID:" />
+
               <View style={styles.IconCard}>
                 <View style={styles.TreatmentRow1}>
                   <Image
@@ -123,14 +135,18 @@ const Visitation = () => {
                   />
                   <View style={styles.treatmentTitleWrapper}>
                     <Text style={styles.treatmentTitle}>
-                      {selectedvisit.service}
+                      {selectedvisit.customervisitlines?.[0]?.treatments
+                        ?.treatmentname || "Unknown"}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.TreatmentRow2}>
                   <View style={styles.halfinput}>
                     <PrimaryText children="DATE" />
-                    <Text style={{ color: "white" }}>{selectedvisit.date}</Text>
+                    <Text style={{ color: "white" }}>
+                      {" "}
+                      {new Date(selectedvisit.visit_date).toLocaleDateString()}
+                    </Text>
                   </View>
                   <View style={styles.halfinput}>
                     <PrimaryText children="TIME" />
@@ -140,7 +156,9 @@ const Visitation = () => {
                 <View style={styles.fullinput}>
                   <PrimaryText children="DURATION" />
                   <Text style={{ color: "white" }}>
-                    {selectedvisit.Duration}
+                    {selectedvisit.customervisitlines?.[0]?.treatments
+                      ?.duration_minutes || 0}{" "}
+                    Minutes
                   </Text>
                 </View>
               </View>
@@ -152,7 +170,8 @@ const Visitation = () => {
                 </Text>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.pointsValue}>
-                    +{selectedvisit.points} Points
+                    +{selectedvisit.customervisitlines?.[0]?.treatments.points}
+                    Points
                   </Text>
                   <Text style={styles.pointsSubtitle}>Earned this visit</Text>
                 </View>
@@ -168,7 +187,9 @@ const Visitation = () => {
                 </Text>
                 <Text style={styles.notesHeaderText}>COMMENTS / NOTES</Text>
               </View>
-              <Text style={styles.notesCopy}>"{selectedvisit.comments}"</Text>
+              <Text style={styles.notesCopy}>
+                "{selectedvisit.notes || "No notes available"}"
+              </Text>
             </View>
             <View style={styles.therapistcontainer}>
               <Image
@@ -185,7 +206,7 @@ const Visitation = () => {
                     fontSize: 15,
                   }}
                 >
-                  {selectedvisit.stylist}
+                  {selectedvisit.staff?.name} {selectedvisit.staff?.surname[0]}
                 </Text>
               </View>
             </View>
