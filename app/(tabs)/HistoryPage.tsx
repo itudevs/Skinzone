@@ -46,16 +46,7 @@ const HistoryPage = () => {
             ---------------------------------------------
           </Text>
           <View></View>
-          <Text
-            style={{
-              color: Colors.TextColour,
-              fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
-              textAlign: "center",
-              paddingVertical: 25,
-            }}
-          >
-            Tap on row to view details
-          </Text>
+          <PrimaryText children="Tap on row to view details" />
         </View>
       </View>
     </View>

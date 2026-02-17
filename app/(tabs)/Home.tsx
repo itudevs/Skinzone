@@ -15,6 +15,10 @@ import Colors from "@/components/utils/Colours";
 import { Bell, TrendingUp } from "lucide-react-native";
 import Visitation from "@/components/Visitation";
 import { UserSession } from "@/components/utils/GetUsersession";
+import {
+  GetLastPointvisit,
+  GetTotalPoints,
+} from "@/components/utils/GetUserData";
 
 const Home = () => {
   const [session, setSession] = useState<Session | null>(
@@ -22,7 +26,8 @@ const Home = () => {
   );
   const [username, setUsername] = useState("-");
   const [loading, setLoading] = useState(true);
-
+  const [total, settotal] = useState(0);
+  const [lastp, setlastp] = useState(0);
   useEffect(() => {
     setSession(UserSession.getSession());
   }, []);
@@ -67,6 +72,15 @@ const Home = () => {
       };
     }, [getUserData]),
   );
+  useEffect(() => {
+    const fetchpoints = async () => {
+      let points = await GetTotalPoints(session?.user.id);
+      let last = await GetLastPointvisit(session?.user.id);
+      settotal(points);
+      setlastp(last);
+    };
+    fetchpoints();
+  }, []);
 
   return (
     <ScrollView
@@ -95,13 +109,17 @@ const Home = () => {
 
       {/* Balance Card */}
       <View style={styles.balanceCard}>
-        <Text style={styles.balanceAmount}>2,450</Text>
+        <Text style={styles.balanceAmount}>
+          {" "}
+          {loading ? "Loading..." : total}
+        </Text>
         <Text style={styles.balanceLabel}>OVERALL BALANCE</Text>
 
         <View style={styles.balanceFooter}>
           <View>
             <Text style={styles.pointsAmount}>
-              100 <Text style={styles.pointsUnit}>pts</Text>
+              {loading ? "Loading..." : lastp}{" "}
+              <Text style={styles.pointsUnit}>pts</Text>
             </Text>
             <Text style={styles.visitationLabel}>VISITATION</Text>
           </View>
