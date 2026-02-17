@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
-export const Getvisitations = async (id: string | undefined) => {
-    const { data, error } = await supabase
+export const Getvisitations = async (id: string | undefined, size?: number) => {
+    const query = supabase
         .from("customervisits")
         .select(
             `visit_date,notes,csid
@@ -13,7 +13,8 @@ export const Getvisitations = async (id: string | undefined) => {
         treatments(treatmentname,duration_minutes,points))`,
         )
         .eq("customerid", id)
-        .limit(5);
+
+    const { data, error } = size ? await query.limit(size) : await query
 
     if (data) {
         //store data in visitation array
@@ -67,7 +68,7 @@ export const GetTotalPoints = async (id: string | undefined) => {
 };
 
 export const GetLastPointvisit = async (id: string | undefined) => {
-    let total = 0;
+    let last = 0;
 
     const { data, error } = await supabase
         .from("customervisits")
@@ -98,14 +99,14 @@ export const GetLastPointvisit = async (id: string | undefined) => {
             visit.customervisitlines?.forEach(visitLine => {
                 // Cast treatments to any to bypass TypeScript error
                 const treatmentPoints = (visitLine.treatments as any)?.points || 0;
-                total = treatmentPoints;
+                last = treatmentPoints;
             });
         });
     } else if (error) {
         console.log(error.message);
 
     }
-    return total;
+    return last;
 };
 
 

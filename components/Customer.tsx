@@ -10,6 +10,14 @@ const Customer = ({ id, Name, Surname, Phone }: CustomerDetails) => {
       setVisible(false);
     }
   };
+  let InitialName;
+  let InitialSurname;
+  if (Name != undefined) {
+    InitialName = Name[0];
+  }
+  if (Surname != undefined) {
+    InitialSurname = Surname[0];
+  }
   return (
     <Pressable
       onPress={() => setVisible(true)}
@@ -17,8 +25,8 @@ const Customer = ({ id, Name, Surname, Phone }: CustomerDetails) => {
     >
       <View style={styles.Main}>
         <Text style={styles.TextUserContainer}>
-          {Name[0]}
-          {Surname[0]}
+          {InitialName}
+          {InitialSurname}
         </Text>
         <View style={styles.TextNameContainer}>
           <Text style={{ color: "white", fontWeight: "bold" }}>

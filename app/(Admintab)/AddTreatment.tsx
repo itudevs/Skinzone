@@ -50,18 +50,20 @@ const AddTreatment = () => {
     setduration("");
     setpoints("");
   };
-  const ValidateInput = () => {
+  const ValidateInput = (): boolean => {
+    let passed = true;
     if (treatmentname.length < 3 || treatmenttype.length < 3) {
       Alert.alert("Error", "field must contain 3 or more letters");
-      return;
+      passed = false;
     } else if (!parseFloat(price)) {
       Alert.alert("Error", "price must not be characters");
-      return;
+      passed = false;
     }
     if (typeof +duration != "number" || typeof +points != "number") {
       Alert.alert("Error", "field must be a number");
-      return;
+      passed = false;
     }
+    return passed;
   };
   const HandleDeleteTreatment = async (id: string, name: string) => {
     Alert.alert("Delete", "Are you sure you want to Delete " + name, [

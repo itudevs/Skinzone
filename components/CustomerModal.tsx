@@ -53,9 +53,12 @@ const CustomerModal = ({
 
     let visitData: CustomerVisitInsert;
     let visitLine: CustomerVisitLineInsert;
-
+    let idString: string = "";
+    if (id != undefined) {
+      idString = id;
+    }
     visitData = {
-      customerid: id,
+      customerid: idString,
       staffid: selectedStaffId,
       totalamountpaid: +amountpaid,
       notes: notes,
