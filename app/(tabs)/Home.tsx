@@ -19,6 +19,7 @@ import {
   GetLastPointvisit,
   GetTotalPoints,
 } from "@/components/utils/GetUserData";
+import FreeVisit from "@/components/FreeVisit";
 
 const Home = () => {
   const [session, setSession] = useState<Session | null>(
@@ -28,6 +29,8 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [total, settotal] = useState(0);
   const [lastp, setlastp] = useState(0);
+  const [Qualify, setQualify] = useState(false);
+  const [Qualpoints, setQualpoints] = useState(0);
   useEffect(() => {
     setSession(UserSession.getSession());
   }, []);
@@ -78,6 +81,10 @@ const Home = () => {
       let last = await GetLastPointvisit(session?.user.id);
       settotal(points);
       setlastp(last);
+      if (total >= 500) {
+        setQualify(true);
+        setQualpoints(total * (10 / 100));
+      }
     };
     fetchpoints();
   }, []);
@@ -136,7 +143,8 @@ const Home = () => {
           <Text style={styles.recentBtnText}>Recent</Text>
         </Pressable>
       </View>
-
+      {/**Free Visitation Area */}
+      {Qualify && <FreeVisit points={Qualpoints} />}
       <Visitation id={session?.user.id} />
     </ScrollView>
   );
