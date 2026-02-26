@@ -22,8 +22,15 @@ const TabLayout = () => {
         options={{
           headerShown: false,
           title: "Staff DashBoard",
-          
         }}
+      />
+      <Tabs.Screen
+        name="PrivacyPolicy"
+        options={{ headerShown: false, title: "PrivacyPolicy" }}
+      />
+      <Tabs.Screen
+        name="TermsOfService"
+        options={{ headerShown: false, title: "TermsOfService" }}
       />
     </Tabs>
   );

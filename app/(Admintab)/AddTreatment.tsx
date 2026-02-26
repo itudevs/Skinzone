@@ -7,7 +7,6 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
-  FlatList,
   Pressable,
 } from "react-native";
 import Input from "@/components/Input";
@@ -107,7 +106,7 @@ const AddTreatment = () => {
       treatmentname: treatmentname,
       treatment_type: treatmenttype,
       duration_minutes: +duration,
-      points: +points,
+      points: (10 / 100) * +price,
     };
     const { data, error } = await supabase
       .from("treatments")
@@ -185,15 +184,6 @@ const AddTreatment = () => {
             />
           </View>
           <View style={styles.maininputs}>
-            <PrimaryText children="Points" />
-            <Input
-              keyboardType="numeric"
-              text="e.g, 100"
-              value={points}
-              onChangeText={Handlepoints}
-            />
-          </View>
-          <View style={styles.maininputs}>
             <PrimaryText children="Duration(mins)" />
             <Input
               keyboardType="numeric"
@@ -209,11 +199,9 @@ const AddTreatment = () => {
             />
           </View>
           <Text style={styles.maintexts}>Current Treatments</Text>
-          <FlatList
-            keyExtractor={(item) => item.id}
-            data={treatments}
-            renderItem={({ item }) => (
-              <View style={styles.TreatMain}>
+          <View>
+            {treatments.map((item) => (
+              <View key={item.id} style={styles.TreatMain}>
                 <View style={styles.Treatment}>
                   <Text
                     style={{
@@ -250,8 +238,8 @@ const AddTreatment = () => {
                   </View>
                 </Pressable>
               </View>
-            )}
-          />
+            ))}
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

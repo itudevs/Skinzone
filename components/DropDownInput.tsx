@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View, StyleSheet, Pressable, FlatList } from "react-native";
+import { Text, View, StyleSheet, Pressable } from "react-native";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import Colors from "./utils/Colours";
 import { DropDownItems } from "./utils/utilinterfaces";
@@ -33,7 +33,9 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
         style={({ pressed }) => pressed && styles.presseditem}
       >
         <View style={styles.dropdown}>
-          <Text style={styles.text}>{selectedValue}</Text>
+          <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">
+            {selectedValue}
+          </Text>
           <View style={styles.careticon}>
             <Caret size={15} color={Colors.TextColour} />
           </View>
@@ -41,10 +43,8 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
       </Pressable>
       {expanded ? (
         <View style={styles.listitems}>
-          <FlatList
-            keyExtractor={(item) => item.value}
-            data={DropDownItem}
-            renderItem={({ item }) => (
+          {DropDownItem.map((item, index) => (
+            <View key={item.value}>
               <Pressable
                 onPress={() => handlepressitem(item)}
                 style={({ pressed }) => pressed && styles.presseditem}
@@ -53,9 +53,11 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
                   {item.value}
                 </Text>
               </Pressable>
-            )}
-            ItemSeparatorComponent={() => <View style={{ height: 4 }}></View>}
-          ></FlatList>
+              {index < DropDownItem.length - 1 && (
+                <View style={{ height: 4 }}></View>
+              )}
+            </View>
+          ))}
         </View>
       ) : null}
     </View>
@@ -68,8 +70,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.PrimaryBackground,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     borderRadius: 10,
     marginRight: 20,
+    paddingRight: 10,
   },
   listitems: {
     marginVertical: 5,
@@ -77,8 +81,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginRight: 30,
   },
-  text: { padding: 10, color: "white" },
-  careticon: { paddingLeft: 140 },
+  text: {
+    padding: 10,
+    color: "white",
+    flex: 1,
+    marginRight: 10,
+  },
+  careticon: {
+    paddingHorizontal: 5,
+  },
   presseditem: {
     opacity: 0.5,
   },

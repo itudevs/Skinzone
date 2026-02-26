@@ -1,7 +1,16 @@
 import { Stack } from "expo-router";
 import { StatusBar, StyleSheet, View } from "react-native";
+import { useEffect } from "react";
+import { requestNotificationPermissions } from "@/lib/notifications";
 
 export default function RootLayout() {
+  useEffect(() => {
+    // Request notification permissions on app start
+    requestNotificationPermissions().catch((error) => {
+      console.log("Failed to setup notifications:", error);
+    });
+  }, []);
+
   return (
     <View style={styles.main}>
       <StatusBar barStyle={"dark-content"} />

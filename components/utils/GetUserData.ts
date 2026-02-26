@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { Alert } from "react-native";
 export const Getvisitations = async (id: string | undefined, size?: number) => {
     const query = supabase
         .from("customervisits")
@@ -66,7 +67,23 @@ export const GetTotalPoints = async (id: string | undefined) => {
     }
     return total;
 };
+export const GetTotalFinalPoints = async (id: string | undefined): Promise<number> => {
+    console.log("hhiiiii");
+    let total: number = 0;
+    let totalbefore = await GetTotalPoints(id);
+    const { data, error } = await supabase.from("User").select("pointsused").eq("id", id).single();
+    if (data) {
+        total = +data.pointsused;
+    }
+    if (error) {
+        Alert.alert("Error", "could not get point");
+        console.log(error.message);
+        return 0;
+    }
+    console.log(totalbefore)
 
+    return totalbefore - total;
+}
 export const GetLastPointvisit = async (id: string | undefined) => {
     let last = 0;
 

@@ -10,7 +10,9 @@ import {
   Pressable,
   FlatList,
   Alert,
+  Platform,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import Colors from "./utils/Colours";
 interface EditModalprops {
   Signout: () => void;
@@ -39,6 +41,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     phone: "- ",
     dob: new Date("-"),
   });
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const router = useRouter();
 
   const loadProfile = useCallback(
@@ -70,7 +73,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
         router.navigate("/Login");
       }
     },
-    [router, userId]
+    [router, userId],
   );
 
   useFocusEffect(
@@ -80,7 +83,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       return () => {
         active = false;
       };
-    }, [loadProfile])
+    }, [loadProfile]),
   );
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -101,7 +104,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       if (!validatePhone(newField)) {
         Alert.alert(
           "Error",
-          "Please enter a valid phone number (at least 10 digits)"
+          "Please enter a valid phone number (at least 10 digits)",
         );
         return;
       }
@@ -123,16 +126,62 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [activeField, setActiveField] = useState<keyof ProfileData | "">(""); // 'name' or 'bio'
   const [tempValue, setTempValue] = useState(""); // Holds text while typing
+  const [tempDate, setTempDate] = useState<Date>(new Date()); // Holds date while picking
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const openEditModal = (field: keyof ProfileData) => {
     setActiveField(field);
     const currentValue = profile[field];
-    const valueAsString =
-      field === "dob" && currentValue instanceof Date
-        ? currentValue.toISOString().slice(0, 10) // simple YYYY-MM-DD
-        : String(currentValue ?? "");
-    setTempValue(valueAsString);
+
+    if (field === "dob" && currentValue instanceof Date) {
+      setTempDate(currentValue);
+      setShowDatePicker(true);
+    } else {
+      const valueAsString = String(currentValue ?? "");
+      setTempValue(valueAsString);
+    }
+
     setModalVisible(true);
+  };
+
+  const validateDOB = (date: Date): boolean => {
+    const today = new Date();
+    const minDate = new Date(1900, 0, 1);
+    const maxAge = 120;
+    const minAge = 13; // Minimum age requirement
+
+    // Check if date is in the future
+    if (date > today) {
+      Alert.alert("Invalid Date", "Date of birth cannot be in the future.");
+      return false;
+    }
+
+    // Check if date is too old
+    if (date < minDate) {
+      Alert.alert("Invalid Date", "Please enter a valid date of birth.");
+      return false;
+    }
+
+    // Calculate age
+    const age = today.getFullYear() - date.getFullYear();
+    const monthDiff = today.getMonth() - date.getMonth();
+    const dayDiff = today.getDate() - date.getDate();
+    const actualAge =
+      monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+
+    // Check minimum age
+    if (actualAge < minAge) {
+      Alert.alert("Invalid Age", `You must be at least ${minAge} years old.`);
+      return false;
+    }
+
+    // Check maximum age
+    if (actualAge > maxAge) {
+      Alert.alert("Invalid Date", "Please enter a valid date of birth.");
+      return false;
+    }
+
+    return true;
   };
 
   const handleSave = async () => {
@@ -155,7 +204,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     if (activeField === "phone" && !validatePhone(tempValue)) {
       Alert.alert(
         "Invalid Phone",
-        "Please enter a valid phone number (at least 10 digits)."
+        "Please enter a valid phone number (at least 10 digits).",
       );
       setTempValue(String(previousValue ?? ""));
       setModalVisible(false);
@@ -163,13 +212,20 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     }
 
     if (activeField === "dob") {
-      setProfile({ ...profile, dob: parseDob(tempValue) });
-      await updateField("dob", tempValue);
+      // Validate DOB
+      if (!validateDOB(tempDate)) {
+        return; // Don't close modal if invalid
+      }
+
+      const dobString = tempDate.toISOString().slice(0, 10);
+      setProfile({ ...profile, dob: tempDate });
+      await updateField("dob", dobString);
     } else {
       setProfile({ ...profile, [activeField]: tempValue });
       await updateField(activeField, tempValue);
     }
     setModalVisible(false);
+    setShowDatePicker(false);
   };
 
   const formatDate = (dateValue: Date | string): string => {
@@ -182,6 +238,63 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       day: "numeric", // "14"
       year: "numeric", // "1992"
     }).format(date);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userId) return;
+
+    try {
+      // Delete user data from User table
+      const { error: deleteError } = await supabase
+        .from("User")
+        .delete()
+        .eq("id", userId);
+
+      if (deleteError) {
+        Alert.alert(
+          "Error",
+          "Failed to delete account. Please contact support.",
+        );
+        return;
+      }
+
+      // Sign out the user
+      await supabase.auth.signOut();
+
+      Alert.alert(
+        "Account Deleted",
+        "Your account and all associated data have been permanently deleted.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.navigate("/Login"),
+          },
+        ],
+      );
+    } catch (error) {
+      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      console.error("Delete account error:", error);
+    } finally {
+      setDeleteConfirmVisible(false);
+    }
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      "⚠️ Delete Account",
+      "Are you sure you want to delete your account?\n\nThis will:\n• Permanently delete all your personal information\n• Remove your visit history\n• Forfeit all loyalty points\n• Cannot be undone\n\nDo you want to continue?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: () => setDeleteConfirmVisible(true),
+        },
+      ],
+    );
   };
 
   type PropertyItem = { key: keyof ProfileData; label: string; value: string };
@@ -227,6 +340,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
           keyExtractor={(item) => item.key as string}
           scrollEnabled={true}
           nestedScrollEnabled={true}
+          contentContainerStyle={styles.flatListContent}
         />
         {/* Buttons */}
         <View style={styles.buttonsSection}>
@@ -236,7 +350,6 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
           >
             <Text style={styles.buttonPassword}>Change Password</Text>
           </Pressable>
-          {/* Change Password Modal */}
 
           <Pressable
             onPress={Signout}
@@ -244,10 +357,69 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
           >
             <Text style={styles.editBtn}>Sign Out</Text>
           </Pressable>
+
+          {/* Legal Links */}
+          <View style={styles.legalSection}>
+            <Pressable
+              onPress={() => router.navigate("/PrivacyPolicy")}
+              style={({ pressed }) => pressed && styles.presseditem}
+            >
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </Pressable>
+            <Text style={styles.legalDivider}>•</Text>
+            <Pressable
+              onPress={() => router.navigate("/TermsOfService")}
+              style={({ pressed }) => pressed && styles.presseditem}
+            >
+              <Text style={styles.legalLink}>Terms of Service</Text>
+            </Pressable>
+          </View>
+
+          {/* Delete Account */}
+          <Pressable
+            onPress={confirmDeleteAccount}
+            style={({ pressed }) => [
+              styles.deleteAccountBtn,
+              pressed && styles.presseditem,
+            ]}
+          >
+            <Text style={styles.deleteAccountText}>Delete Account</Text>
+          </Pressable>
         </View>
         {/* Buttons */}
         <View style={styles.buttonsSection}></View>
       </View>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={deleteConfirmVisible}
+        animationType="fade"
+        transparent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.deleteModalContent}>
+            <Text style={styles.deleteModalTitle}>⚠️ Final Confirmation</Text>
+            <Text style={styles.deleteModalText}>
+              This action is irreversible. Type DELETE to confirm:
+            </Text>
+            <TextInput
+              style={styles.deleteInput}
+              placeholder="Type DELETE"
+              placeholderTextColor={Colors.TextColour}
+              onChangeText={(text) => {
+                if (text === "DELETE") {
+                  handleDeleteAccount();
+                }
+              }}
+            />
+            <View style={styles.buttonGroup}>
+              <Pressable onPress={() => setDeleteConfirmVisible(false)}>
+                <Text style={styles.cancelBtn}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* REUSABLE MODAL */}
       <Modal
@@ -258,17 +430,45 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={{ color: Colors.TextColour }}>Edit {activeField}</Text>
+            <Text style={styles.modalTitle}>Edit {activeField}</Text>
 
-            <TextInput
-              style={styles.input}
-              value={tempValue}
-              onChangeText={setTempValue}
-              autoFocus={true}
-            />
+            {activeField === "dob" && showDatePicker ? (
+              <View style={styles.datePickerContainer}>
+                <Text style={styles.dateDisplayText}>
+                  Selected: {formatDate(tempDate)}
+                </Text>
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(event, selectedDate) => {
+                    if (selectedDate) {
+                      setTempDate(selectedDate);
+                    }
+                  }}
+                  maximumDate={new Date()}
+                  minimumDate={new Date(1900, 0, 1)}
+                  textColor="#ffffff"
+                  themeVariant="dark"
+                  style={styles.datePicker}
+                />
+              </View>
+            ) : (
+              <TextInput
+                style={styles.input}
+                value={tempValue}
+                onChangeText={setTempValue}
+                autoFocus={true}
+              />
+            )}
 
             <View style={styles.buttonGroup}>
-              <Pressable onPress={() => setModalVisible(false)}>
+              <Pressable
+                onPress={() => {
+                  setModalVisible(false);
+                  setShowDatePicker(false);
+                }}
+              >
                 <Text style={styles.cancelBtn}>Cancel</Text>
               </Pressable>
               <Pressable onPress={handleSave}>
@@ -287,6 +487,9 @@ const styles = StyleSheet.create({
   container: { padding: 5 },
   flatListWrapper: {
     marginBottom: 10,
+  },
+  flatListContent: {
+    paddingBottom: 20,
   },
   row: {
     flexDirection: "column",
@@ -324,6 +527,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
   },
+  modalTitle: {
+    color: Colors.TextColour,
+    fontSize: 16,
+    marginBottom: 15,
+    textTransform: "uppercase",
+  },
   input: {
     borderBottomWidth: 1,
     borderColor: "#ccc",
@@ -331,6 +540,21 @@ const styles = StyleSheet.create({
     padding: 8,
     color: Colors.TextColour,
     overflow: "hidden",
+  },
+  datePickerContainer: {
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  dateDisplayText: {
+    color: Colors.Primary900,
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  datePicker: {
+    width: "100%",
+    backgroundColor: Colors.PrimaryBackground,
   },
   buttonGroup: { flexDirection: "row", justifyContent: "flex-end" },
   cancelBtn: { marginRight: 20, color: "red" },
@@ -341,6 +565,7 @@ const styles = StyleSheet.create({
   buttonsSection: {
     alignItems: "center",
     paddingTop: 10,
+    paddingBottom: 20,
   },
   buttonPassword: {
     color: Colors.Primary900,
@@ -354,5 +579,68 @@ const styles = StyleSheet.create({
     margin: 5,
     width: 275,
     textAlign: "center",
+  },
+  legalSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 15,
+    marginBottom: 20,
+    gap: 10,
+  },
+  legalLink: {
+    color: Colors.TextColour,
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+  legalDivider: {
+    color: Colors.TextColour,
+    fontSize: 12,
+  },
+  deleteAccountBtn: {
+    backgroundColor: "transparent",
+    borderColor: "#FF3B30",
+    borderWidth: 1,
+    padding: 12,
+    borderRadius: 15,
+    width: 275,
+    marginTop: 10,
+  },
+  deleteAccountText: {
+    color: "#FF3B30",
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 14,
+  },
+  deleteModalContent: {
+    width: "80%",
+    backgroundColor: Colors.background100,
+    padding: 20,
+    borderRadius: 10,
+    borderColor: "#FF3B30",
+    borderWidth: 2,
+  },
+  deleteModalTitle: {
+    color: "#FF3B30",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  deleteModalText: {
+    color: Colors.TextColour,
+    fontSize: 14,
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  deleteInput: {
+    borderWidth: 1,
+    borderColor: Colors.TextColour,
+    borderRadius: 8,
+    padding: 12,
+    color: "#FFFFFF",
+    marginBottom: 20,
+    textAlign: "center",
+    fontSize: 16,
   },
 });

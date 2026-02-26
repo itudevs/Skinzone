@@ -23,6 +23,7 @@ import {
   CustomerVisitInsert,
 } from "./utils/DatabaseTypes";
 import { GetTreatments } from "./utils/Gettreatment";
+import { sendVisitNotification } from "@/lib/notifications";
 
 const CustomerModal = ({
   Visible,
@@ -37,14 +38,26 @@ const CustomerModal = ({
   const [clicked, setclicked] = useState(false);
   const [staff, setstaff] = useState<DropDownItems[]>([]);
   const [treatment, settreatment] = useState<DropDownItems[]>([]);
-  const [amountpaid, setamountpaid] = useState("");
+  const [amountpaid, setamountpaid] = useState("0.00");
   const [notes, setnotes] = useState("");
+  const [selectedStaffName, setSelectedStaffName] = useState("");
+  const [selectedTreatmentName, setSelectedTreatmentName] = useState("");
+  const [selectedTreatment, setselectedTreatment] = useState<DropDownItems>();
   const handleStaffSelect = (id: string, value: string) => {
     setSelectedStaffId(id);
+    setSelectedStaffName(value);
   };
 
   const handleTreatmentSelect = (id: string, value: string) => {
     setSelectedTreatmentId(id);
+    setSelectedTreatmentName(value);
+    // Find the treatment and set the amount
+    setselectedTreatment(treatment.find((t) => t.id === id));
+    if (selectedTreatment && selectedTreatment.cost) {
+      setamountpaid(selectedTreatment.cost);
+    } else {
+      setamountpaid("0.00");
+    }
   };
 
   const AddVisitHandler = async () => {
@@ -86,11 +99,45 @@ const CustomerModal = ({
       .insert(visitLine)
       .select()
       .single();
+
     if (line) {
       await supabase.from("customervisits").delete().eq("id", visitLine.csid);
       Alert.alert("Error", line.message);
       setclicked(false); // Reset on error
       return;
+    }
+
+    // Update points used - increment the existing value
+    if (selectedTreatment?.points) {
+      const { data: currentUser } = await supabase
+        .from("User")
+        .select("pointsused")
+        .eq("id", idString)
+        .single();
+
+      if (currentUser) {
+        const newPointsUsed =
+          (currentUser.pointsused || 0) + +selectedTreatment.points;
+        const { error: updateError } = await supabase
+          .from("User")
+          .update({ pointsused: newPointsUsed })
+          .eq("id", idString);
+
+        if (updateError) {
+          console.log("Failed to update points:", updateError);
+        }
+      }
+    }
+
+    // Send notification to customer
+    try {
+      await sendVisitNotification(
+        selectedTreatmentName,
+        selectedStaffName,
+        idString,
+      );
+    } catch (error) {
+      console.log("Failed to send notification:", error);
     }
 
     Alert.alert("Success", "Visit added successfully!");
@@ -136,10 +183,6 @@ const CustomerModal = ({
       mounted = false;
     };
   }, [Visible]);
-  GetTreatments();
-  const HandleAmountpaid = (text: string) => {
-    setamountpaid(text);
-  };
   const HandleNotes = (text: string) => {
     setnotes(text);
   };
@@ -148,7 +191,9 @@ const CustomerModal = ({
       // Reset form when modal is closed
       setSelectedStaffId("");
       setSelectedTreatmentId("");
-      setamountpaid("");
+      setSelectedStaffName("");
+      setSelectedTreatmentName("");
+      setamountpaid("0.00");
       setnotes("");
     }
   }, [Visible]);
@@ -275,7 +320,7 @@ const CustomerModal = ({
                     style={{ color: Colors.TextColour, paddingLeft: 10 }}
                     blurOnSubmit={true}
                     value={amountpaid}
-                    onChangeText={HandleAmountpaid}
+                    editable={false}
                     keyboardType="number-pad"
                   ></TextInput>
                 </View>

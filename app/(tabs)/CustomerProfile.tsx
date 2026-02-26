@@ -1,7 +1,7 @@
 import "react-native-url-polyfill/auto";
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { Session } from "@supabase/supabase-js";
 import Colors from "@/components/utils/Colours";
 import ProfileImage from "../../components/ProfileImage";
@@ -21,24 +21,30 @@ const CustomerProfile = () => {
   };
   return (
     <View style={styles.Container}>
-      <View style={styles.CardContainer}>
-        <ProfileImage imagehandler={addimage} />
-        <Text
-          style={{
-            color: Colors.TextColour,
-            textAlign: "center",
-            paddingTop: 1,
-          }}
-        >
-          Tap to change photo
-        </Text>
-        <View>
-          <EditModal
-            Signout={SignOutHandler}
-            userId={session?.getSession()?.user.id}
-          />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.CardContainer}>
+          <ProfileImage imagehandler={addimage} />
+          <Text
+            style={{
+              color: Colors.TextColour,
+              textAlign: "center",
+              paddingTop: 1,
+            }}
+          >
+            Tap to change photo
+          </Text>
+          <View>
+            <EditModal
+              Signout={SignOutHandler}
+              userId={session?.getSession()?.user.id}
+            />
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -48,11 +54,17 @@ export default CustomerProfile;
 const styles = StyleSheet.create({
   Container: {
     backgroundColor: "#000000ff",
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingTop: 40,
-    paddingBottom: 85,
+    paddingBottom: 150,
     paddingLeft: 7,
     paddingRight: 7,
-    flex: 1,
+    flexGrow: 1,
   },
   CardContainer: {
     flex: 1,
@@ -61,5 +73,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.bordercolor,
     borderWidth: 1,
     borderRadius: 50,
+    paddingBottom: 30,
   },
 });

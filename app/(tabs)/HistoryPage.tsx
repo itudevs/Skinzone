@@ -42,7 +42,10 @@ const HistoryPage = () => {
     fetchvisitation();
   }, []);
   return (
-    <View style={styles.Container}>
+    <ScrollView
+      style={styles.Container}
+      contentContainerStyle={styles.contentContainer}
+    >
       <View style={styles.header}>
         <Text style={{ color: "white", fontWeight: "bold", fontSize: 40 }}>
           History
@@ -77,11 +80,11 @@ const HistoryPage = () => {
           <Text
             style={{
               color: Colors.TextColour,
-              paddingHorizontal: 15,
+              paddingHorizontal: 20,
               paddingBottom: 10,
             }}
           >
-            ---------------------------------------------
+            ---------------------------------------
           </Text>
           <ScrollView style={{ padding: 20 }}>
             {visitations.map((visit, index) => (
@@ -278,7 +281,7 @@ const HistoryPage = () => {
           </View>
         </Modal>
       )}
-    </View>
+    </ScrollView>
   );
 };
 
@@ -288,9 +291,12 @@ const styles = StyleSheet.create({
   Container: {
     backgroundColor: "#000000ff",
     flex: 1,
+  },
+  contentContainer: {
     paddingTop: 90,
     paddingLeft: 35,
     paddingHorizontal: 20,
+    paddingBottom: 120,
   },
   header: {},
   CardContainer: {

@@ -1,4 +1,13 @@
-import { View, Text, Image, StyleSheet, FlatList, Alert } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  FlatList,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -143,23 +152,45 @@ const Login = () => {
           children="Contact Admin"
         />
       </View>
+
+      <View style={styles.legalLinksContainer}>
+        <PrimaryLink
+          colour={Colors.TextColour}
+          url="/PrivacyPolicy"
+          children="Privacy Policy"
+        />
+        <Text style={{ color: Colors.TextColour, paddingHorizontal: 8 }}>
+          •
+        </Text>
+        <PrimaryLink
+          colour={Colors.TextColour}
+          url="/TermsOfService"
+          children="Terms of Service"
+        />
+      </View>
     </View>
   );
 
   return (
     <View style={styles.Container}>
-      <FlatList
-        data={[{ key: "form" }]}
-        renderItem={renderContent}
-        keyExtractor={(item) => item.key}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top, paddingBottom: insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={0}
+      >
+        <FlatList
+          data={[{ key: "form" }]}
+          renderItem={renderContent}
+          keyExtractor={(item) => item.key}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        />
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -169,6 +200,9 @@ export default Login;
 const styles = StyleSheet.create({
   Container: {
     backgroundColor: "#000000ff",
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
   },
   content: {
@@ -199,5 +233,12 @@ const styles = StyleSheet.create({
     padding: 10,
     flexDirection: "row",
     justifyContent: "center",
+  },
+  legalLinksContainer: {
+    padding: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
   },
 });

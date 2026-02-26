@@ -5,6 +5,9 @@ import {
   StyleSheet,
   FlatList,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
@@ -27,6 +30,7 @@ const SignUp = () => {
   const [dob, setDob] = useState<Date | undefined>(undefined);
   const [password, setPassword] = useState("");
   const [confirmpassword, setconfirmPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const validateEmail = (email: string): boolean => {
@@ -46,6 +50,14 @@ const SignUp = () => {
       // Validation
       if (!name || !surname || !email || !phone || !dob || !password) {
         Alert.alert("Error", "Please fill in all fields");
+        return;
+      }
+
+      if (!agreedToTerms) {
+        Alert.alert(
+          "Terms Required",
+          "Please read and agree to the Privacy Policy and Terms of Service to continue.",
+        );
         return;
       }
 
@@ -230,6 +242,44 @@ const SignUp = () => {
           />
         </View>
 
+        {/*Terms and Privacy Consent */}
+        <View style={styles.consentContainer}>
+          <Pressable
+            style={styles.checkboxContainer}
+            onPress={() => setAgreedToTerms(!agreedToTerms)}
+          >
+            <View
+              style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
+            >
+              {agreedToTerms && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <View style={styles.consentTextContainer}>
+              <Text style={styles.consentText}>
+                I agree to the collection and processing of my personal data as
+                described in the{" "}
+                <Text
+                  style={styles.consentLink}
+                  onPress={() => router.navigate("/PrivacyPolicy")}
+                >
+                  Privacy Policy
+                </Text>{" "}
+                and{" "}
+                <Text
+                  style={styles.consentLink}
+                  onPress={() => router.navigate("/TermsOfService")}
+                >
+                  Terms of Service
+                </Text>
+                .
+              </Text>
+            </View>
+          </Pressable>
+          <Text style={styles.dataCollectionNotice}>
+            We collect: Name, Email, Phone, DOB, Visit History, and Loyalty
+            Points to provide our services.
+          </Text>
+        </View>
+
         {/*Create Account Button */}
         <View style={styles.buttonContainer}>
           <PrimaryButton
@@ -249,18 +299,24 @@ const SignUp = () => {
 
   return (
     <View style={styles.Container}>
-      <FlatList
-        data={[{ key: "form" }]}
-        renderItem={renderContent}
-        keyExtractor={(item) => item.key}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top, paddingBottom: insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={0}
+      >
+        <FlatList
+          data={[{ key: "form" }]}
+          renderItem={renderContent}
+          keyExtractor={(item) => item.key}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        />
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -270,6 +326,9 @@ export default SignUp;
 const styles = StyleSheet.create({
   Container: {
     backgroundColor: "#000000ff",
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
   },
   content: {
@@ -316,5 +375,55 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 5,
+  },
+  consentContainer: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: Colors.TextColour,
+    borderRadius: 6,
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.Primary900,
+    borderColor: Colors.Primary900,
+  },
+  checkmark: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  consentTextContainer: {
+    flex: 1,
+  },
+  consentText: {
+    color: Colors.TextColour,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  consentLink: {
+    color: Colors.Primary900,
+    textDecorationLine: "underline",
+    fontWeight: "bold",
+  },
+  dataCollectionNotice: {
+    color: Colors.TextColour,
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: "italic",
+    marginTop: 8,
+    paddingLeft: 36,
   },
 });
