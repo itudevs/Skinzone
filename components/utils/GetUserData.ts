@@ -51,7 +51,7 @@ export const GetTotalPoints = async (id: string | undefined) => {
                 )
             )
         `)
-        .eq("customerid", id)
+        .eq("customerid", id).neq("Freetreatment", true);
 
     if (data) {
         data.forEach(visit => {
@@ -74,13 +74,14 @@ export const GetTotalFinalPoints = async (id: string | undefined): Promise<numbe
     const { data, error } = await supabase.from("User").select("pointsused").eq("id", id).single();
     if (data) {
         total = +data.pointsused;
+
     }
     if (error) {
         Alert.alert("Error", "could not get point");
         console.log(error.message);
         return 0;
     }
-    console.log(totalbefore)
+
 
     return totalbefore - total;
 }

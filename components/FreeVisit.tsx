@@ -26,9 +26,8 @@ import {
 interface FreeVisit {
   points: number;
   customerid: string;
-  onClaimSuccess?: () => void;
 }
-const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
+const FreeVisit = ({ points, customerid }: FreeVisit) => {
   const [isModalActive, setisModalActive] = useState(false);
   const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [clicked, setclicked] = useState(false);
@@ -41,6 +40,8 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
   const [selectedTreatmentName, setSelectedTreatmentName] = useState(
     "Select Free Treatment",
   );
+  const [isClaimed, setIsClaimed] = useState(false);
+  const [claimedTreatmentName, setClaimedTreatmentName] = useState("");
 
   const handleStaffSelect = (id: string, value: string) => {
     setSelectedStaffId(id);
@@ -100,6 +101,45 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
     };
   }, [isModalActive]);
 
+  // Check if treatment has already been claimed
+  useEffect(() => {
+    const checkClaimed = async () => {
+      const { data, error } = await supabase
+        .from("customervisits")
+        .select(
+          `
+          notes,
+          customervisitlines(
+            treatments(
+              treatmentname
+            )
+          )
+        `,
+        )
+        .eq("customerid", customerid)
+        .ilike("notes", "%Free treatment claim%")
+        .order("visit_date", { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        setIsClaimed(true);
+        // Extract treatment name from the first visit line
+        const visitLines = data[0].customervisitlines;
+        if (visitLines && visitLines.length > 0) {
+          const treatmentData = visitLines[0].treatments as any;
+          if (treatmentData?.treatmentname) {
+            setClaimedTreatmentName(treatmentData.treatmentname);
+            setSelectedTreatmentName(treatmentData.treatmentname);
+          }
+        }
+      }
+    };
+
+    if (customerid) {
+      checkClaimed();
+    }
+  }, [customerid]);
+
   const AddCLAIMHandler = async () => {
     if (clicked) return;
 
@@ -129,13 +169,12 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
     const requiredPoints = selectedTreatment.points
       ? parseInt(selectedTreatment.points)
       : 0;
-    const availablePoints = points; // points is already 10% of total balance
-    const totalBalance = points * 10; // Calculate total balance for display
+    const availablePoints = points;
 
     if (availablePoints < requiredPoints) {
       Alert.alert(
         "Not Enough Points",
-        `You need ${requiredPoints} points to claim this treatment. Your total balance is ${totalBalance.toFixed(0)} points (${availablePoints.toFixed(2)} points available for claims).`,
+        `You need ${requiredPoints} points to claim this treatment. Your current balance is ${points} points  available for claims).`,
       );
       return;
     }
@@ -186,54 +225,19 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
         return;
       }
 
-      // Deduct only the claimed treatment's points (not the full balance)
-      // Find a treatment with negative points (for points deduction)
-      const resetTreatment = treatment.find(
-        (t) => t.points && parseInt(t.points) < 0,
-      );
-
-      if (resetTreatment) {
-        // Create a points deduction visit
-        const pointsToDeduct = requiredPoints * 10;
-        const resetVisitData: CustomerVisitInsert = {
-          customerid: customerid,
-          staffid: selectedStaffId,
-          totalamountpaid: 0,
-          notes: `Points deducted for free treatment claim: ${selectedTreatmentName} (${pointsToDeduct} points deducted from total balance)`,
-        };
-
-        const { data: resetData, error: resetError } = await supabase
-          .from("customervisits")
-          .insert(resetVisitData)
-          .select("csid")
-          .single();
-
-        if (!resetError && resetData) {
-          // Deduct 10x the claimed points from total balance
-          // (e.g., claiming 50 points = deducting 500 from total balance)
-          const pointsToDeduct = requiredPoints * 10;
-          const resetPointsValue = Math.abs(
-            parseInt(resetTreatment.points || "1"),
-          );
-          const quantityNeeded = Math.ceil(pointsToDeduct / resetPointsValue);
-
-          const resetLine: CustomerVisitLineInsert = {
-            quantity: quantityNeeded,
-            treatmentid: +resetTreatment.id,
-            csid: resetData.csid,
-          };
-          await supabase.from("customervisitlines").insert(resetLine);
-        }
+      //add points to user
+      const { error: errorpoints } = await supabase
+        .from("User")
+        .update({ pointsused: selectedTreatment.points })
+        .eq("id", customerid);
+      if (errorpoints) {
+        Alert.alert("Error", "error occurred could not deduct points");
       }
-
       Alert.alert("Success", "Free treatment claimed successfully!");
       setclicked(false);
       setisModalActive(false);
-
-      // Call the success callback to refresh points in Home
-      if (onClaimSuccess) {
-        onClaimSuccess();
-      }
+      setIsClaimed(true);
+      setClaimedTreatmentName(selectedTreatmentName);
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred");
       setclicked(false);
@@ -257,7 +261,9 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
       <Pressable
         style={({ pressed }) => pressed && styles.presseditem}
         onPress={() => {
-          setisModalActive(true);
+          if (!isClaimed) {
+            setisModalActive(true);
+          }
         }}
       >
         <View style={styles.visitCard}>
