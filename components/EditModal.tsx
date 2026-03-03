@@ -244,6 +244,51 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     if (!userId) return;
 
     try {
+      //get csid associated with userid
+      const { data: cv, error: cverror } = await supabase
+        .from("customervisit")
+        .select("csid")
+        .eq("id", userId);
+      //returns objects of different csids
+      if (cv) {
+        //loop trough each csid
+        cv.forEach(async (customervisit) => {
+          //look for matching record
+          //delete customer visit lines record
+          const { data: cvl, error: clerror } = await supabase
+            .from("customervisitline")
+            .delete()
+            .select()
+            .eq("csid", customervisit.csid);
+          if (cvl) {
+            //if deleted all cvl record delete cv records
+            const { error: dlerror } = await supabase
+              .from("customervisits")
+              .delete()
+              .select()
+              .eq("csid", customervisit.csid);
+            if (dlerror) {
+              Alert.alert("Error", dlerror.message);
+              return;
+            }
+          }
+          if (clerror) {
+            Alert.alert("Error", clerror.message);
+            return;
+          }
+        });
+      }
+      if (cverror) {
+        Alert.alert(
+          "Error",
+          "An unexpected error occurred. Please contact support.",
+        );
+        return;
+      }
+      //delete customervisitline
+
+      //delete customer visit
+
       // Delete user data from User table
       const { error: deleteError } = await supabase
         .from("User")
@@ -251,10 +296,12 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
         .eq("id", userId);
 
       if (deleteError) {
+        console.log(deleteError.message);
         Alert.alert(
           "Error",
           "Failed to delete account. Please contact support.",
         );
+
         return;
       }
 
