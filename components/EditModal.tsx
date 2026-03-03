@@ -246,27 +246,29 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     try {
       //get csid associated with userid
       const { data: cv, error: cverror } = await supabase
-        .from("customervisit")
+        .from("customervisits")
         .select("csid")
-        .eq("id", userId);
+        .eq("customerid", userId);
       //returns objects of different csids
       if (cv) {
         //loop trough each csid
-        cv.forEach(async (customervisit) => {
+        for (const customervisit of cv) {
           //look for matching record
           //delete customer visit lines record
           const { data: cvl, error: clerror } = await supabase
-            .from("customervisitline")
+            .from("customervisitlines")
             .delete()
-            .select()
-            .eq("csid", customervisit.csid);
+            .eq("csid", customervisit.csid)
+            .select("*");
+
           if (cvl) {
             //if deleted all cvl record delete cv records
             const { error: dlerror } = await supabase
               .from("customervisits")
               .delete()
-              .select()
-              .eq("csid", customervisit.csid);
+              .eq("csid", customervisit.csid)
+              .select();
+
             if (dlerror) {
               Alert.alert("Error", dlerror.message);
               return;
@@ -276,9 +278,10 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
             Alert.alert("Error", clerror.message);
             return;
           }
-        });
+        }
       }
       if (cverror) {
+        console.log(cverror.message);
         Alert.alert(
           "Error",
           "An unexpected error occurred. Please contact support.",
@@ -304,7 +307,8 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
 
         return;
       }
-
+      //delete from auth
+      await supabase.auth.admin.deleteUser(userId);
       // Sign out the user
       await supabase.auth.signOut();
 
@@ -453,6 +457,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
               style={styles.deleteInput}
               placeholder="Type DELETE"
               placeholderTextColor={Colors.TextColour}
+              autoCapitalize="characters"
               onChangeText={(text) => {
                 if (text === "DELETE") {
                   handleDeleteAccount();
