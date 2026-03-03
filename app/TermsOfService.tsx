@@ -6,7 +6,6 @@ import { Pressable } from "react-native";
 
 const TermsOfService = () => {
   const router = useRouter();
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>

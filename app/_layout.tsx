@@ -35,6 +35,14 @@ export default function RootLayout() {
           name="(Admintab)"
           options={{ headerShown: false, gestureEnabled: false }}
         />
+        <Stack.Screen
+          name="PrivacyPolicy"
+          options={{ headerShown: false, title: "PrivacyPolicy" }}
+        />
+        <Stack.Screen
+          name="TermsOfService"
+          options={{ headerShown: false, title: "TermsOfService" }}
+        />
       </Stack>
     </View>
   );
