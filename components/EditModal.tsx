@@ -116,9 +116,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       .select(); // Returns the updated row so you can verify the change
 
     if (error) {
-      console.error("Update failed:", error.message);
-    } else {
-      console.log("Updated successfully:", data);
+      // Update failed, handle error silently or add user-facing alert if needed
     }
   };
 
@@ -281,7 +279,6 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
         }
       }
       if (cverror) {
-        console.log(cverror.message);
         Alert.alert(
           "Error",
           "An unexpected error occurred. Please contact support.",
@@ -299,7 +296,6 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
         .eq("id", userId);
 
       if (deleteError) {
-        console.log(deleteError.message);
         Alert.alert(
           "Error",
           "Failed to delete account. Please contact support.",
@@ -381,65 +377,63 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     </View>
   );
 
+  const renderFooter = () => (
+    <View style={styles.buttonsSection}>
+      <Pressable
+        onPress={() => router.navigate("/ChangePassword")}
+        style={({ pressed }) => pressed && styles.presseditem}
+      >
+        <Text style={styles.buttonPassword}>Change Password</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={Signout}
+        style={({ pressed }) => pressed && styles.presseditem}
+      >
+        <Text style={styles.editBtn}>Sign Out</Text>
+      </Pressable>
+
+      {/* Legal Links */}
+      <View style={styles.legalSection}>
+        <Pressable
+          onPress={() => router.navigate("/PrivacyPolicy")}
+          style={({ pressed }) => pressed && styles.presseditem}
+        >
+          <Text style={styles.legalLink}>Privacy Policy</Text>
+        </Pressable>
+        <Text style={styles.legalDivider}>•</Text>
+        <Pressable
+          onPress={() => router.navigate("/TermsOfService")}
+          style={({ pressed }) => pressed && styles.presseditem}
+        >
+          <Text style={styles.legalLink}>Terms of Service</Text>
+        </Pressable>
+      </View>
+
+      {/* Delete Account */}
+      <Pressable
+        onPress={confirmDeleteAccount}
+        style={({ pressed }) => [
+          styles.deleteAccountBtn,
+          pressed && styles.presseditem,
+        ]}
+      >
+        <Text style={styles.deleteAccountText}>Delete Account</Text>
+      </Pressable>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       {/* Properties - Using FlatList for scrollability */}
-      <View style={styles.flatListWrapper}>
-        <FlatList<PropertyItem>
-          data={properties}
-          renderItem={renderProperty}
-          keyExtractor={(item) => item.key as string}
-          scrollEnabled={true}
-          nestedScrollEnabled={true}
-          contentContainerStyle={styles.flatListContent}
-        />
-        {/* Buttons */}
-        <View style={styles.buttonsSection}>
-          <Pressable
-            onPress={() => router.navigate("/ChangePassword")}
-            style={({ pressed }) => pressed && styles.presseditem}
-          >
-            <Text style={styles.buttonPassword}>Change Password</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={Signout}
-            style={({ pressed }) => pressed && styles.presseditem}
-          >
-            <Text style={styles.editBtn}>Sign Out</Text>
-          </Pressable>
-
-          {/* Legal Links */}
-          <View style={styles.legalSection}>
-            <Pressable
-              onPress={() => router.navigate("/PrivacyPolicy")}
-              style={({ pressed }) => pressed && styles.presseditem}
-            >
-              <Text style={styles.legalLink}>Privacy Policy</Text>
-            </Pressable>
-            <Text style={styles.legalDivider}>•</Text>
-            <Pressable
-              onPress={() => router.navigate("/TermsOfService")}
-              style={({ pressed }) => pressed && styles.presseditem}
-            >
-              <Text style={styles.legalLink}>Terms of Service</Text>
-            </Pressable>
-          </View>
-
-          {/* Delete Account */}
-          <Pressable
-            onPress={confirmDeleteAccount}
-            style={({ pressed }) => [
-              styles.deleteAccountBtn,
-              pressed && styles.presseditem,
-            ]}
-          >
-            <Text style={styles.deleteAccountText}>Delete Account</Text>
-          </Pressable>
-        </View>
-        {/* Buttons */}
-        <View style={styles.buttonsSection}></View>
-      </View>
+      <FlatList<PropertyItem>
+        data={properties}
+        renderItem={renderProperty}
+        keyExtractor={(item) => item.key as string}
+        scrollEnabled={true}
+        contentContainerStyle={styles.flatListContent}
+        ListFooterComponent={renderFooter}
+      />
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -535,13 +529,11 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
 };
 
 export default EditModal;
+
 const styles = StyleSheet.create({
-  container: { padding: 5 },
-  flatListWrapper: {
-    marginBottom: 10,
-  },
+  container: { padding: 5, flex: 1 },
   flatListContent: {
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   row: {
     flexDirection: "column",

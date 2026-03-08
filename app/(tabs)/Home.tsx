@@ -40,6 +40,7 @@ const Home = () => {
     UserSession.getSession(),
   );
   const [username, setUsername] = useState("-");
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [total, settotal] = useState(0);
   const [lastp, setlastp] = useState(0);
@@ -69,7 +70,7 @@ const Home = () => {
         setUnreadCount(notifications.filter((n) => !n.read).length);
       }
     } catch (error) {
-      console.log("Error loading notifications:", error);
+      // Error loading notifications
     }
   };
 
@@ -91,7 +92,7 @@ const Home = () => {
       setNotificationHistory(updated);
       setUnreadCount(updated.filter((n) => !n.read).length);
     } catch (error) {
-      console.log("Error saving notification:", error);
+      // Error saving notification
     }
   };
 
@@ -106,7 +107,7 @@ const Home = () => {
       setNotificationHistory(updated);
       setUnreadCount(0);
     } catch (error) {
-      console.log("Error marking notifications as read:", error);
+      // Error marking as read
     }
   };
 
@@ -117,7 +118,7 @@ const Home = () => {
       setNotificationHistory([]);
       setUnreadCount(0);
     } catch (error) {
-      console.log("Error clearing notifications:", error);
+      // Error clearing notifications
     }
   };
 
@@ -141,7 +142,6 @@ const Home = () => {
           currentUserId &&
           notificationCustomerId !== currentUserId
         ) {
-          console.log("Notification not for current user, ignoring");
           return;
         }
 
@@ -190,7 +190,7 @@ const Home = () => {
       try {
         const { data: userData, error: dbError } = await supabase
           .from("User")
-          .select("name")
+          .select("name, profile_picture")
           .eq("id", session.user.id)
           .single();
 
@@ -201,6 +201,7 @@ const Home = () => {
 
         if (isActive()) {
           setUsername(userData.name);
+          setProfilePicture(userData.profile_picture);
         }
       } catch (error) {
         Alert.alert("Error", "An unexpected error occurred.");
@@ -222,19 +223,29 @@ const Home = () => {
       };
     }, [getUserData]),
   );
+
+  const fetchpoints = useCallback(async (userid: string | undefined) => {
+    let points = await GetTotalFinalPoints(userid);
+    let last = await GetLastPointvisit(userid);
+    settotal(points);
+    setlastp(last);
+    if (points >= 500) {
+      setQualify(true);
+      setQualpoints(points);
+    } else {
+      setQualify(false);
+      setQualpoints(0);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchpoints = async (userid: string | undefined) => {
-      let points = await GetTotalFinalPoints(userid);
-      let last = await GetLastPointvisit(userid);
-      settotal(points);
-      setlastp(last);
-      if (points >= 500) {
-        setQualify(true);
-        setQualpoints(points * (10 / 100));
-      }
-    };
     fetchpoints(session?.user.id);
-  }, [session?.user.id]);
+  }, [session?.user.id, fetchpoints]);
+
+  const handleClaimSuccess = useCallback(() => {
+    // Refresh points after claiming a free visit
+    fetchpoints(session?.user.id);
+  }, [session?.user.id, fetchpoints]);
 
   return (
     <ScrollView
@@ -270,7 +281,8 @@ const Home = () => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <ProfileImage
-            imagehandler={() => console.log("Image Cannot Be Changed")}
+            imagehandler={() => {}}
+            imageUrl={profilePicture}
           />
           <View style={styles.welcomeContainer}>
             <Text style={styles.welcomeText}>WELCOME BACK</Text>
@@ -395,7 +407,11 @@ const Home = () => {
       </View>
       {/**Free Visitation Area */}
       {Qualify && session?.user.id && (
-        <FreeVisit points={Qualpoints} customerid={session.user.id} />
+        <FreeVisit
+          points={Qualpoints}
+          customerid={session.user.id}
+          onClaimSuccess={handleClaimSuccess}
+        />
       )}
       <Visitation id={session?.user.id} />
     </ScrollView>

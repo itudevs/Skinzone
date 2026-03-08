@@ -10,7 +10,9 @@ interface SearchProps {
     phone: string;
   }>;
   onSelectSuggestion?: (item: any) => void;
+  keyboardType?: "default" | "numeric" | "email-address" | "phone-pad";
 }
+
 import { Search } from "lucide-react-native";
 import Colors from "./utils/Colours";
 const SearchBar = ({
@@ -18,6 +20,7 @@ const SearchBar = ({
   value,
   onChangeText,
   suggestions = [],
+  keyboardType,
   onSelectSuggestion,
 }: SearchProps) => {
   return (
@@ -30,7 +33,7 @@ const SearchBar = ({
           placeholderTextColor={Colors.TextColour}
           value={value}
           onChangeText={onChangeText}
-          keyboardType="phone-pad"
+          keyboardType={keyboardType}
         ></TextInput>
       </View>
       {suggestions.length > 0 && (

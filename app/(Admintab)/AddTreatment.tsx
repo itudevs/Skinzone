@@ -13,13 +13,18 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import Input from "@/components/Input";
 import PrimaryButton from "@/components/PrimaryButton";
-import { TrearmentInsert } from "@/components/utils/DatabaseTypes";
+import {
+  ProductsInsert,
+  SerivceInsert,
+  TrearmentInsert,
+} from "@/components/utils/DatabaseTypes";
 import Colors from "@/components/utils/Colours";
 import { ScrollView } from "react-native";
 import { supabase } from "@/lib/supabase";
-import { GetTreatments } from "@/components/utils/Gettreatment";
+import { GetTreatments, GetProducts } from "@/components/utils/GetServices";
 import { DropDownItems } from "@/components/utils/utilinterfaces";
 import { TrashIcon } from "lucide-react-native";
+import { cacheManager } from "@/lib/cache";
 const AddTreatment = () => {
   const [treatmentname, settreatmentname] = useState("");
   const [price, setprice] = useState("");
@@ -72,16 +77,19 @@ const AddTreatment = () => {
   };
   const ValidateInput = (): boolean => {
     let passed = true;
-    if (treatmentname.length < 3 || treatmenttype.length < 3) {
-      Alert.alert("Error", "field must contain 3 or more letters");
-      passed = false;
-    } else if (!parseFloat(price)) {
-      Alert.alert("Error", "price must not be characters");
-      passed = false;
-    }
-    if (typeof +duration != "number" || typeof +points != "number") {
-      Alert.alert("Error", "field must be a number");
-      passed = false;
+    if (selecteditem == "treatment") {
+      if (treatmentname.length < 3 || treatmenttype.length < 3) {
+        Alert.alert("Error", "field must contain 3 or more letters");
+        passed = false;
+      } else if (!parseFloat(price)) {
+        Alert.alert("Error", "price must not be characters");
+        passed = false;
+      }
+      if (typeof +duration != "number" || typeof +points != "number") {
+        Alert.alert("Error", "field must be a number");
+        passed = false;
+      }
+    } else {
     }
     return passed;
   };
@@ -91,22 +99,155 @@ const AddTreatment = () => {
         text: "Yes",
         onPress: async () => {
           try {
-            const { data, error } = await supabase
+            const numericId = parseInt(id);
+
+            // Check if treatment is used in any customer visit lines
+            const { data: visitLines } = await supabase
+              .from("customervisitlines")
+              .select("id")
+              .eq("treatmentid", numericId);
+
+            if (visitLines && visitLines.length > 0) {
+              Alert.alert(
+                "Cannot Delete",
+                "This treatment cannot be deleted because it has been used in customer visits.",
+              );
+              return;
+            }
+
+            // Check if treatment exists
+            const { data: treatmentExists } = await supabase
               .from("treatments")
+              .select("treatmentid")
+              .eq("treatmentid", numericId)
+              .maybeSingle();
+
+            if (treatmentExists) {
+              // Delete from treatments table (child record)
+              const { error: treatmentError } = await supabase
+                .from("treatments")
+                .delete()
+                .eq("treatmentid", numericId);
+
+              if (treatmentError) {
+                Alert.alert(
+                  "Error",
+                  "Treatment could not be removed: " + treatmentError.message,
+                );
+                return;
+              }
+            }
+
+            // Delete from Services table (parent record)
+            const { error: serviceError } = await supabase
+              .from("Services")
               .delete()
-              .eq("treatmentid", id)
-              .select()
-              .single();
-            if (data) {
-              Alert.alert("Success", "Treatment removed");
-              setRefreshTrigger((prev) => prev + 1);
+              .eq("ServiceId", numericId);
+
+            if (serviceError) {
+              Alert.alert(
+                "Error",
+                "Service could not be removed: " + serviceError.message,
+              );
+              return;
             }
-            if (error) {
-              Alert.alert("Error", "Treatment could not be removed");
-              console.log(error.message);
-            }
+
+            // Invalidate services cache
+            await cacheManager.invalidatePattern("services");
+            await cacheManager.invalidatePattern("treatments");
+
+            // Update state directly by filtering out deleted item
+            settreatments((prevTreatments) =>
+              prevTreatments.filter((t) => t.id !== id),
+            );
+            setRefreshTrigger((prev) => prev + 1);
+
+            Alert.alert("Success", "Treatment removed");
           } catch (error) {
-            console.log(error);
+            Alert.alert("Error", "An unexpected error occurred");
+          }
+        },
+        style: "default",
+      },
+      {
+        text: "Cancel",
+        onPress: () => {},
+        style: "cancel",
+      },
+    ]);
+  };
+  const HandleDeleteProduct = async (id: string, name: string) => {
+    Alert.alert("Delete", "Are you sure you want to Delete " + name, [
+      {
+        text: "Yes",
+        onPress: async () => {
+          try {
+            const numericId = parseInt(id);
+
+            // Check if product is used in any customer visit lines
+            const { data: visitLines } = await supabase
+              .from("customervisitlines")
+              .select("id")
+              .eq("treatmentid", numericId);
+
+            if (visitLines && visitLines.length > 0) {
+              Alert.alert(
+                "Cannot Delete",
+                "This product cannot be deleted because it has been used in customer visits.",
+              );
+              return;
+            }
+
+            // Check if product exists
+            const { data: productExists } = await supabase
+              .from("Product")
+              .select("productid")
+              .eq("productid", numericId)
+              .maybeSingle();
+
+            if (productExists) {
+              // Delete from Product table (child record)
+              const { error: productError } = await supabase
+                .from("Product")
+                .delete()
+                .eq("productid", numericId);
+
+              if (productError) {
+                Alert.alert(
+                  "Error",
+                  "Product could not be removed: " + productError.message,
+                );
+                return;
+              }
+            }
+
+            // Delete from Services table (parent record)
+            const { error: serviceError } = await supabase
+              .from("Services")
+              .delete()
+              .eq("ServiceId", numericId);
+
+            if (serviceError) {
+              Alert.alert(
+                "Error",
+                "Service could not be removed: " + serviceError.message,
+              );
+              return;
+            }
+
+            // Invalidate services cache
+            await cacheManager.invalidatePattern("services");
+            await cacheManager.invalidatePattern("products");
+
+            // Update state directly by filtering out deleted item
+            setproducts((prevProducts) =>
+              prevProducts.filter((p) => p.id !== id),
+            );
+            setRefreshTrigger((prev) => prev + 1);
+
+            Alert.alert("Success", "Product removed");
+          } catch (error) {
+            Alert.alert("Error", "An unexpected error occurred");
           }
         },
         style: "default",
@@ -119,40 +260,123 @@ const AddTreatment = () => {
     ]);
   };
   const HandleAdd = async () => {
-    ValidateInput();
+    if (!ValidateInput()) {
+      setclicked(false);
+      return;
+    }
+
     setclicked(true);
-    let treatment: TrearmentInsert;
-    treatment = {
-      cost: +price,
-      treatmentname: treatmentname,
-      treatment_type: treatmenttype,
-      duration_minutes: +duration,
-      points: (10 / 100) * +price,
-    };
-    const { data, error } = await supabase
-      .from("treatments")
-      .insert(treatment)
-      .select()
-      .single();
-    if (data) {
-      //clear inputs
+
+    if (selecteditem == "treatment") {
+      // Step 1: Insert service FIRST to get ServiceId
+      const service: SerivceInsert = {
+        servicecategory: "treatment",
+        servicepoints: (10 / 100) * +price,
+        servicecost: +price,
+        servicename: treatmentname,
+      };
+
+      const { data: serviceData, error: serviceError } = await supabase
+        .from("Services")
+        .insert(service)
+        .select("ServiceId")
+        .single();
+
+      if (serviceError) {
+        Alert.alert("Error", serviceError.message);
+        setclicked(false);
+        return;
+      }
+
+      // Step 2: Insert treatment with ServiceId as treatmentid
+      const treatment: TrearmentInsert = {
+        treatmentid: serviceData.ServiceId,
+        duration_minutes: +duration,
+      };
+
+      const { error: treatmentError } = await supabase
+        .from("treatments")
+        .insert(treatment)
+        .select()
+        .single();
+
+      if (treatmentError) {
+        // Rollback: Delete the service if treatment insert fails
+        await supabase
+          .from("Services")
+          .delete()
+          .eq("ServiceId", serviceData.ServiceId);
+        Alert.alert("Error", treatmentError.message);
+        setclicked(false);
+        return;
+      }
+
       clearInputs();
-      // alert to say added
+
+      // Invalidate services cache
+      await cacheManager.invalidatePattern("services");
+      await cacheManager.invalidatePattern("treatments");
+
       Alert.alert("Success", "New Treatment has been added");
-      console.log("Treatment added");
-      // Refresh the treatments list
       const updatedTreatments = await GetTreatments();
       settreatments(updatedTreatments);
       setRefreshTrigger((prev) => prev + 1);
-    }
-    if (error) {
-      //dont clear inputs
+    } else {
+      // Step 1: Insert service FIRST to get ServiceId
+      const service: SerivceInsert = {
+        servicecategory: "product",
+        servicepoints: (2.5 / 100) * +productprice,
+        servicecost: +productprice,
+        servicename: productname,
+      };
 
-      //alert
-      Alert.alert("Error", "error occurered treatment not added");
-      console.log(error.message);
+      const { data: serviceData, error: serviceError } = await supabase
+        .from("Services")
+        .insert(service)
+        .select("ServiceId")
+        .single();
+
+      if (serviceError) {
+        Alert.alert("Error", serviceError.message);
+        setclicked(false);
+        return;
+      }
+
+      // Step 2: Insert product with ServiceId as productid
+      const product: ProductsInsert = {
+        productid: serviceData.ServiceId,
+        productdescription: productdescription,
+      };
+
+      const { error: productError } = await supabase
+        .from("Product")
+        .insert(product)
+        .select()
+        .single();
+
+      if (productError) {
+        // Rollback: Delete the service if product insert fails
+        await supabase
+          .from("Services")
+          .delete()
+          .eq("ServiceId", serviceData.ServiceId);
+        Alert.alert("Error", productError.message);
+        setclicked(false);
+        return;
+      }
+
+      clearInputs();
+
+      // Invalidate services cache
+      await cacheManager.invalidatePattern("services");
+      await cacheManager.invalidatePattern("products");
+
+      Alert.alert("Success", "New Product has been added");
+      const updatedProducts = await GetProducts();
+      setproducts(updatedProducts);
+      setRefreshTrigger((prev) => prev + 1);
     }
-    //reset clicked
+
     setclicked(false);
   };
   const formatter = new Intl.NumberFormat("en-ZA", {
@@ -160,12 +384,17 @@ const AddTreatment = () => {
     currency: "ZAR",
   });
   useEffect(() => {
-    const fetchTreatments = async () => {
-      const data = await GetTreatments();
-      settreatments(data);
+    const fetchData = async () => {
+      if (selecteditem === "treatment") {
+        const data = await GetTreatments();
+        settreatments(data);
+      } else {
+        const data = await GetProducts();
+        setproducts(data);
+      }
     };
-    fetchTreatments();
-  }, [refreshTrigger]);
+    fetchData();
+  }, [refreshTrigger, selecteditem]);
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: Colors.PrimaryBackground }}
@@ -360,7 +589,7 @@ const AddTreatment = () => {
                   </Text>
                   <Pressable
                     style={({ pressed }) => pressed && styles.presseditem}
-                    onPress={HandleDeleteTreatment.bind(
+                    onPress={HandleDeleteProduct.bind(
                       null,
                       item.id,
                       item.value,

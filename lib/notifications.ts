@@ -52,7 +52,7 @@ export async function sendVisitNotification(treatmentName: string, staffName: st
             },
             trigger: null, // Send immediately
         });
-        console.log('Notification sent successfully for customer:', customerId);
+        // Notification sent successfully
     } catch (error) {
         console.log('Error sending notification:', error);
     }

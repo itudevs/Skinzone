@@ -13,6 +13,12 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
   const [expanded, setexpanded] = useState(false);
   const [selectedValue, setselectedValue] = useState(value);
   var Caret = expanded ? ChevronUp : ChevronDown;
+
+  // Sync internal state with prop value when it changes
+  useEffect(() => {
+    setselectedValue(value);
+  }, [value]);
+
   const handlepressitem = (item: DropDownItems) => {
     setselectedValue(item.value);
     onSelect(item.id, item.value);
@@ -51,6 +57,9 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
               >
                 <Text style={{ color: "white", padding: 10 }}>
                   {item.value}
+                  {"("}
+                  {item.points}
+                  {"pts)"}
                 </Text>
               </Pressable>
               {index < DropDownItem.length - 1 && (

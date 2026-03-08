@@ -8,7 +8,7 @@ import {
   Modal,
   Button,
   Image,
-  ScrollView,
+  FlatList,
 } from "react-native";
 import {
   History,
@@ -18,11 +18,11 @@ import {
   Notebook,
 } from "lucide-react-native";
 import { Getvisitations } from "@/components/utils/GetUserData";
-import Visitation from "@/components/Visitation";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useState, useEffect } from "react";
 import { UserSession } from "@/components/utils/GetUsersession";
 import { Session } from "@supabase/supabase-js";
+
 const HistoryPage = () => {
   const [isModalActive, setisModalActive] = useState(false);
   const [selectedvisit, setselectedvisit] = useState<any>(null);
@@ -30,22 +30,100 @@ const HistoryPage = () => {
   const [session, setSession] = useState<Session | null>(
     UserSession.getSession(),
   );
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     setSession(UserSession.getSession());
   }, []);
-  useEffect(() => {
-    const fetchvisitation = async () => {
-      const data = await Getvisitations(session?.user.id);
-      setvisitations(data);
-    };
 
+  const fetchvisitation = async () => {
+    if (session?.user.id) {
+      const data = await Getvisitations(session.user.id);
+      setvisitations(data);
+    }
+  };
+
+  useEffect(() => {
     fetchvisitation();
-  }, []);
-  return (
-    <ScrollView
-      style={styles.Container}
-      contentContainerStyle={styles.contentContainer}
+  }, [session]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchvisitation();
+    setRefreshing(false);
+  };
+
+  const renderVisitItem = ({ item, index }: { item: any; index: number }) => (
+    <Pressable
+      key={index}
+      style={({ pressed }) => pressed && styles.presseditem}
+      onPress={() => {
+        setisModalActive(true);
+        setselectedvisit(item);
+      }}
     >
+      <View style={styles.Visit}>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              color: Colors.Primary900,
+              fontWeight: "medium",
+              paddingLeft: 10,
+            }}
+          >
+            Date:{" "}
+            {new Date(item.visit_date)
+              .toLocaleDateString("en-US", {
+                month: "short",
+                day: "2-digit",
+                year: "numeric",
+              })
+              .toUpperCase()}
+          </Text>
+          <Text
+            style={{
+              color: "white",
+              fontSize: 20,
+              fontWeight: "bold",
+              padding: 10,
+            }}
+          >
+            {item.customervisitlines?.[0]?.treatments?.Services?.servicename ||
+              "Unknown Service"}
+          </Text>
+        </View>
+        <View
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            paddingRight: 15,
+          }}
+        >
+          <Pressable
+            style={({ pressed }) => pressed && styles.presseditem}
+            onPress={() => {
+              setisModalActive(true);
+              setselectedvisit(item);
+            }}
+          >
+            <ChevronRight size={40} color={Colors.TextColour} />
+          </Pressable>
+        </View>
+      </View>
+      <Text
+        style={{
+          color: Colors.TextColour,
+          paddingHorizontal: 15,
+          paddingBottom: 10,
+        }}
+      >
+        -------------------------------------
+      </Text>
+    </Pressable>
+  );
+
+  return (
+    <View style={styles.Container}>
       <View style={styles.header}>
         <Text style={{ color: "white", fontWeight: "bold", fontSize: 40 }}>
           History
@@ -86,77 +164,21 @@ const HistoryPage = () => {
           >
             ---------------------------------------
           </Text>
-          <ScrollView style={{ padding: 20 }}>
-            {visitations.map((visit, index) => (
-              <Pressable
-                key={index}
-                style={({ pressed }) => pressed && styles.presseditem}
-                onPress={() => {
-                  setisModalActive(true);
-                  setselectedvisit(visit);
-                }}
-              >
-                <View style={styles.Visit}>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        color: Colors.Primary900,
-                        fontWeight: "medium",
-                        paddingLeft: 10,
-                      }}
-                    >
-                      Date:{" "}
-                      {new Date(visit.visit_date)
-                        .toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "2-digit",
-                          year: "numeric",
-                        })
-                        .toUpperCase()}
-                    </Text>
-                    <Text
-                      style={{
-                        color: "white",
-                        fontSize: 20,
-                        fontWeight: "bold",
-                        padding: 10,
-                      }}
-                    >
-                      {visit.customervisitlines?.[0]?.treatments
-                        ?.treatmentname || "Unknown Service"}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      justifyContent: "center",
-                      alignItems: "center",
-                      paddingRight: 15,
-                    }}
-                  >
-                    <Pressable
-                      style={({ pressed }) => pressed && styles.presseditem}
-                      key={index}
-                      onPress={() => {
-                        setisModalActive(true);
-                        setselectedvisit(visit);
-                      }}
-                    >
-                      <ChevronRight size={40} color={Colors.TextColour} />
-                    </Pressable>
-                  </View>
-                </View>
-                <Text
-                  style={{
-                    color: Colors.TextColour,
-                    paddingHorizontal: 15,
-                    paddingBottom: 10,
-                  }}
-                >
-                  -------------------------------------
+          <FlatList
+            data={visitations}
+            renderItem={renderVisitItem}
+            keyExtractor={(item, index) => `${item.csid}-${index}`}
+            contentContainerStyle={{ padding: 20 }}
+            ListEmptyComponent={
+              <View style={{ alignItems: "center", padding: 20 }}>
+                <Text style={{ color: Colors.TextColour }}>
+                  No visits found
                 </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+              </View>
+            }
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
           <View style={{ alignItems: "center", padding: 20 }}>
             <PrimaryText children="Tap on row to view details" />
           </View>
@@ -201,7 +223,13 @@ const HistoryPage = () => {
                   <View style={styles.treatmentTitleWrapper}>
                     <Text style={styles.treatmentTitle}>
                       {selectedvisit.customervisitlines?.[0]?.treatments
-                        ?.treatmentname || "Unknown"}
+                        ?.Services?.servicename || "Unknown"}
+                    </Text>
+                    <Text style={{ color: Colors.Primary900, fontSize: 12 }}>
+                      {selectedvisit.customervisitlines?.[0]?.treatments
+                        ?.Services?.servicecategory === "treatment"
+                        ? "Treatment"
+                        : "Product"}
                     </Text>
                   </View>
                 </View>
@@ -213,18 +241,27 @@ const HistoryPage = () => {
                     </Text>
                   </View>
                   <View style={styles.halfinput}>
-                    <PrimaryText children="TIME" />
-                    <Text style={{ color: "white" }}>----</Text>
+                    <PrimaryText children="COST" />
+                    <Text style={{ color: "white" }}>
+                      R
+                      {selectedvisit.customervisitlines?.[0]?.treatments
+                        ?.Services?.servicecost || 0}
+                    </Text>
                   </View>
                 </View>
-                <View style={styles.fullinput}>
-                  <PrimaryText children="DURATION" />
-                  <Text style={{ color: "white" }}>
-                    {selectedvisit.customervisitlines?.[0]?.treatments
-                      ?.duration_minutes || 0}{" "}
-                    Minutes
-                  </Text>
-                </View>
+                {selectedvisit.customervisitlines?.[0]?.treatments?.Services
+                  ?.servicecategory === "treatment" &&
+                  selectedvisit.customervisitlines?.[0]?.treatments
+                    ?.duration_minutes && (
+                    <View style={styles.fullinput}>
+                      <PrimaryText children="DURATION" />
+                      <Text style={{ color: "white" }}>
+                        {selectedvisit.customervisitlines?.[0]?.treatments
+                          ?.duration_minutes || 0}{" "}
+                        Minutes
+                      </Text>
+                    </View>
+                  )}
               </View>
             </View>
             <View style={styles.pointsCard}>
@@ -234,7 +271,9 @@ const HistoryPage = () => {
                 </Text>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.pointsValue}>
-                    +{selectedvisit.customervisitlines?.[0]?.treatments.points}
+                    +
+                    {selectedvisit.customervisitlines?.[0]?.treatments?.Services
+                      ?.servicepoints || 0}{" "}
                     Points
                   </Text>
                   <Text style={styles.pointsSubtitle}>Earned this visit</Text>
@@ -270,7 +309,8 @@ const HistoryPage = () => {
                     fontSize: 15,
                   }}
                 >
-                  {selectedvisit.staff?.name} {selectedvisit.staff?.surname[0]}
+                  {selectedvisit.staff?.name}{" "}
+                  {selectedvisit.staff?.surname?.[0] || ""}
                 </Text>
               </View>
             </View>
@@ -281,7 +321,7 @@ const HistoryPage = () => {
           </View>
         </Modal>
       )}
-    </ScrollView>
+    </View>
   );
 };
 
@@ -291,16 +331,16 @@ const styles = StyleSheet.create({
   Container: {
     backgroundColor: "#000000ff",
     flex: 1,
-  },
-  contentContainer: {
     paddingTop: 90,
     paddingLeft: 35,
     paddingHorizontal: 20,
-    paddingBottom: 120,
+    paddingBottom: 20,
   },
-  header: {},
+  header: {
+    marginBottom: 20,
+  },
   CardContainer: {
-    marginVertical: 40,
+    flex: 1,
     backgroundColor: Colors.background100,
     borderColor: Colors.bordercolor,
     borderWidth: 1,
@@ -308,6 +348,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   InnerCard: {
+    flex: 1,
     backgroundColor: Colors.PrimaryBackground,
     borderColor: Colors.bordercolor,
     borderWidth: 0.5,
@@ -367,7 +408,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "bold",
   },
-
   ModalContainer: {
     backgroundColor: "#0E1C14",
     flex: 1,

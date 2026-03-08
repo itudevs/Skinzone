@@ -3,5 +3,7 @@ export interface DropDownItems {
     id: string;
     cost?: string | null;
     points?: string | null;
+    category?: string | null;
+
 
 }

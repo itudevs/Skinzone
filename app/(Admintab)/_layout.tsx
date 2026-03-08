@@ -11,7 +11,7 @@ const TabLayout = () => {
       />
       <Tabs.Screen
         name="AddTreatment"
-        options={{ headerShown: false, title: "Treatment" }}
+        options={{ headerShown: false, title: "Services" }}
       />
       <Tabs.Screen
         name="StaffProfile"

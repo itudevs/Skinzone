@@ -16,18 +16,22 @@ import PrimaryButton from "./PrimaryButton";
 import PrimaryText from "./PrimaryText";
 import Colors from "./utils/Colours";
 import DropDownInput from "./DropDownInput";
-import { GetTreatments } from "./utils/Gettreatment";
+import { GetTreatments } from "./utils/GetServices";
 import { DropDownItems } from "./utils/utilinterfaces";
 import { supabase } from "@/lib/supabase";
 import {
   CustomerVisitInsert,
   CustomerVisitLineInsert,
 } from "./utils/DatabaseTypes";
+import { cacheManager } from "@/lib/cache";
+
 interface FreeVisit {
   points: number;
   customerid: string;
+  onClaimSuccess?: () => void;
 }
-const FreeVisit = ({ points, customerid }: FreeVisit) => {
+
+const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
   const [isModalActive, setisModalActive] = useState(false);
   const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [clicked, setclicked] = useState(false);
@@ -191,6 +195,7 @@ const FreeVisit = ({ points, customerid }: FreeVisit) => {
         notes: notes
           ? `Free treatment claim - ${notes}`
           : "Free treatment claim",
+        Freetreatment: true,
       };
 
       const { data, error } = await supabase
@@ -225,19 +230,54 @@ const FreeVisit = ({ points, customerid }: FreeVisit) => {
         return;
       }
 
-      //add points to user
+      // Deduct points from user - need to increment pointsused, not set it
+      // First get current pointsused
+      const { data: userData, error: userFetchError } = await supabase
+        .from("User")
+        .select("pointsused")
+        .eq("id", customerid)
+        .single();
+
+      if (userFetchError) {
+        console.error("Error fetching user points:", userFetchError);
+        await supabase.from("customervisits").delete().eq("csid", data.csid);
+        Alert.alert("Error", "Could not update points. Please try again.");
+        setclicked(false);
+        return;
+      }
+
+      const currentPointsUsed = userData?.pointsused || 0;
+      const treatmentPoints = parseInt(selectedTreatment.points || "0");
+      const newPointsUsed = currentPointsUsed + treatmentPoints;
+
       const { error: errorpoints } = await supabase
         .from("User")
-        .update({ pointsused: selectedTreatment.points })
+        .update({ pointsused: newPointsUsed })
         .eq("id", customerid);
+
       if (errorpoints) {
-        Alert.alert("Error", "error occurred could not deduct points");
+        console.error("Error updating points:", errorpoints);
+        await supabase.from("customervisits").delete().eq("csid", data.csid);
+        Alert.alert("Error", "Could not deduct points. Please try again.");
+        setclicked(false);
+        return;
       }
+
+      // Invalidate cache for this user
+      await cacheManager.invalidatePattern(`visitations_${customerid}`);
+      await cacheManager.invalidatePattern(`points_${customerid}`);
+      await cacheManager.invalidatePattern(`lastvisit_${customerid}`);
+
       Alert.alert("Success", "Free treatment claimed successfully!");
       setclicked(false);
       setisModalActive(false);
       setIsClaimed(true);
       setClaimedTreatmentName(selectedTreatmentName);
+
+      // Call the callback to refresh parent component
+      if (onClaimSuccess) {
+        onClaimSuccess();
+      }
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred");
       setclicked(false);

@@ -13,9 +13,9 @@ import PrimaryButton from "./PrimaryButton";
 import PrimaryText from "./PrimaryText";
 import { Star, Notebook, PartyPopper } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
-import { customervisitsline } from "./utils/DatabaseTypes";
 import { CustomerDetails } from "./utils/CustomerInterface";
 import { Getvisitations } from "./utils/GetUserData";
+
 interface visitation {
   date: string;
   service: string;
@@ -29,11 +29,11 @@ const Visitation = ({ id }: CustomerDetails) => {
   const [isModalActive, setisModalActive] = useState(false);
   const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [visitations, setvisitations] = useState<any[]>([]);
-  //get customer visits
 
   useEffect(() => {
     const fetchvisitation = async () => {
-      const data = await Getvisitations(id, 5);
+      let userid = id || "0";
+      const data = await Getvisitations(userid, 5);
       setvisitations(data);
     };
 
@@ -65,16 +65,19 @@ const Visitation = ({ id }: CustomerDetails) => {
             </View>
             <View style={styles.visitInfo}>
               <Text style={styles.visitService}>
-                {visit.customervisitlines?.[0]?.treatments?.treatmentname ||
-                  "Unknown Service"}
+                {visit.customervisitlines?.[0]?.treatments?.Services
+                  ?.servicename || "Unknown Service"}
               </Text>
               <Text style={styles.visitStylist}>
-                Stylist: {visit.staff?.name} {visit.staff?.surname[0]}
+                Stylist: {visit.staff?.name} {visit.staff?.surname?.[0] || ""}
               </Text>
             </View>
             <View style={styles.pointsBadge}>
               <Text style={styles.pointsBadgeText}>
-                +{visit.customervisitlines?.[0]?.treatments.points} pts
+                +
+                {visit.customervisitlines?.[0]?.treatments?.Services
+                  ?.servicepoints || 0}{" "}
+                pts
               </Text>
             </View>
           </View>
@@ -118,7 +121,13 @@ const Visitation = ({ id }: CustomerDetails) => {
                   <View style={styles.treatmentTitleWrapper}>
                     <Text style={styles.treatmentTitle}>
                       {selectedvisit.customervisitlines?.[0]?.treatments
-                        ?.treatmentname || "Unknown"}
+                        ?.Services?.servicename || "Unknown"}
+                    </Text>
+                    <Text style={{ color: Colors.Primary900, fontSize: 12 }}>
+                      {selectedvisit.customervisitlines?.[0]?.treatments
+                        ?.Services?.servicecategory === "treatment"
+                        ? "Treatment"
+                        : "Product"}
                     </Text>
                   </View>
                 </View>
@@ -131,18 +140,29 @@ const Visitation = ({ id }: CustomerDetails) => {
                     </Text>
                   </View>
                   <View style={styles.halfinput}>
-                    <PrimaryText children="TIME" />
-                    <Text style={{ color: "white" }}>----</Text>
+                    <PrimaryText children="COST" />
+                    <Text style={{ color: "white" }}>
+                      R
+                      {selectedvisit.customervisitlines?.[0]?.treatments
+                        ?.Services?.servicecost || 0}
+                    </Text>
                   </View>
                 </View>
-                <View style={styles.fullinput}>
-                  <PrimaryText children="DURATION" />
-                  <Text style={{ color: "white" }}>
-                    {selectedvisit.customervisitlines?.[0]?.treatments
-                      ?.duration_minutes || 0}{" "}
-                    Minutes
-                  </Text>
-                </View>
+                {selectedvisit.customervisitlines?.[0]?.treatments?.Services
+                  ?.servicecategory === "treatment" &&
+                  selectedvisit.customervisitlines?.[0]?.treatments
+                    ?.duration_minutes && (
+                    <View style={styles.fullinput}>
+                      <PrimaryText children="DURATION" />
+                      <Text style={{ color: "white" }}>
+                        {
+                          selectedvisit.customervisitlines?.[0]?.treatments
+                            ?.duration_minutes
+                        }{" "}
+                        Minutes
+                      </Text>
+                    </View>
+                  )}
               </View>
             </View>
             <View style={styles.pointsCard}>
@@ -152,7 +172,9 @@ const Visitation = ({ id }: CustomerDetails) => {
                 </Text>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.pointsValue}>
-                    +{selectedvisit.customervisitlines?.[0]?.treatments.points}
+                    +
+                    {selectedvisit.customervisitlines?.[0]?.treatments?.Services
+                      ?.servicepoints || 0}{" "}
                     Points
                   </Text>
                   <Text style={styles.pointsSubtitle}>Earned this visit</Text>
@@ -188,7 +210,8 @@ const Visitation = ({ id }: CustomerDetails) => {
                     fontSize: 15,
                   }}
                 >
-                  {selectedvisit.staff?.name} {selectedvisit.staff?.surname[0]}
+                  {selectedvisit.staff?.name}{" "}
+                  {selectedvisit.staff?.surname?.[0] || ""}
                 </Text>
               </View>
             </View>

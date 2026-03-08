@@ -7,7 +7,7 @@ export default function RootLayout() {
   useEffect(() => {
     // Request notification permissions on app start
     requestNotificationPermissions().catch((error) => {
-      console.log("Failed to setup notifications:", error);
+      // Notification setup failed
     });
   }, []);
 

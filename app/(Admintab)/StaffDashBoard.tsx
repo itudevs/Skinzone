@@ -55,15 +55,23 @@ const StaffDashBoard = () => {
       return;
     }
 
-    // Filter users whose phone number includes the search text
+    const searchLower = text.toLowerCase();
+
+    // Filter users by phone number, name, or surname
     const filtered =
-      users?.filter((user: any) => user.phone?.includes(text)) || [];
+      users?.filter(
+        (user: any) =>
+          user.phone?.includes(text) ||
+          user.name?.toLowerCase().includes(searchLower) ||
+          user.surname?.toLowerCase().includes(searchLower) ||
+          `${user.name} ${user.surname}`.toLowerCase().includes(searchLower),
+      ) || [];
 
     setSuggestions(filtered);
   };
 
   const handleSelectSuggestion = (item: any) => {
-    setSearchQuery(item.phone);
+    setSearchQuery(`${item.name} ${item.surname} - ${item.phone}`);
     setSuggestions([]);
     setDisplayedUsers([item]);
   };
@@ -105,6 +113,7 @@ const StaffDashBoard = () => {
                 onChangeText={handleSearchChange}
                 suggestions={suggestions}
                 onSelectSuggestion={handleSelectSuggestion}
+                keyboardType="default"
               />
               <Text
                 style={{
