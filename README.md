@@ -285,5 +285,5 @@ Users' personal information is **never shared with third parties** without expli
 
 ---
 
-**Last Updated**: January 7, 2026  
+**Last Updated**: March 8, 2026  
 **Project Status**: Active Development (Phase 1 → Phase 2 Transition)
