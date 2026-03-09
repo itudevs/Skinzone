@@ -74,6 +74,10 @@ const AddTreatment = () => {
     setprice("");
     setduration("");
     setpoints("");
+    setproductname("");
+    setproductprice("");
+    setproducttype("");
+    setproductdescription("");
   };
   const ValidateInput = (): boolean => {
     let passed = true;
@@ -90,6 +94,20 @@ const AddTreatment = () => {
         passed = false;
       }
     } else {
+      if (productname.length < 3 || producttype.length < 3) {
+        Alert.alert("Error", "field must contain 3 or more letters");
+        passed = false;
+      } else if (!parseFloat(productprice)) {
+        Alert.alert("Error", "price must not be characters");
+        passed = false;
+      }
+      if (productdescription.length < 3) {
+        Alert.alert(
+          "Error",
+          "product description must contain at least 3 characters",
+        );
+        passed = false;
+      }
     }
     return passed;
   };
@@ -325,7 +343,7 @@ const AddTreatment = () => {
       // Step 1: Insert service FIRST to get ServiceId
       const service: SerivceInsert = {
         servicecategory: "product",
-        servicepoints: (2.5 / 100) * +productprice,
+        servicepoints: Math.round((2.5 / 100) * +productprice),
         servicecost: +productprice,
         servicename: productname,
       };
@@ -360,7 +378,7 @@ const AddTreatment = () => {
           .from("Services")
           .delete()
           .eq("ServiceId", serviceData.ServiceId);
-        Alert.alert("Error", productError.message);
+        Alert.alert("Error1", productError.message);
         setclicked(false);
         return;
       }
@@ -469,6 +487,7 @@ const AddTreatment = () => {
                         fontWeight: "bold",
                         fontSize: 20,
                         paddingVertical: 5,
+                        flexShrink: 1,
                       }}
                     >
                       {item.value}
@@ -571,6 +590,7 @@ const AddTreatment = () => {
                         fontWeight: "bold",
                         fontSize: 20,
                         paddingVertical: 5,
+                        flexShrink: 1,
                       }}
                     >
                       {item.value}
@@ -625,6 +645,8 @@ const styles = StyleSheet.create({
   Treatment: {
     paddingVertical: 10,
     paddingHorizontal: 20,
+    flex: 1,
+    flexShrink: 1,
   },
   Trash: {
     paddingVertical: 12,
@@ -640,7 +662,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background100,
     margin: 10,
     borderRadius: 10,
-    justifyContent: "space-between",
     alignItems: "center",
   },
   presseditem: {

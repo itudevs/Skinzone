@@ -280,10 +280,7 @@ const Home = () => {
       {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <ProfileImage
-            imagehandler={() => {}}
-            imageUrl={profilePicture}
-          />
+          <ProfileImage imagehandler={() => {}} imageUrl={profilePicture} />
           <View style={styles.welcomeContainer}>
             <Text style={styles.welcomeText}>WELCOME BACK</Text>
             <Text style={styles.usernameText}>
