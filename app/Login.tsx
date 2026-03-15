@@ -71,10 +71,10 @@ const Login = () => {
         if (userData?.role === "staff") {
           // Navigate to Staff screen here
 
-          router.navigate("/StaffDashBoard");
+          router.replace("/(Admintab)/StaffDashBoard");
         } else {
           // Navigate to home screen here
-          router.navigate("/Home");
+          router.replace("/(tabs)/Home");
         }
       }
     } catch (error) {

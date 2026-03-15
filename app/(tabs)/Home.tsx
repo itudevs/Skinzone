@@ -56,8 +56,15 @@ const Home = () => {
   const slideAnim = useRef(new Animated.Value(-100)).current;
 
   useEffect(() => {
-    setSession(UserSession.getSession());
+    const unsubscribe = UserSession.onSessionChange((nextSession) => {
+      setSession(nextSession);
+    });
+
     loadNotificationHistory();
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Load notification history from storage
@@ -184,7 +191,10 @@ const Home = () => {
 
   const getUserData = useCallback(
     async (isActive: () => boolean) => {
-      if (!session?.user.id) return;
+      if (!session?.user.id) {
+        if (isActive()) setLoading(false);
+        return;
+      }
 
       setLoading(true);
       try {

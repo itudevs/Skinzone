@@ -43,7 +43,7 @@ export async function sendVisitNotification(treatmentName: string, staffName: st
     try {
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: '✨ New Visit Added',
+                title: ' New Visit Added',
                 body: `Your "${treatmentName}" visit has been added by ${staffName}`,
                 data: {
                     type: 'visit_added',

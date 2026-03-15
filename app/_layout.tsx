@@ -1,14 +1,22 @@
 import { Stack } from "expo-router";
 import { StatusBar, StyleSheet, View } from "react-native";
 import { useEffect } from "react";
+import * as SplashScreen from "expo-splash-screen";
 import { requestNotificationPermissions } from "@/lib/notifications";
+
+// Keep native splash visible until we hide it manually
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   useEffect(() => {
-    // Request notification permissions on app start
-    requestNotificationPermissions().catch((error) => {
-      // Notification setup failed
-    });
+    // Run startup work in parallel
+    requestNotificationPermissions().catch(() => {});
+
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 3000); // 3 seconds
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (

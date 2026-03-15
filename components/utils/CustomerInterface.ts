@@ -1,5 +1,5 @@
 export interface CustomerDetails {
-    id?: string | "" | undefined;
+    id?: string | undefined;
     Name?: string | undefined;
     Surname?: string | undefined;
     Phone?: string | undefined;
@@ -8,4 +8,4 @@ export interface CustomerDetails {
 export interface CustomerModalprops extends CustomerDetails {
     Visible: boolean;
     Onclose: () => void;
-}
+} 

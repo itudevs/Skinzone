@@ -33,19 +33,25 @@ const HistoryPage = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    setSession(UserSession.getSession());
+    const unsubscribe = UserSession.onSessionChange((nextSession) => {
+      setSession(nextSession);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
-
   const fetchvisitation = async () => {
-    if (session?.user.id) {
-      const data = await Getvisitations(session.user.id);
-      setvisitations(data);
+    if (!session?.user.id) {
+      setvisitations([]);
+      return;
     }
+    const data = await Getvisitations(session.user.id);
+    setvisitations(data);
   };
-
   useEffect(() => {
     fetchvisitation();
-  }, [session]);
+  }, [session?.user.id]);
 
   const onRefresh = async () => {
     setRefreshing(true);

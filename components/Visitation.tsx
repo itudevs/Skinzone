@@ -31,14 +31,18 @@ const Visitation = ({ id }: CustomerDetails) => {
   const [visitations, setvisitations] = useState<any[]>([]);
 
   useEffect(() => {
+    if (!id) {
+      setvisitations([]);
+      return;
+    }
+
     const fetchvisitation = async () => {
-      let userid = id || "0";
-      const data = await Getvisitations(userid, 5);
+      const data = await Getvisitations(id, 5);
       setvisitations(data);
     };
 
     fetchvisitation();
-  }, []);
+  }, [id]);
 
   return (
     <View>
