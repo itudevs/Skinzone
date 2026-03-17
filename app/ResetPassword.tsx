@@ -36,8 +36,8 @@ const ResetPassword = () => {
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim().toLowerCase(),
         {
-          redirectTo: "yourapp://reset-password",
-        }
+          redirectTo: "za.co.skinzone://ChangePassword",
+        },
       );
 
       if (error) {
@@ -55,7 +55,7 @@ const ResetPassword = () => {
               // Navigate back to login
             },
           },
-        ]
+        ],
       );
       setEmail(""); // Clear the email field
     } catch (error) {

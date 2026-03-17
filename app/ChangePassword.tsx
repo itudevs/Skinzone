@@ -1,18 +1,111 @@
 import { View, Text, StyleSheet, FlatList, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import Colors from "@/components/utils/Colours";
 import PrimaryText from "@/components/PrimaryText";
 import PasswordInput from "@/components/PasswordInput";
 import PrimaryButton from "@/components/PrimaryButton";
 import PrimaryLink from "@/components/PrimaryLink";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import * as Linking from "expo-linking";
 
 const ChangePassword = () => {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
+  const [hasAuthenticatedSession, setHasAuthenticatedSession] = useState(false);
+  const [recoverySessionReady, setRecoverySessionReady] = useState(false);
+  const params = useLocalSearchParams<{
+    type?: string;
+    access_token?: string;
+    refresh_token?: string;
+  }>();
+  const deepLinkUrl = Linking.useURL();
+
+  const extractTokenFromUrl = (url: string | null, key: string) => {
+    if (!url) return undefined;
+
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = url.match(new RegExp(`[?#&]${escapedKey}=([^&#]+)`));
+    return match?.[1] ? decodeURIComponent(match[1]) : undefined;
+  };
+
+  const openedFromRecoveryLink = useMemo(() => {
+    return (
+      params.type === "recovery" ||
+      !!params.access_token ||
+      !!params.refresh_token
+    );
+  }, [params.type, params.access_token, params.refresh_token]);
+
+  const canGoBackToProfile = hasAuthenticatedSession && !openedFromRecoveryLink;
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!active) return;
+      setHasAuthenticatedSession(!!session?.user);
+      setRecoverySessionReady(!openedFromRecoveryLink || !!session?.user);
+    };
+
+    loadSession();
+
+    return () => {
+      active = false;
+    };
+  }, [openedFromRecoveryLink]);
+
+  useEffect(() => {
+    let active = true;
+
+    const ensureRecoverySession = async () => {
+      if (!openedFromRecoveryLink) return;
+
+      const accessToken =
+        (params.access_token as string | undefined) ||
+        extractTokenFromUrl(deepLinkUrl, "access_token");
+      const refreshToken =
+        (params.refresh_token as string | undefined) ||
+        extractTokenFromUrl(deepLinkUrl, "refresh_token");
+
+      if (!accessToken || !refreshToken) {
+        if (active) setRecoverySessionReady(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (!active) return;
+
+      if (error || !data.session?.user) {
+        setRecoverySessionReady(false);
+        return;
+      }
+
+      setHasAuthenticatedSession(true);
+      setRecoverySessionReady(true);
+    };
+
+    ensureRecoverySession();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    openedFromRecoveryLink,
+    params.access_token,
+    params.refresh_token,
+    deepLinkUrl,
+  ]);
 
   const UpdateHandler = async () => {
     try {
@@ -22,17 +115,41 @@ const ChangePassword = () => {
         return;
       }
 
+      if (openedFromRecoveryLink && !recoverySessionReady) {
+        Alert.alert(
+          "Invalid or Expired Link",
+          "Your reset link is invalid or expired. Please request a new password reset link.",
+        );
+        return;
+      }
+
+      setLoading(true);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        Alert.alert(
+          "Auth Session Missing",
+          "No active reset session was found. Please open the latest reset email link and try again.",
+        );
+        return;
+      }
+
       const { data, error } = await supabase.auth.updateUser({
         password: password,
       });
       if (data) {
-        setLoading(true);
-
         Alert.alert("Success", "Password Changed", [
           {
             text: "OK",
             onPress: () => {
-              router.navigate("/CustomerProfile");
+              if (canGoBackToProfile) {
+                router.replace("/CustomerProfile");
+              } else {
+                router.replace("/Login");
+              }
             },
           },
         ]);
@@ -86,14 +203,16 @@ const ChangePassword = () => {
         </View>
 
         {/*Back to Login Link */}
-        <View style={styles.backContainer}>
-          <PrimaryText children="Remember your password?" />
-          <PrimaryLink
-            colour="#00FF5F"
-            url="/CustomerProfile"
-            children="Back to Profile"
-          />
-        </View>
+        {canGoBackToProfile && (
+          <View style={styles.backContainer}>
+            <PrimaryText children="Remember your password?" />
+            <PrimaryLink
+              colour="#00FF5F"
+              url="/CustomerProfile"
+              children="Back to Profile"
+            />
+          </View>
+        )}
       </View>
     </View>
   );

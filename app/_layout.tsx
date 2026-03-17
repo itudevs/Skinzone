@@ -2,7 +2,11 @@ import { Stack } from "expo-router";
 import { StatusBar, StyleSheet, View } from "react-native";
 import { useEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
-import { requestNotificationPermissions } from "@/lib/notifications";
+import {
+  registerPushTokenForCurrentUser,
+  requestNotificationPermissions,
+} from "@/lib/notifications";
+import { UserSession } from "@/components/utils/GetUsersession";
 
 // Keep native splash visible until we hide it manually
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -12,11 +16,22 @@ export default function RootLayout() {
     // Run startup work in parallel
     requestNotificationPermissions().catch(() => {});
 
+    const unsubscribe = UserSession.onSessionChange((session) => {
+      if (!session?.user?.id) {
+        return;
+      }
+
+      registerPushTokenForCurrentUser().catch(() => {});
+    });
+
     const timer = setTimeout(() => {
       SplashScreen.hideAsync().catch(() => {});
     }, 3000); // 3 seconds
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
 
   return (
