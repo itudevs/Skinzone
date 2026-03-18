@@ -8,10 +8,18 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from "react-native";
 import Colors from "./utils/Colours";
 import { CustomerModalprops } from "./utils/CustomerInterface";
-import { PlusCircle, PhoneIcon, User } from "lucide-react-native";
+import {
+  PlusCircle,
+  PhoneIcon,
+  User,
+  ChevronDown,
+  ChevronUp,
+  X,
+} from "lucide-react-native";
 import PrimaryText from "./PrimaryText";
 import PrimaryButton from "./PrimaryButton";
 import DropDownInput from "./DropDownInput";
@@ -19,6 +27,7 @@ import { DropDownItems } from "./utils/utilinterfaces";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import FreeVisit from "./FreeVisit";
+import Visitation from "./Visitation";
 import {
   CustomerVisitLineInsert,
   CustomerVisitInsert,
@@ -49,6 +58,7 @@ const CustomerModal = ({
   const [products, setProducts] = useState<DropDownItems[]>([]);
   const [amountpaid, setamountpaid] = useState("0.00");
   const [notes, setnotes] = useState("");
+  const [historyLimit, setHistoryLimit] = useState(5);
   const [selectedStaffName, setSelectedStaffName] = useState("");
   const [selectedTreatmentName, setSelectedTreatmentName] = useState("");
   const [selectedProductName, setSelectedProductName] = useState("");
@@ -296,6 +306,7 @@ const CustomerModal = ({
       setnotes("");
       setselectedTreatment(undefined);
       setSelectedProduct(undefined);
+      setHistoryLimit(5);
     }
   }, [Visible]);
 
@@ -333,155 +344,174 @@ const CustomerModal = ({
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <View style={styles.Main}>
+          <View style={styles.ModalHeader}>
+            <TouchableOpacity onPress={Onclose} style={styles.CloseButton}>
+              <X color="#fff" size={24} />
+            </TouchableOpacity>
+            <Text style={styles.HeaderTitle}>ADD NEW VISIT FOR USERS</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
           <ScrollView
             style={{ flex: 1 }}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={styles.ScrollContent}
           >
-            <Text
-              style={{
-                paddingHorizontal: "5%",
-                paddingVertical: "3%",
-                color: "#ffffff",
-                borderRadius: 50,
-              }}
-            >
-              Staff Access
-            </Text>
-            <Text
-              style={{
-                paddingHorizontal: "5%",
-                paddingVertical: "2%",
-                color: "#ffffff",
-                fontWeight: "bold",
-                fontSize: 22,
-              }}
-            >
-              Loaded Customer Information
-            </Text>
-            <View style={{ paddingHorizontal: "5%", paddingVertical: "1%" }}>
-              <PrimaryText children="Add New Visit For Users" />
-            </View>
-            <View style={styles.CustomerDetails}>
-              <View style={styles.CustomerCard}>
-                <View style={styles.CustomerInfo}>
+            {/* Customer Profile Card */}
+            <View style={styles.Card}>
+              <View style={styles.RowBetween}>
+                <View>
                   <Text style={styles.Label}>CUSTOMER</Text>
                   <Text style={styles.CustomerName}>
                     {Name} {Surname}
                   </Text>
-                  <Text style={styles.Label}>CONTACT</Text>
-                  <View style={{ flexDirection: "row" }}>
-                    <PhoneIcon size={14} color={Colors.Primary900} />
-                    <Text style={styles.ContactNumber}>{Phone}</Text>
+
+                  <Text style={[styles.Label, { marginTop: 12 }]}>CONTACT</Text>
+                  <View style={styles.IconRow}>
+                    <PhoneIcon size={14} color="#00ff44" />
+                    <Text style={styles.ContactText}>{Phone}</Text>
                   </View>
                 </View>
-                <View style={styles.IconContainer}>
-                  <User size={24} color={"white"} />
+                <View style={styles.Avatar}>
+                  <User size={24} color="#fff" />
                 </View>
               </View>
-              <View style={styles.Verticalline}></View>
             </View>
-            <View style={styles.TreatmentContainer}>
-              <View style={styles.VisitHeader}>
-                <PlusCircle color={Colors.Primary900} size={24} />
+
+            {/* Points & Status Card */}
+            <View style={[styles.Card, styles.RowBetween]}>
+              <View style={styles.PointsContainer}>
+                <View style={styles.GreenBar} />
+                <View>
+                  <Text style={styles.Label}>CURRENT POINTS</Text>
+                  <Text style={styles.PointsValue}>{point}</Text>
+                </View>
+              </View>
+
+              <View
+                style={{ alignItems: "flex-end", flex: 1, paddingLeft: 10 }}
+              >
                 <Text
-                  style={{
-                    fontWeight: "bold",
-                    fontSize: 20,
-                    paddingLeft: 10,
-                    color: "white",
-                  }}
+                  style={[
+                    styles.Label,
+                    { textAlign: "right", marginBottom: 5 },
+                  ]}
                 >
-                  Add New Visit
+                  STATUS
                 </Text>
+                <View style={styles.StatusPill}>
+                  <Text style={styles.StatusText}>
+                    Qualifies for:{" "}
+                    <Text style={{ fontWeight: "bold" }}>
+                      Free Scalp Treatment
+                    </Text>
+                  </Text>
+                </View>
               </View>
-              <View style={styles.VisitHolder}>
-                <PrimaryText children="TREATMENT" />
-                <DropDownInput
-                  value={selectedTreatmentName || "Select Treatment"}
-                  id="Treatment select"
-                  DropDownItem={treatment}
-                  onSelect={handleTreatmentSelect}
-                />
+            </View>
+
+            {/* Add New Visit Form */}
+            <View style={styles.Card}>
+              <View style={styles.SectionHeader}>
+                <PlusCircle size={24} color="#00ff44" />
+                <Text style={styles.SectionTitle}>Add New Visit</Text>
               </View>
-              <View style={styles.VisitHolder}>
-                <PrimaryText children="PRODUCTS" />
-                <DropDownInput
-                  value={selectedProductName || "Select Product"}
-                  id="Product select"
-                  DropDownItem={products}
-                  onSelect={handleProductSelect}
-                />
-              </View>
-              <View style={styles.VisitHolder}>
-                <PrimaryText children="STAFF MEMBER" />
-                <DropDownInput
-                  value={selectedStaffName || "Select User"}
-                  id="staff-select"
-                  DropDownItem={staff}
-                  onSelect={handleStaffSelect}
+
+              {/* Treatment Dropdown */}
+              <Text style={styles.InputLabel}>TREATMENT</Text>
+              <DropDownInput
+                value={selectedTreatmentName || "Select Treatment"}
+                id="treatment-select"
+                DropDownItem={treatment}
+                onSelect={handleTreatmentSelect}
+              />
+
+              {/* Products Dropdown */}
+              <Text style={styles.InputLabel}>PRODUCTS</Text>
+              <DropDownInput
+                value={selectedProductName || "Select Product"}
+                id="product-select"
+                DropDownItem={products}
+                onSelect={handleProductSelect}
+              />
+
+              {/* Staff Member Dropdown */}
+              <Text style={styles.InputLabel}>STAFF MEMBER</Text>
+              <DropDownInput
+                value={selectedStaffName || "Select User"}
+                id="staff-select"
+                DropDownItem={staff}
+                onSelect={handleStaffSelect}
+              />
+
+              {/* Amount Paid */}
+              <Text style={styles.InputLabel}>AMOUNT PAID</Text>
+              <View style={styles.InputContainer}>
+                <Text style={styles.CurrencySymbol}>R</Text>
+                <TextInput
+                  style={styles.TextInput}
+                  value={amountpaid}
+                  editable={false} // Assuming amount is auto-calculated based on selection
+                  placeholder="0.00"
+                  placeholderTextColor="#666"
                 />
               </View>
 
-              <View style={styles.VisitHolder}>
-                <PrimaryText children="AMOUNT PAID" />
-                <View
-                  style={{
-                    flexDirection: "row",
-                    paddingVertical: 10,
-                    marginVertical: 10,
-                    marginRight: 20,
-                    backgroundColor: Colors.PrimaryBackground,
-                    borderRadius: 10,
-                  }}
-                >
-                  <Text
-                    style={{
-                      paddingHorizontal: 10,
-                      color: Colors.TextColour,
-                      fontWeight: "bold",
-                    }}
-                  >
-                    R
-                  </Text>
-                  <TextInput
-                    placeholder="  0.00"
-                    placeholderTextColor="#888"
-                    style={{ color: Colors.TextColour, paddingLeft: 10 }}
-                    blurOnSubmit={true}
-                    value={amountpaid}
-                    editable={false}
-                    keyboardType="number-pad"
-                  />
-                </View>
-              </View>
-              <View style={styles.VisitHolder}>
-                <PrimaryText children="NOTES" />
+              {/* Notes */}
+              <Text style={styles.InputLabel}>NOTES</Text>
+              <View style={[styles.InputContainer, styles.TextAreaContainer]}>
                 <TextInput
-                  multiline={true}
-                  placeholder="    Add Treatment Notes"
-                  placeholderTextColor="#888"
-                  style={{
-                    color: Colors.TextColour,
-                    paddingVertical: 10,
-                    paddingLeft: 10,
-                    paddingBottom: 50,
-                    marginVertical: 10,
-                    marginRight: 20,
-                    backgroundColor: Colors.PrimaryBackground,
-                    borderRadius: 10,
-                  }}
-                  blurOnSubmit={true}
+                  style={[styles.TextInput, styles.TextArea]}
                   value={notes}
                   onChangeText={HandleNotes}
+                  placeholder="Add Treatment Notes"
+                  placeholderTextColor="#666"
+                  multiline={true}
+                  numberOfLines={4}
+                  textAlignVertical="top"
                 />
               </View>
 
-              <PrimaryButton
-                text={!clicked ? "ADD VISIT" : "ADDING..."}
-                onPressHandler={AddVisitHandler}
-              />
+              {/* Add Visit Button */}
+              <View style={{ marginTop: 24 }}>
+                <PrimaryButton
+                  text={!clicked ? "ADD VISIT" : "ADDING..."}
+                  onPressHandler={AddVisitHandler}
+                />
+              </View>
             </View>
+
+            {/* History Section */}
+            <View style={styles.HistoryHeader}>
+              <Text style={styles.HistoryTitle}>HISTORY</Text>
+              <View style={styles.Badge}>
+                <Text style={styles.BadgeText}>
+                  Showing last {historyLimit} visits
+                </Text>
+              </View>
+            </View>
+
+            {/* History List */}
+            <Visitation
+              id={id}
+              Name={Name}
+              Surname={Surname}
+              Phone={Phone}
+              limit={historyLimit}
+            />
+
+            <TouchableOpacity
+              onPress={() => setHistoryLimit((prev) => prev + 5)}
+              style={{ alignItems: "center", paddingVertical: 12 }}
+            >
+              <Text
+                style={{ color: "#00ff44", fontSize: 14, fontWeight: "600" }}
+              >
+                See More
+              </Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 40 }} />
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -493,73 +523,171 @@ export default CustomerModal;
 
 const styles = StyleSheet.create({
   Main: {
-    backgroundColor: Colors.PrimaryBackground,
     flex: 1,
+    backgroundColor: Colors.PrimaryBackground || "#121212",
   },
-  CustomerDetails: {
-    padding: "2%",
-    margin: "5%",
-    backgroundColor: Colors.background100,
-    borderRadius: 20,
-  },
-  CustomerCard: {
-    backgroundColor: Colors.PrimaryBackground,
-    borderRadius: 15,
-    padding: 16,
+  ModalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === "ios" ? 50 : 20,
+    paddingBottom: 16,
+  },
+  HeaderTitle: {
+    color: "#888",
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 1,
+  },
+  CloseButton: {
+    padding: 4,
+  },
+  ScrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  Card: {
+    backgroundColor: "#1E1E1E",
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 16,
   },
-  CustomerInfo: {
-    flex: 1,
+  RowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   Label: {
+    color: "#666",
     fontSize: 10,
-    color: "#888888",
     fontWeight: "600",
-    letterSpacing: 1,
-    marginBottom: 4,
+    letterSpacing: 0.5,
   },
   CustomerName: {
+    color: "#fff",
     fontSize: 18,
-    color: "#FFFFFF",
     fontWeight: "bold",
-    marginBottom: 12,
+    marginTop: 4,
   },
-  ContactNumber: {
+  IconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  ContactText: {
+    color: "#00ff44",
     fontSize: 14,
-    color: Colors.Primary900,
-    fontWeight: "600",
-    letterSpacing: 1,
-    paddingLeft: 10,
+    fontWeight: "500",
   },
-  IconContainer: {
-    backgroundColor: "#414141",
-    borderRadius: 25,
-    width: 50,
-    height: 50,
+  Avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#333",
     justifyContent: "center",
     alignItems: "center",
   },
-  Verticalline: {
-    backgroundColor: Colors.Primary900,
-    paddingHorizontal: 100,
-    paddingVertical: 1,
-    borderRadius: 30,
-  },
-  TreatmentContainer: {
-    backgroundColor: Colors.background100,
-    padding: "2%",
-    margin: "5%",
-    borderRadius: 20,
-    paddingLeft: 10,
-  },
-  VisitHeader: {
+  PointsContainer: {
     flexDirection: "row",
-    padding: 15,
+    alignItems: "center",
+    gap: 12,
   },
-  VisitHolder: {
-    paddingLeft: 20,
+  GreenBar: {
+    width: 4,
+    height: 36,
+    backgroundColor: "#00ff44",
+    borderRadius: 2,
+  },
+  PointsValue: {
+    color: "#00ff44",
+    fontSize: 28,
+    fontWeight: "bold",
+    lineHeight: 32,
+  },
+  StatusPill: {
+    backgroundColor: "rgba(0, 255, 68, 0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0, 255, 68, 0.2)",
+  },
+  StatusText: {
+    color: "#00ff44",
+    fontSize: 10,
+  },
+  SectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  SectionTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  InputLabel: {
+    color: "#666",
+    fontSize: 10,
+    fontWeight: "bold",
+    marginTop: 16,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  InputContainer: {
+    backgroundColor: Colors.PrimaryBackground || "#121212",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 0.5,
+    borderColor: "#8b8b8bff",
+    marginTop: 8,
+  },
+  CurrencySymbol: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginRight: 8,
+  },
+  TextInput: {
+    flex: 1,
+    color: "#fff",
+    paddingVertical: 14,
+    fontSize: 14,
+  },
+  TextAreaContainer: {
+    alignItems: "flex-start",
+  },
+  TextArea: {
+    height: 80,
+    textAlignVertical: "top",
+  },
+  HistoryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  HistoryTitle: {
+    color: "#888",
+    fontSize: 12,
+    fontWeight: "bold",
+    letterSpacing: 1,
+  },
+  Badge: {
+    backgroundColor: "#1E1E1E",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  BadgeText: {
+    color: "#666",
+    fontSize: 10,
   },
 });

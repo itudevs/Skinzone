@@ -51,11 +51,8 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "Method not allowed" }, 405);
     }
 
-    // DEBUG LOGGING
-    console.log("Request Headers:", JSON.stringify(Object.fromEntries(req.headers.entries())));
     const authHeader =
         req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
-    console.log("Auth Header:", authHeader ? `Present (${authHeader.length} chars)` : "Missing");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");

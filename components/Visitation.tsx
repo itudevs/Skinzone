@@ -16,6 +16,10 @@ import { supabase } from "@/lib/supabase";
 import { CustomerDetails } from "./utils/CustomerInterface";
 import { Getvisitations } from "./utils/GetUserData";
 
+interface VisitationProps extends CustomerDetails {
+  limit?: number;
+}
+
 interface visitation {
   date: string;
   service: string;
@@ -25,7 +29,7 @@ interface visitation {
   comments: string;
 }
 
-const Visitation = ({ id }: CustomerDetails) => {
+const Visitation = ({ id, limit = 5 }: VisitationProps) => {
   const [isModalActive, setisModalActive] = useState(false);
   const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [visitations, setvisitations] = useState<any[]>([]);
@@ -37,12 +41,12 @@ const Visitation = ({ id }: CustomerDetails) => {
     }
 
     const fetchvisitation = async () => {
-      const data = await Getvisitations(id, 5);
+      const data = await Getvisitations(id, limit);
       setvisitations(data);
     };
 
     fetchvisitation();
-  }, [id]);
+  }, [id, limit]);
 
   return (
     <View>

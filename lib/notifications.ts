@@ -65,11 +65,6 @@ async function invokeEdgeFunction(
         throw new Error('Cannot invoke function: no authenticated session');
     }
 
-    console.log(`Invoking ${functionName} with headers:`, {
-        ...headers,
-        apikey: '***',
-    });
-
     const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
         method: 'POST',
         headers: {
@@ -94,9 +89,7 @@ async function invokeEdgeFunction(
         throw new Error(`Edge function ${functionName} failed (${response.status}): ${text}`);
     }
 
-    const data = await response.json();
-    console.log(`Edge function ${functionName} success:`, data);
-    return data;
+    return response.json().catch(() => null);
 }
 
 // Request notification permissions
