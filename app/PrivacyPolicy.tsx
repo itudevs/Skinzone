@@ -141,7 +141,7 @@ const PrivacyPolicy = () => {
           your rights:
         </Text>
         <Text style={styles.bulletPoint}>
-          • Email: itumelengmorena20@gmail.com
+          • Email: skinzonenaturel@gmail.com
         </Text>
         <Text style={styles.bulletPoint}>• Company: Skinzone</Text>
         <Text style={styles.bulletPoint}>• Location: South Africa</Text>

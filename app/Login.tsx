@@ -148,7 +148,7 @@ const Login = () => {
         </Text>
         <Link
           colour={Colors.TextColour}
-          url="mailto:itumelengmorena20@gmail.com"
+          url="mailto:skinzonenaturel@gmail.com"
           children="Contact Admin"
         />
       </View>

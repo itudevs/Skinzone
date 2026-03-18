@@ -19,7 +19,7 @@ const TermsOfService = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.content}
       >
-        <Text style={styles.lastUpdated}>Last Updated: February 21, 2026</Text>
+        <Text style={styles.lastUpdated}>Last Updated: March 18, 2026</Text>
 
         <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
         <Text style={styles.text}>
@@ -182,7 +182,7 @@ const TermsOfService = () => {
           For questions about these Terms of Service:
         </Text>
         <Text style={styles.bulletPoint}>
-          • Email: itumelengmorena20@gmail.com
+          • Email: skinzonenaturel@gmail.com
         </Text>
         <Text style={styles.bulletPoint}>• Company: Skinzone</Text>
         <Text style={styles.bulletPoint}>• Location: South Africa</Text>
