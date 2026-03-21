@@ -1,139 +1,175 @@
-import { View, Text, StyleSheet, FlatList, Alert } from "react-native";
+import { View, Text, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import Colors from "@/components/utils/Colours";
 import PrimaryText from "@/components/PrimaryText";
-import Input from "../components/Input";
+import PasswordInput from "@/components/PasswordInput";
 import PrimaryButton from "@/components/PrimaryButton";
-import PrimaryLink from "@/components/PrimaryLink";
+import { useRouter } from "expo-router";
 
 const ResetPassword = () => {
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState("");
+  const router = useRouter();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
 
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  useEffect(() => {
+    // Check if we have a valid session (recovery session)
+    // Subscribe to auth state changes to catch session updates from deep link
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(
+        "ResetPassword - Auth Change:",
+        event,
+        session ? "Valid Session" : "No Session",
+      );
+      if (session) {
+        setHasSession(true);
+        setCheckingSession(false);
+      }
+    });
 
-  const ResetHandler = async () => {
+    const checkInitialSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        setHasSession(true);
+        setCheckingSession(false);
+      } else {
+        // If no session immediately, give it a moment for the deep link listener in _layout to process
+        // But don't wait forever
+        setTimeout(() => {
+          if (!hasSession) {
+            // Only set checking to false if we still don't have a session
+            // Let the UI decided whether to show error or just stay loading
+            // In this case, if we still have no session after 3s, show error
+            setCheckingSession(false);
+          }
+        }, 3000);
+      }
+    };
+
+    checkInitialSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const UpdatePasswordHandler = async () => {
     try {
-      // Validation
-      if (!email) {
-        Alert.alert("Error", "Please enter your email address");
+      if (!password || !confirmPassword) {
+        Alert.alert("Error", "Please fill in all fields");
         return;
       }
 
-      if (!validateEmail(email)) {
-        Alert.alert("Error", "Please enter a valid email address");
+      if (password !== confirmPassword) {
+        Alert.alert("Error", "Passwords do not match");
+        return;
+      }
+
+      if (password.length < 6) {
+        Alert.alert("Error", "Password must be at least 6 characters");
         return;
       }
 
       setLoading(true);
 
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.trim().toLowerCase(),
-        {
-          redirectTo: "za.co.skinzone://ChangePassword",
-        },
-      );
+      const { data, error } = await supabase.auth.updateUser({
+        password: password,
+      });
 
       if (error) {
         Alert.alert("Error", error.message);
         return;
       }
 
-      Alert.alert(
-        "Success",
-        "Password reset link has been sent to your email. Please check your inbox.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              // Navigate back to login
-            },
-          },
-        ],
-      );
-      setEmail(""); // Clear the email field
+      Alert.alert("Success", "Your password has been updated successfully.", [
+        {
+          text: "Login",
+          onPress: () => router.replace("/Login"),
+        },
+      ]);
     } catch (error) {
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
-      console.error("Reset password error:", error);
+      Alert.alert("Error", "An unexpected error occurred.");
+      console.error("Update password error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderContent = () => (
-    <View style={styles.content}>
-      <View style={{ alignItems: "center", marginBottom: 30 }}>
-        <Text
-          style={{
-            fontSize: 32,
-            color: "white",
-            fontWeight: "bold",
-            textAlign: "center",
-          }}
-        >
-          Reset Password
-        </Text>
-        <PrimaryText children="Enter your email to reset your password" />
+  if (checkingSession) {
+    return (
+      <View style={[styles.Container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#00FF5F" />
+        <Text style={{ color: "white", marginTop: 20 }}>Verifying link...</Text>
       </View>
+    );
+  }
 
-      {/*Reset Card*/}
-      <View style={styles.CardContainer}>
-        {/*Email Field */}
-        <View style={styles.inputcontainer}>
-          <PrimaryText children="EMAIL" />
-          <Input
-            text="user@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        {/*Info Text */}
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoText}>
-            We'll send you a link to reset your password via email.
-          </Text>
-        </View>
-
-        {/*Send Reset Link Button */}
-        <View style={styles.buttonContainer}>
-          <PrimaryButton
-            text={loading ? "Sending..." : "SEND RESET LINK"}
-            onPressHandler={ResetHandler}
-          />
-        </View>
-
-        {/*Back to Login Link */}
-        <View style={styles.backContainer}>
-          <PrimaryText children="Remember your password?" />
-          <PrimaryLink colour="#00FF5F" url="/Login" children="Back to Login" />
-        </View>
+  if (!hasSession) {
+    return (
+      <View style={[styles.Container, styles.centerContent]}>
+        <Text style={{ color: "white" }}>Invalid Session</Text>
       </View>
-    </View>
-  );
+    );
+  }
 
   return (
-    <View style={styles.Container}>
-      <FlatList
-        data={[{ key: "form" }]}
-        renderItem={renderContent}
-        keyExtractor={(item) => item.key}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top, paddingBottom: insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      />
+    <View
+      style={[
+        styles.Container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}
+    >
+      <View style={styles.content}>
+        <View style={{ alignItems: "center", marginBottom: 30, marginTop: 40 }}>
+          <Text
+            style={{
+              fontSize: 32,
+              color: "white",
+              fontWeight: "bold",
+              textAlign: "center",
+            }}
+          >
+            New Password
+          </Text>
+          <PrimaryText children="Create a new secure password" />
+        </View>
+
+        <View style={styles.CardContainer}>
+          <View style={styles.inputcontainer}>
+            <PrimaryText children="NEW PASSWORD" />
+            <PasswordInput
+              placeholder="••••••••"
+              value={password}
+              onChangeText={setPassword}
+            />
+          </View>
+
+          <View style={styles.inputcontainer}>
+            <PrimaryText children="CONFIRM PASSWORD" />
+            <PasswordInput
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <PrimaryButton
+              text={loading ? "Updating..." : "UPDATE PASSWORD"}
+              onPressHandler={UpdatePasswordHandler}
+            />
+          </View>
+        </View>
+      </View>
     </View>
   );
 };
@@ -147,14 +183,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  scrollContent: {
     padding: 20,
-    paddingTop: 30,
-    paddingBottom: 40,
   },
-  inputcontainer: {
-    marginTop: 15,
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   CardContainer: {
     marginTop: 20,
@@ -164,24 +197,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 20,
   },
-  infoContainer: {
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  infoText: {
-    color: Colors.TextColour,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
+  inputcontainer: {
+    marginTop: 15,
   },
   buttonContainer: {
-    marginTop: 20,
-  },
-  backContainer: {
-    marginTop: 20,
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 5,
-    alignItems: "center",
+    marginTop: 30,
   },
 });

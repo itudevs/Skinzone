@@ -8,7 +8,7 @@ import {
   Button,
 } from "react-native";
 import Colors from "./utils/Colours";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import PrimaryButton from "./PrimaryButton";
 import PrimaryText from "./PrimaryText";
 import { Star, Notebook, PartyPopper } from "lucide-react-native";
@@ -18,6 +18,7 @@ import { Getvisitations } from "./utils/GetUserData";
 
 interface VisitationProps extends CustomerDetails {
   limit?: number;
+  visitsData?: any[];
 }
 
 interface visitation {
@@ -29,12 +30,17 @@ interface visitation {
   comments: string;
 }
 
-const Visitation = ({ id, limit = 5 }: VisitationProps) => {
+const Visitation = ({ id, limit = 5, visitsData }: VisitationProps) => {
   const [isModalActive, setisModalActive] = useState(false);
   const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [visitations, setvisitations] = useState<any[]>([]);
 
   useEffect(() => {
+    if (visitsData) {
+      setvisitations(visitsData);
+      return;
+    }
+
     if (!id) {
       setvisitations([]);
       return;
@@ -46,51 +52,122 @@ const Visitation = ({ id, limit = 5 }: VisitationProps) => {
     };
 
     fetchvisitation();
-  }, [id, limit]);
+  }, [id, limit, visitsData]);
+
+  const groupedVisits = useMemo(() => {
+    const groups: {
+      [key: string]: { date: string; points: number; visits: any[] };
+    } = {};
+
+    visitations.forEach((visit) => {
+      // Use date string as key to group by day
+      const dateKey = new Date(visit.visit_date).toDateString();
+
+      if (!groups[dateKey]) {
+        groups[dateKey] = {
+          date: visit.visit_date,
+          points: 0,
+          visits: [],
+        };
+      }
+
+      groups[dateKey].visits.push(visit);
+
+      // Accumulate points for the day
+      // Assuming structure as per existing code: visit.customervisitlines?.[0]...
+      // Note: A single visit might have multiple lines, so we should sum up all lines if applicable.
+      // But based on existing code, it seems to only look at the first line [0].
+      // I'll stick to summing up what's available, iterating if there are multiple lines would be better but
+      // sticking to existing pattern for now, assuming 1 main service per visit entry or just taking from the lines.
+      // Actually, let's look at all lines if possible, but the existing rendering creates one card per visit.
+      // If a visit has multiple lines, they are part of the same visit.
+      // The current code only displays the first line's service name.
+      // I will sum points from all lines if possible, or just the first one to match existing logic.
+      // Let's iterate lines to be safe for points.
+      const visitPoints =
+        visit.customervisitlines?.reduce(
+          (acc: number, line: any) =>
+            acc + (line.treatments?.Services?.servicepoints || 0),
+          0,
+        ) || 0;
+
+      groups[dateKey].points += visitPoints;
+    });
+
+    // Sort by date descending
+    return Object.values(groups).sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+  }, [visitations]);
 
   return (
     <View>
-      {visitations.map((visit, index) => (
-        <Pressable
-          key={index}
-          style={({ pressed }) => pressed && styles.presseditem}
-          onPress={() => {
-            setisModalActive(true);
-            setselectedvisit(visit);
-          }}
-        >
-          <View style={styles.visitCard}>
-            <View style={styles.visitDate}>
-              <Text style={styles.visitDateText}>
-                {" "}
-                {new Date(visit.visit_date)
-                  .toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "2-digit",
-                  })
-                  .toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.visitInfo}>
-              <Text style={styles.visitService}>
-                {visit.customervisitlines?.[0]?.treatments?.Services
-                  ?.servicename || "Unknown Service"}
-              </Text>
-              <Text style={styles.visitStylist}>
-                Stylist: {visit.staff?.name} {visit.staff?.surname?.[0] || ""}
-              </Text>
-            </View>
-            <View style={styles.pointsBadge}>
-              <Text style={styles.pointsBadgeText}>
-                +
-                {visit.customervisitlines?.[0]?.treatments?.Services
-                  ?.servicepoints || 0}{" "}
-                pts
-              </Text>
+      {groupedVisits.map((group, groupIndex) => (
+        <View key={groupIndex} style={styles.groupContainer}>
+          <View style={styles.groupHeader}>
+            <Text style={styles.groupDateText}>
+              {new Date(group.date).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </Text>
+            <View style={styles.groupPointsBadge}>
+              <Text style={styles.groupPointsText}>+{group.points} PTS</Text>
             </View>
           </View>
-        </Pressable>
+
+          {group.visits.map((visit, index) => (
+            <Pressable
+              key={index}
+              style={({ pressed }) => pressed && styles.presseditem}
+              onPress={() => {
+                setisModalActive(true);
+                setselectedvisit(visit);
+              }}
+            >
+              <View style={styles.visitCard}>
+                {/* 
+                  Removed the date box from here as it's now in the group header.
+                  Replaced with icon or just removed. 
+                  The image shows an icon on the left (green icon).
+                */}
+                <View style={styles.serviceIconContainer}>
+                  {visit.customervisitlines?.[0]?.treatments?.Services
+                    ?.servicecategory === "product" ? (
+                    <PartyPopper color={Colors.Primary900} size={24} />
+                  ) : (
+                    <Star color={Colors.Primary900} size={24} />
+                  )}
+                </View>
+
+                <View style={styles.visitInfo}>
+                  <Text style={styles.visitService}>
+                    {visit.customervisitlines?.[0]?.treatments?.Services
+                      ?.servicename || "Unknown Service"}
+                  </Text>
+                  <Text style={styles.visitStylist}>
+                    {visit.customervisitlines?.[0]?.treatments?.Services
+                      ?.servicecategory || "Service"}
+                  </Text>
+                </View>
+                <View style={styles.pointsColumn}>
+                  <Text style={styles.pointsValueText}>
+                    +
+                    {visit.customervisitlines?.reduce(
+                      (acc: number, line: any) =>
+                        acc + (line.treatments?.Services?.servicepoints || 0),
+                      0,
+                    ) || 0}
+                  </Text>
+                  <Text style={styles.pointsLabelText}>POINTS</Text>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </View>
       ))}
+
       {selectedvisit && (
         <Modal
           visible={isModalActive}
@@ -236,29 +313,49 @@ const Visitation = ({ id, limit = 5 }: VisitationProps) => {
 export default Visitation;
 
 const styles = StyleSheet.create({
+  groupContainer: {
+    marginBottom: 20,
+  },
+  groupHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  groupDateText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  groupPointsBadge: {
+    backgroundColor: Colors.SecondaryColour100, // Dark green background for badge
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.Primary900,
+  },
+  groupPointsText: {
+    color: Colors.Primary900,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
   visitCard: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 15,
-    padding: 18,
-    marginBottom: 12,
+    backgroundColor: Colors.background100, // Dark card background
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
     alignItems: "center",
   },
-  visitDate: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 10,
-    width: 50,
-    height: 50,
+  serviceIconContainer: {
+    width: 40,
+    height: 40,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
-  },
-  visitDateText: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#666666",
-    textAlign: "center",
-    lineHeight: 16,
+    backgroundColor: Colors.SecondaryColour100,
+    borderRadius: 12,
+    marginRight: 16,
   },
   visitInfo: {
     flex: 1,
@@ -266,26 +363,28 @@ const styles = StyleSheet.create({
   visitService: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#000000",
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   visitStylist: {
     fontSize: 13,
-    color: "#666666",
+    color: Colors.TextColour,
   },
-  pointsBadge: {
-    backgroundColor: Colors.Primary900,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+  pointsColumn: {
+    alignItems: "flex-end",
   },
-  pointsBadgeText: {
+  pointsValueText: {
     color: "#FFFFFF",
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: "bold",
   },
+  pointsLabelText: {
+    color: Colors.TextColour,
+    fontSize: 10,
+    textTransform: "uppercase",
+  },
   presseditem: {
-    opacity: 0.5,
+    opacity: 0.7,
   },
   ModalContainer: {
     backgroundColor: "#0E1C14",

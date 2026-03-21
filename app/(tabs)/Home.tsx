@@ -22,6 +22,7 @@ import {
   GetLastPointvisit,
   GetTotalFinalPoints,
   GetTotalPoints,
+  Getvisitations,
 } from "@/components/utils/GetUserData";
 import FreeVisit from "@/components/FreeVisit";
 import * as Notifications from "expo-notifications";
@@ -54,6 +55,7 @@ const Home = () => {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const slideAnim = useRef(new Animated.Value(-100)).current;
+  const [visitations, setVisitations] = useState<any[]>([]);
 
   useEffect(() => {
     const unsubscribe = UserSession.onSessionChange((nextSession) => {
@@ -224,38 +226,58 @@ const Home = () => {
     [session?.user.id],
   );
 
+  const fetchpoints = useCallback(async (isActive: () => boolean) => {
+    if (!session?.user.id) return;
+    try {
+      let points = await GetTotalFinalPoints(session?.user.id);
+      let last = await GetLastPointvisit(session?.user.id);
+      if (isActive()) {
+        settotal(points);
+        setlastp(last);
+        if (points >= 500) {
+          setQualify(true);
+          setQualpoints(points);
+        } else {
+          setQualify(false);
+          setQualpoints(0);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [session?.user.id]);
+
+  const fetchVisitations = useCallback(
+    async (isActive: () => boolean) => {
+      if (!session?.user.id) return;
+      try {
+        const data = await Getvisitations(session.user.id, 5);
+        if (isActive()) {
+          setVisitations(data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [session?.user.id],
+  );
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
       getUserData(() => active);
+      fetchpoints(() => active);
+      fetchVisitations(() => active);
       return () => {
         active = false;
       };
-    }, [getUserData]),
+    }, [getUserData, fetchpoints, fetchVisitations]),
   );
-
-  const fetchpoints = useCallback(async (userid: string | undefined) => {
-    let points = await GetTotalFinalPoints(userid);
-    let last = await GetLastPointvisit(userid);
-    settotal(points);
-    setlastp(last);
-    if (points >= 500) {
-      setQualify(true);
-      setQualpoints(points);
-    } else {
-      setQualify(false);
-      setQualpoints(0);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchpoints(session?.user.id);
-  }, [session?.user.id, fetchpoints]);
 
   const handleClaimSuccess = useCallback(() => {
     // Refresh points after claiming a free visit
-    fetchpoints(session?.user.id);
-  }, [session?.user.id, fetchpoints]);
+    fetchpoints(() => true);
+  }, [fetchpoints]);
 
   return (
     <ScrollView
@@ -420,7 +442,7 @@ const Home = () => {
           onClaimSuccess={handleClaimSuccess}
         />
       )}
-      <Visitation id={session?.user.id} />
+      <Visitation id={session?.user.id} visitsData={visitations} />
     </ScrollView>
   );
 };

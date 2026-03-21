@@ -7,6 +7,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
@@ -19,13 +20,15 @@ import PrimaryButton from "@/components/PrimaryButton";
 import PrimaryLink from "@/components/PrimaryLink";
 import PasswordInput from "@/components/PasswordInput";
 import { useRouter } from "expo-router";
-import { Lock, User, Eye, EyeOff } from "lucide-react-native";
+import { Lock, User, Eye, EyeOff, Square, CheckSquare } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = () => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [keepSignedIn, setKeepSignedIn] = useState(false);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -50,7 +53,9 @@ const Login = () => {
         return;
       }
 
-      setLoading(true);
+      // Store persistence preference
+      await AsyncStorage.setItem('keep_signed_in', keepSignedIn ? 'true' : 'false');
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password: password,
@@ -124,9 +129,23 @@ const Login = () => {
           value={password}
           onChangeText={setPassword}
         />
+
+        {/* Keep Me Signed In Checkbox */}
+        <Pressable
+          style={styles.checkboxContainer}
+          onPress={() => setKeepSignedIn(!keepSignedIn)}
+        >
+          {keepSignedIn ? (
+             <CheckSquare size={20} color={Colors.TextColour} />
+          ) : (
+             <Square size={20} color={Colors.TextColour} />
+          )}
+          <Text style={styles.checkboxLabel}>Keep me signed in</Text>
+        </Pressable>
+
         <PrimaryLink
           colour={Colors.TextColour}
-          url="/ResetPassword"
+          url="/ForgotPassword"
           children="Forgot Password"
         />
       </View>
@@ -233,6 +252,17 @@ const styles = StyleSheet.create({
     padding: 10,
     flexDirection: "row",
     justifyContent: "center",
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+    marginLeft: 5,
+  },
+  checkboxLabel: {
+    color: Colors.TextColour,
+    marginLeft: 10,
+    fontSize: 14,
   },
   legalLinksContainer: {
     padding: 10,
