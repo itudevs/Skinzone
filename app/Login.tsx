@@ -20,7 +20,14 @@ import PrimaryButton from "@/components/PrimaryButton";
 import PrimaryLink from "@/components/PrimaryLink";
 import PasswordInput from "@/components/PasswordInput";
 import { useRouter } from "expo-router";
-import { Lock, User, Eye, EyeOff, Square, CheckSquare } from "lucide-react-native";
+import {
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  Square,
+  CheckSquare,
+} from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = () => {
@@ -54,8 +61,11 @@ const Login = () => {
       }
 
       // Store persistence preference
-      await AsyncStorage.setItem('keep_signed_in', keepSignedIn ? 'true' : 'false');
-      
+      await AsyncStorage.setItem(
+        "keep_signed_in",
+        keepSignedIn ? "true" : "false",
+      );
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password: password,
@@ -136,9 +146,9 @@ const Login = () => {
           onPress={() => setKeepSignedIn(!keepSignedIn)}
         >
           {keepSignedIn ? (
-             <CheckSquare size={20} color={Colors.TextColour} />
+            <CheckSquare size={20} color={Colors.TextColour} />
           ) : (
-             <Square size={20} color={Colors.TextColour} />
+            <Square size={20} color={Colors.TextColour} />
           )}
           <Text style={styles.checkboxLabel}>Keep me signed in</Text>
         </Pressable>
@@ -254,8 +264,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 10,
     marginLeft: 5,
   },

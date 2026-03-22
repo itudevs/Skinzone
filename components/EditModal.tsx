@@ -94,6 +94,14 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     return phoneRegex.test(phone);
   };
   const updateField = async (FieldtoUpdate: string, newField: string) => {
+    if (FieldtoUpdate === "dob") {
+      Alert.alert(
+        "Date of Birth Locked",
+        "Contact admin to change date of birth with relevant ID document.",
+      );
+      return;
+    }
+
     if (FieldtoUpdate === "email") {
       if (!validateEmail(newField)) {
         Alert.alert("Error", "Enter a valid email address");
@@ -128,16 +136,19 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const openEditModal = (field: keyof ProfileData) => {
+    if (field === "dob") {
+      Alert.alert(
+        "Date of Birth Locked",
+        "Contact admin to change date of birth with relevant ID document.",
+      );
+      return;
+    }
+
     setActiveField(field);
     const currentValue = profile[field];
 
-    if (field === "dob" && currentValue instanceof Date) {
-      setTempDate(currentValue);
-      setShowDatePicker(true);
-    } else {
-      const valueAsString = String(currentValue ?? "");
-      setTempValue(valueAsString);
-    }
+    const valueAsString = String(currentValue ?? "");
+    setTempValue(valueAsString);
 
     setModalVisible(true);
   };

@@ -36,6 +36,13 @@ interface StoredNotification {
   read: boolean;
 }
 
+interface BirthdayBonusStatus {
+  awardedToday: boolean;
+  points: number;
+}
+
+const BIRTHDAY_BONUS_STORAGE_KEY = "birthday_bonus_awarded";
+
 const Home = () => {
   const [session, setSession] = useState<Session | null>(
     UserSession.getSession(),
@@ -56,6 +63,10 @@ const Home = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const [visitations, setVisitations] = useState<any[]>([]);
+  const [birthdayBonus, setBirthdayBonus] = useState<BirthdayBonusStatus>({
+    awardedToday: false,
+    points: 0,
+  });
 
   useEffect(() => {
     const unsubscribe = UserSession.onSessionChange((nextSession) => {
@@ -82,6 +93,42 @@ const Home = () => {
       // Error loading notifications
     }
   };
+
+  const loadBirthdayBonusStatus = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem(BIRTHDAY_BONUS_STORAGE_KEY);
+      if (!raw) {
+        setBirthdayBonus({ awardedToday: false, points: 0 });
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as {
+        awardedAt?: string;
+        pointsAwarded?: number;
+      };
+
+      const awardedAt = parsed.awardedAt ? new Date(parsed.awardedAt) : null;
+      const now = new Date();
+      const isSameDay =
+        !!awardedAt &&
+        awardedAt.getFullYear() === now.getFullYear() &&
+        awardedAt.getMonth() === now.getMonth() &&
+        awardedAt.getDate() === now.getDate();
+
+      if (!isSameDay) {
+        await AsyncStorage.removeItem(BIRTHDAY_BONUS_STORAGE_KEY);
+        setBirthdayBonus({ awardedToday: false, points: 0 });
+        return;
+      }
+
+      setBirthdayBonus({
+        awardedToday: true,
+        points: Number(parsed.pointsAwarded ?? 100),
+      });
+    } catch {
+      setBirthdayBonus({ awardedToday: false, points: 0 });
+    }
+  }, []);
 
   // Save notification to history
   const saveNotification = async (title: string, body: string) => {
@@ -226,26 +273,29 @@ const Home = () => {
     [session?.user.id],
   );
 
-  const fetchpoints = useCallback(async (isActive: () => boolean) => {
-    if (!session?.user.id) return;
-    try {
-      let points = await GetTotalFinalPoints(session?.user.id);
-      let last = await GetLastPointvisit(session?.user.id);
-      if (isActive()) {
-        settotal(points);
-        setlastp(last);
-        if (points >= 500) {
-          setQualify(true);
-          setQualpoints(points);
-        } else {
-          setQualify(false);
-          setQualpoints(0);
+  const fetchpoints = useCallback(
+    async (isActive: () => boolean) => {
+      if (!session?.user.id) return;
+      try {
+        let points = await GetTotalFinalPoints(session?.user.id);
+        let last = await GetLastPointvisit(session?.user.id);
+        if (isActive()) {
+          settotal(points);
+          setlastp(last);
+          if (points >= 500) {
+            setQualify(true);
+            setQualpoints(points);
+          } else {
+            setQualify(false);
+            setQualpoints(0);
+          }
         }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [session?.user.id]);
+    },
+    [session?.user.id],
+  );
 
   const fetchVisitations = useCallback(
     async (isActive: () => boolean) => {
@@ -268,10 +318,11 @@ const Home = () => {
       getUserData(() => active);
       fetchpoints(() => active);
       fetchVisitations(() => active);
+      loadBirthdayBonusStatus();
       return () => {
         active = false;
       };
-    }, [getUserData, fetchpoints, fetchVisitations]),
+    }, [getUserData, fetchpoints, fetchVisitations, loadBirthdayBonusStatus]),
   );
 
   const handleClaimSuccess = useCallback(() => {
@@ -407,6 +458,13 @@ const Home = () => {
 
       {/* Balance Card */}
       <View style={styles.balanceCard}>
+        {birthdayBonus.awardedToday && (
+          <View style={styles.birthdayBadge}>
+            <Text style={styles.birthdayBadgeText}>
+              Birthday bonus awarded: +{birthdayBonus.points} pts
+            </Text>
+          </View>
+        )}
         <Text style={styles.balanceAmount}>
           {" "}
           {loading ? "Loading..." : total}
@@ -541,6 +599,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000000",
     marginBottom: 5,
+  },
+  birthdayBadge: {
+    backgroundColor: "#000000",
+    borderRadius: 999,
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 10,
+  },
+  birthdayBadgeText: {
+    color: "#D4F5E9",
+    fontWeight: "700",
+    fontSize: 12,
+    letterSpacing: 0.4,
   },
   balanceLabel: {
     fontSize: 12,

@@ -14,11 +14,11 @@ const Index = () => {
       // Check persistence preference first
       let keepSignedIn;
       try {
-        keepSignedIn = await AsyncStorage.getItem('keep_signed_in');
+        keepSignedIn = await AsyncStorage.getItem("keep_signed_in");
         console.log("Index - Keep signed in preference:", keepSignedIn);
-        
-        if (keepSignedIn !== 'true') {
-           await supabase.auth.signOut();
+
+        if (keepSignedIn !== "true") {
+          await supabase.auth.signOut();
         }
       } catch (e) {
         console.error("Error checking Keep Signed In pref:", e);
@@ -30,7 +30,7 @@ const Index = () => {
       } = await supabase.auth.getSession();
 
       if (!active) return;
-      
+
       console.log("Index - Session found:", !!session?.user?.id);
 
       if (!session?.user?.id) {
@@ -38,11 +38,10 @@ const Index = () => {
         return;
       }
 
-
       // NOTE: We already read session above, no need to read again unless asynchronous changes
       // happened, but since signOut is awaited, we are good.
       // However, we need to check the variable `session` we just got.
-      
+
       const { data: userData } = await supabase
         .from("User")
         .select("role")

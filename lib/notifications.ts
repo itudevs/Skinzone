@@ -3,9 +3,6 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from './supabase';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
 // Configure how notifications should be handled when app is in foreground
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -17,79 +14,33 @@ Notifications.setNotificationHandler({
     }),
 });
 
-async function getFunctionAuthHeaders() {
-    const {
-        data: { session },
-    } = await supabase.auth.getSession();
-
-    let accessToken = session?.access_token;
-
-    // Refresh near-expiry tokens because edge function calls do not auto-refresh like supabase-js queries.
-    const isExpiringSoon =
-        !!session?.expires_at && session.expires_at * 1000 <= Date.now() + 60_000;
-
-    if (!accessToken || isExpiringSoon) {
-        const {
-            data: { session: refreshedSession },
-            error,
-        } = await supabase.auth.refreshSession();
-
-        if (error) {
-            console.log('Unable to refresh auth session for push notifications:', error.message);
-            return null;
-        }
-
-        accessToken = refreshedSession?.access_token;
-    }
-
-    if (!accessToken) {
-        return null;
-    }
-
-    return {
-        Authorization: "Bearer " + accessToken,
-    };
-}
-
 async function invokeEdgeFunction(
     functionName: string,
     body: Record<string, unknown>,
     hasRetried = false,
 ) {
-    if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Missing Supabase env vars for function invocation');
-    }
-
-    const headers = await getFunctionAuthHeaders();
-    if (!headers?.Authorization) {
-        throw new Error('Cannot invoke function: no authenticated session');
-    }
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            apikey: supabaseAnonKey,
-            Authorization: headers.Authorization,
-        },
-        body: JSON.stringify(body),
+    const { data, error } = await supabase.functions.invoke(functionName, {
+        body,
     });
 
-    if (!response.ok) {
-        const text = await response.text();
+    if (error) {
+        const message = error.message ?? '';
+        const status = (error as any)?.context?.status;
 
         // Recover from stale local token by forcing a refresh once and retrying.
-        if (!hasRetried && response.status === 401 && text.includes('Invalid JWT')) {
-            const { error } = await supabase.auth.refreshSession();
-            if (!error) {
+        if (!hasRetried && status === 401 && message.includes('Invalid JWT')) {
+            const { error: refreshError } = await supabase.auth.refreshSession();
+            if (!refreshError) {
                 return invokeEdgeFunction(functionName, body, true);
             }
         }
 
-        throw new Error(`Edge function ${functionName} failed (${response.status}): ${text}`);
+        throw new Error(
+            `Edge function ${functionName} failed${status ? ` (${status})` : ''}: ${message}`,
+        );
     }
 
-    return response.json().catch(() => null);
+    return data ?? null;
 }
 
 // Request notification permissions
@@ -161,5 +112,14 @@ export async function sendVisitNotification(treatmentName: string, staffName: st
     } catch (error) {
         console.log("Error sending visit push notification:", error);
         throw error;
+    }
+}
+
+export async function allocateBirthdayPointsIfEligible() {
+    try {
+        return await invokeEdgeFunction('allocate-birthday-points', {});
+    } catch (error) {
+        console.log("Error allocating birthday points:", error);
+        return null;
     }
 }

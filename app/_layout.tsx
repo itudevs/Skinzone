@@ -3,12 +3,50 @@ import { StatusBar, StyleSheet, View } from "react-native";
 import { useEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from "expo-linking";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import {
+  allocateBirthdayPointsIfEligible,
   registerPushTokenForCurrentUser,
   requestNotificationPermissions,
 } from "@/lib/notifications";
 import { UserSession } from "@/components/utils/GetUsersession";
+
+const decodeParam = (value?: string | null) => {
+  if (!value) return "";
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const parseAllUrlParams = (url: string): Record<string, string> => {
+  const params: Record<string, string> = {};
+
+  const { queryParams } = Linking.parse(url);
+  if (queryParams) {
+    Object.entries(queryParams).forEach(([key, value]) => {
+      if (typeof value === "string") {
+        params[key] = decodeParam(value);
+      }
+    });
+  }
+
+  const hash = url.split("#")[1];
+  if (hash) {
+    hash.split("&").forEach((pair) => {
+      const [rawKey, ...rawValueParts] = pair.split("=");
+      if (!rawKey) return;
+      const rawValue = rawValueParts.join("=");
+      params[decodeParam(rawKey)] = decodeParam(rawValue);
+    });
+  }
+
+  return params;
+};
+
+const BIRTHDAY_BONUS_STORAGE_KEY = "birthday_bonus_awarded";
 
 // Keep native splash visible until we hide it manually
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -17,6 +55,8 @@ export default function RootLayout() {
   const router = useRouter();
 
   useEffect(() => {
+    let lastHandledUserId: string | null = null;
+
     // Run startup work in parallel
     requestNotificationPermissions().catch(() => {});
 
@@ -25,35 +65,50 @@ export default function RootLayout() {
       if (!url) return;
       console.log("Incoming Deep Link:", url);
 
-      // Extract access_token and refresh_token from the URL fragment
-      // The URL format is scheme://path#access_token=...&refresh_token=...&type=recovery
-      
-      // Handle standard query params too just in case
-      const { queryParams } = Linking.parse(url);
-      
-      let accessToken = queryParams?.access_token as string;
-      let refreshToken = queryParams?.refresh_token as string;
+      const params = parseAllUrlParams(url);
+      const accessToken = params.access_token;
+      const refreshToken = params.refresh_token;
+      const code = params.code;
+      const tokenHash = params.token_hash;
+      const type = params.type;
 
-      // Check fragment if query params are missing (Supabase default)
-      if (!accessToken || !refreshToken) {
-         const fragment = url.split("#")[1];
-         if (fragment) {
-            // Manual parsing to avoid URLSearchParams issues if not polyfilled
-            accessToken = fragment.match(/access_token=([^&]+)/)?.[1] || "";
-            refreshToken = fragment.match(/refresh_token=([^&]+)/)?.[1] || "";
-         }
-      }
+      let recoveryEstablished = false;
 
-      if (accessToken && refreshToken) {
-         const { error } = await supabase.auth.setSession({
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error("Error exchanging code for session:", error);
+        } else {
+          recoveryEstablished = true;
+          console.log("Session established from code successfully");
+        }
+      } else if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
         if (error) {
-           console.error("Error setting session from deep link:", error);
+          console.error("Error setting session from deep link:", error);
         } else {
-           console.log("Session set from deep link successfully");
+          recoveryEstablished = true;
+          console.log("Session set from deep link successfully");
         }
+      } else if (tokenHash && type === "recovery") {
+        const { error } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash: tokenHash,
+        });
+        if (error) {
+          console.error("Error verifying recovery token:", error);
+        } else {
+          recoveryEstablished = true;
+          console.log("Recovery token verified successfully");
+        }
+      }
+
+      if (recoveryEstablished || type === "recovery") {
+        const resetPasswordRoute: any = "/ResetPassword";
+        router.replace(resetPasswordRoute);
       }
     };
 
@@ -66,20 +121,41 @@ export default function RootLayout() {
     });
 
     const unsubscribeUserSession = UserSession.onSessionChange((session) => {
-      if (!session?.user?.id) {
+      const currentUserId = session?.user?.id ?? null;
+
+      if (!currentUserId) {
+        lastHandledUserId = null;
         return;
       }
 
-      registerPushTokenForCurrentUser().catch(() => {});
+      if (lastHandledUserId === currentUserId) {
+        return;
+      }
+
+      lastHandledUserId = currentUserId;
+
+      registerPushTokenForCurrentUser()
+        .then(() => allocateBirthdayPointsIfEligible())
+        .then(async (result) => {
+          if (!result?.awarded) {
+            return;
+          }
+
+          await AsyncStorage.setItem(
+            BIRTHDAY_BONUS_STORAGE_KEY,
+            JSON.stringify({
+              awardedAt: new Date().toISOString(),
+              pointsAwarded: result.pointsAwarded ?? 100,
+            }),
+          );
+        })
+        .catch(() => {});
     });
 
-    // Listen for Auth State Changes (PASSWORD_RECOVERY)
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Listen for auth state changes (diagnostics only).
+    // In-app token reset flow controls navigation in the screen itself.
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       console.log("Auth Event:", event);
-      
-      if (event === "PASSWORD_RECOVERY") {
-        router.replace("/ResetPassword");
-      }
     });
 
     const timer = setTimeout(() => {
@@ -100,25 +176,16 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="SignUp" />
-        <Stack.Screen
-          name="Login"
-          options={{ gestureEnabled: false }}
-        />
+        <Stack.Screen name="Login" options={{ gestureEnabled: false }} />
         <Stack.Screen name="ForgotPassword" />
         <Stack.Screen name="ResetPassword" />
         <Stack.Screen
           name="CustomerProfile"
           options={{ gestureEnabled: false }}
         />
-        <Stack.Screen
-          name="(tabs)"
-          options={{ gestureEnabled: false }}
-        />
+        <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
         <Stack.Screen name="ChangePassword" />
-        <Stack.Screen
-          name="(Admintab)"
-          options={{ gestureEnabled: false }}
-        />
+        <Stack.Screen name="(Admintab)" options={{ gestureEnabled: false }} />
         <Stack.Screen
           name="PrivacyPolicy"
           options={{ title: "PrivacyPolicy" }}

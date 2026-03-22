@@ -53,7 +53,6 @@ const CustomerModal = ({
   const [selectedTreatmentId, setSelectedTreatmentId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [clicked, setclicked] = useState(false);
-  const [staff, setstaff] = useState<DropDownItems[]>([]);
   const [treatment, settreatment] = useState<DropDownItems[]>([]);
   const [products, setProducts] = useState<DropDownItems[]>([]);
   const [amountpaid, setamountpaid] = useState("0.00");
@@ -69,11 +68,6 @@ const CustomerModal = ({
   const [lastvisit, setlastvisit] = useState<number>(0);
   const [idfetched, setidfetched] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  const handleStaffSelect = (id: string, value: string) => {
-    setSelectedStaffId(id);
-    setSelectedStaffName(value);
-  };
 
   const handleTreatmentSelect = (id: string, value: string) => {
     setSelectedTreatmentId(id);
@@ -239,38 +233,39 @@ const CustomerModal = ({
     Onclose();
   };
 
-  const GetStaff = async () => {
-    const { data, error } = await supabase
-      .from("User")
-      .select("id,name")
-      .eq("role", "staff");
-
-    if (error) {
-      Alert.alert("Error", "Error occurred while fetching staff");
-      return [];
-    }
-
-    if (data && data.length > 0) {
-      return data.map((staff) => ({
-        id: staff.id,
-        value: staff.name,
-        cost: null,
-        points: null,
-      }));
-    }
-
-    return [];
-  };
-
   useEffect(() => {
     if (!Visible) return;
     let mounted = true;
 
-    GetStaff().then((u) => {
-      if (mounted) {
-        setstaff(u);
+    const setCurrentStaffMember = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const currentUserId = session?.user?.id;
+
+      if (!currentUserId) {
+        return;
       }
-    });
+
+      if (!mounted) return;
+      setSelectedStaffId(currentUserId);
+
+      const { data: userData } = await supabase
+        .from("User")
+        .select("name,surname")
+        .eq("id", currentUserId)
+        .maybeSingle();
+
+      if (!mounted) return;
+      const fullName = [userData?.name, userData?.surname]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      setSelectedStaffName(fullName || "Current Staff");
+    };
+
+    setCurrentStaffMember();
 
     GetTreatments().then((y) => {
       if (mounted) {
@@ -401,10 +396,20 @@ const CustomerModal = ({
                 </Text>
                 <View style={styles.StatusPill}>
                   <Text style={styles.StatusText}>
-                    Qualifies for:{" "}
-                    <Text style={{ fontWeight: "bold" }}>
-                      Free Scalp Treatment
-                    </Text>
+                    {!idfetched ? (
+                      "Loading..."
+                    ) : point >= 500 ? (
+                      <>
+                        Qualifies for:{" "}
+                        <Text style={{ fontWeight: "bold" }}>
+                          Free Scalp Treatment
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={{ fontWeight: "bold" }}>
+                        Does Not Qualify for Treatment
+                      </Text>
+                    )}
                   </Text>
                 </View>
               </View>
@@ -437,12 +442,15 @@ const CustomerModal = ({
 
               {/* Staff Member Dropdown */}
               <Text style={styles.InputLabel}>STAFF MEMBER</Text>
-              <DropDownInput
-                value={selectedStaffName || "Select User"}
-                id="staff-select"
-                DropDownItem={staff}
-                onSelect={handleStaffSelect}
-              />
+              <View style={styles.InputContainer}>
+                <TextInput
+                  style={styles.TextInput}
+                  value={selectedStaffName || "Current Staff"}
+                  editable={false}
+                  placeholder="Current Staff"
+                  placeholderTextColor="#666"
+                />
+              </View>
 
               {/* Amount Paid */}
               <Text style={styles.InputLabel}>AMOUNT PAID</Text>

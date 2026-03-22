@@ -38,7 +38,6 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
   const [selectedtreatmentid, setselectedtreatmentid] = useState("");
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [treatment, settreatment] = useState<DropDownItems[]>([]);
-  const [staff, setstaff] = useState<DropDownItems[]>([]);
   const [amountpaid, setamountpaid] = useState("0.00");
   const [notes, setnotes] = useState("");
   const [selectedTreatmentName, setSelectedTreatmentName] = useState(
@@ -46,10 +45,6 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
   );
   const [isClaimed, setIsClaimed] = useState(false);
   const [claimedTreatmentName, setClaimedTreatmentName] = useState("");
-
-  const handleStaffSelect = (id: string, value: string) => {
-    setSelectedStaffId(id);
-  };
 
   const handletreatment = (id: string, value: string) => {
     setselectedtreatmentid(id);
@@ -66,6 +61,9 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
     if (!isModalActive) return;
     let mounted = true;
 
+    // Free visit on customer side always uses customer as the staff value.
+    setSelectedStaffId(customerid);
+
     // Fetch treatments
     GetTreatments().then((y) => {
       if (mounted) {
@@ -73,37 +71,10 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
       }
     });
 
-    // Fetch staff
-    const GetStaff = async () => {
-      const { data, error } = await supabase
-        .from("User")
-        .select("id,name")
-        .eq("role", "staff");
-
-      if (error) {
-        Alert.alert("Error", "error occured while fetching staff");
-        return [];
-      }
-
-      if (data && data.length > 0) {
-        return data.map((staff) => ({
-          id: staff.id,
-          value: staff.name,
-        }));
-      }
-      return [];
-    };
-
-    GetStaff().then((s) => {
-      if (mounted) {
-        setstaff(s);
-      }
-    });
-
     return () => {
       mounted = false;
     };
-  }, [isModalActive]);
+  }, [isModalActive, customerid]);
 
   // Check if treatment has already been claimed
   useEffect(() => {
@@ -150,12 +121,6 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
     // Validate treatment selection
     if (!selectedtreatmentid) {
       Alert.alert("Error", "Please select a treatment");
-      return;
-    }
-
-    // Validate staff selection
-    if (!selectedStaffId) {
-      Alert.alert("Error", "Please select a staff member");
       return;
     }
 
@@ -288,13 +253,13 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
     if (!isModalActive) {
       // Reset form when modal is closed
       setselectedtreatmentid("");
-      setSelectedStaffId("");
+      setSelectedStaffId(customerid);
       setamountpaid("0.00");
       setnotes("");
       setclicked(false);
       setSelectedTreatmentName("Select Free Treatment");
     }
-  }, [isModalActive]);
+  }, [isModalActive, customerid]);
 
   return (
     <View>
@@ -365,12 +330,25 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
                 </View>
                 <View style={styles.VisitHolder}>
                   <PrimaryText children="STAFF MEMBER" />
-                  <DropDownInput
-                    id="freevisit-staff"
-                    value={"Select Staff Member"}
-                    DropDownItem={staff}
-                    onSelect={handleStaffSelect}
-                  />
+                  <View
+                    style={{
+                      paddingVertical: 10,
+                      marginVertical: 10,
+                      marginRight: 20,
+                      backgroundColor: Colors.PrimaryBackground,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.TextColour,
+                        paddingLeft: 10,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Customer
+                    </Text>
+                  </View>
                 </View>
                 <View style={styles.VisitHolder}>
                   <PrimaryText children="AMOUNT PAID" />
