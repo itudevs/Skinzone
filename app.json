@@ -2,7 +2,7 @@
   "expo": {
     "name": "Skinzone",
     "slug": "skinzone",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/SkinzoneLogo.jpeg",
     "backgroundColor": "#232323",
@@ -16,7 +16,6 @@
       "bundleIdentifier": "za.co.skinzone.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSUserTrackingUsageDescription": "This app does not track you across other apps or websites.",
         "NSPhotoLibraryUsageDescription": "We need access to your photo library to let you choose a profile picture.",
         "NSCameraUsageDescription": "We need access to your camera to let you take a profile picture.",
         "NSLocationWhenInUseUsageDescription": "This app does not use your location.",

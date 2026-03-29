@@ -78,7 +78,22 @@ const PrivacyPolicy = () => {
           transmission over the internet or electronic storage is 100% secure.
         </Text>
 
-        <Text style={styles.sectionTitle}>5. Contact Us</Text>
+        <Text style={styles.sectionTitle}>5. Data Sharing</Text>
+        <Text style={styles.text}>
+          We do not sell personal information. We only share data with service
+          providers that are required to operate the app, such as Supabase
+          (secure backend hosting/authentication/storage) and Expo Notifications
+          (push delivery), and only for app functionality.
+        </Text>
+
+        <Text style={styles.sectionTitle}>6. Tracking</Text>
+        <Text style={styles.text}>
+          Skinzone does not track you across other companies' apps or websites
+          for advertising purposes. We do not use third-party advertising SDKs,
+          data brokers, or cross-app profiling.
+        </Text>
+
+        <Text style={styles.sectionTitle}>7. Contact Us</Text>
         <Text style={styles.text}>
           If you have questions about this policy, please contact us at:
         </Text>
@@ -88,13 +103,6 @@ const PrivacyPolicy = () => {
         <Text style={styles.bulletPoint}>• Phone: +27 61 587 7918</Text>
         <Text style={styles.bulletPoint}>
           • Address: Owner Vukosi J Chabangu
-        </Text>
-        <Text style={styles.bulletPoint}>• Create and manage your account</Text>
-        <Text style={styles.bulletPoint}>
-          • Track your visit history and loyalty points
-        </Text>
-        <Text style={styles.bulletPoint}>
-          • Send you notifications about your visits
         </Text>
         <View style={styles.footer} />
       </ScrollView>

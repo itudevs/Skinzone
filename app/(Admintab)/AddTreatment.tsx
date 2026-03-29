@@ -423,15 +423,32 @@ const AddTreatment = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 90 }}
       >
-        <Picker
-          selectedValue={selecteditem}
-          onValueChange={(itemValue) => {
-            setselecteditem(itemValue);
-          }}
-        >
-          <Picker.Item value={"treatment"} label="Treatment" />
-          <Picker.Item value={"product"} label="Product" />
-        </Picker>
+        {Platform.OS === "ios" ? (
+          <Picker
+            selectedValue={selecteditem}
+            onValueChange={(itemValue) => {
+              setselecteditem(itemValue);
+            }}
+          >
+            <Picker.Item value={"treatment"} label="Treatment" />
+            <Picker.Item value={"product"} label="Product" />
+          </Picker>
+        ) : (
+          <View style={styles.androidPickerContainer}>
+            <Picker
+              selectedValue={selecteditem}
+              onValueChange={(itemValue) => {
+                setselecteditem(itemValue);
+              }}
+              mode="dropdown"
+              style={styles.androidPicker}
+              dropdownIconColor="#ffffff"
+            >
+              <Picker.Item value={"treatment"} label="Treatment" />
+              <Picker.Item value={"product"} label="Product" />
+            </Picker>
+          </View>
+        )}
         {selecteditem == "treatment" && (
           <View style={styles.main}>
             <Text style={styles.maintexts}>Add New Treatment</Text>
@@ -666,5 +683,20 @@ const styles = StyleSheet.create({
   },
   presseditem: {
     opacity: 0.5,
+  },
+  androidPickerContainer: {
+    marginHorizontal: 25,
+    marginVertical: 15,
+    marginTop: 40,
+    borderRadius: 8,
+    backgroundColor: Colors.background100,
+    borderWidth: 1,
+    borderColor: "#8b8b8bff",
+    overflow: "hidden",
+  },
+  androidPicker: {
+    color: "white",
+    height: 50,
+    backgroundColor: Colors.background100,
   },
 });

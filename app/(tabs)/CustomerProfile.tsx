@@ -67,12 +67,14 @@ const CustomerProfile = () => {
       }
 
       // Upload to Supabase Storage
-      const imageUrl = await uploadProfileImage(userId, image.uri);
+      const imageUrl = await uploadProfileImage(userId, image);
 
       if (imageUrl) {
         // Reload from database to get the fresh URL
         await loadProfilePicture();
         Alert.alert("Success", "Profile picture updated successfully!");
+      } else {
+        Alert.alert("Upload Failed", "Profile image was not uploaded.");
       }
     } catch (error) {
       Alert.alert(

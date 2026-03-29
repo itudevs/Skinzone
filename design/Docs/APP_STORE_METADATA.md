@@ -63,6 +63,21 @@
 >
 > The app functionality focuses on tracking user visitations and loyalty points for the Skinzone salon.
 
+### 5.1.2(i) Resubmission Note (Paste in App Review Notes)
+
+> We updated our App Privacy settings and legal text to clarify that Skinzone does not perform tracking as defined by Apple (no cross-app/web advertising tracking, no data broker sharing, no third-party ad SDKs).
+>
+> The app does collect first-party account and service data strictly for core functionality (authentication, profile, loyalty points, visit history, and optional push notifications).
+>
+> We removed any ambiguity that could imply ATT-required behavior. No AppTrackingTransparency prompt is used because the app does not track users under Apple's definition.
+>
+> Third-party processors used only for app operations:
+>
+> - Supabase: backend hosting, auth, database, and storage
+> - Expo Notifications: push notification delivery
+>
+> If helpful for review, the relevant policy screens are available in-app via Privacy Policy and Terms of Service links from authentication/profile flows.
+
 ### Contact Information
 
 > **Name:** Itumeleng Morena
