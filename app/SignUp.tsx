@@ -20,6 +20,10 @@ import PrimaryLink from "@/components/PrimaryLink";
 import DatePicker from "@/components/DatePicker";
 import PasswordInput from "@/components/PasswordInput";
 import { Href, useRouter } from "expo-router";
+import {
+  handleSupabaseAuthError,
+  handleUnexpectedError,
+} from "../lib/error-handler";
 
 const SignUp = () => {
   const insets = useSafeAreaInsets();
@@ -118,7 +122,9 @@ const SignUp = () => {
       });
 
       if (error) {
-        Alert.alert("Sign Up Failed", error.message);
+        const sanitizedError = handleSupabaseAuthError(error);
+        Alert.alert(sanitizedError.title, sanitizedError.message);
+        console.error("Sign up error:", error);
         return;
       }
 
@@ -138,7 +144,8 @@ const SignUp = () => {
         redirect("/Login");
       }
     } catch (error) {
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      const sanitizedError = handleUnexpectedError(error);
+      Alert.alert(sanitizedError.title, sanitizedError.message);
       console.error("SignUp error:", error);
     } finally {
       setLoading(false);
@@ -159,14 +166,20 @@ const SignUp = () => {
         >
           Sign-Up{" "}
         </Text>
-        <PrimaryText children="Welcome to your Skin journey"></PrimaryText>
+        <PrimaryText>Welcome to your Skin journey</PrimaryText>
       </View>
       {/*Sign Up Card*/}
       <View style={styles.CardContainer}>
+        {/*Required Field Legend */}
+        <Text style={styles.legendText}>
+          <Text style={styles.asterisk}>*</Text>
+          <Text> = Required field</Text>
+        </Text>
+
         {/*Name and Surname Row */}
         <View style={styles.rowContainer}>
           <View style={styles.halfInput}>
-            <PrimaryText children="NAME" />
+            <PrimaryText required={true}>NAME</PrimaryText>
             <TextInput
               style={styles.textinputheader}
               placeholder="John"
@@ -177,7 +190,7 @@ const SignUp = () => {
             />
           </View>
           <View style={styles.halfInput}>
-            <PrimaryText children="SURNAME" />
+            <PrimaryText required={true}>SURNAME</PrimaryText>
             <TextInput
               style={styles.textinputheader}
               placeholder="Doe"
@@ -191,7 +204,7 @@ const SignUp = () => {
 
         {/*Email Field */}
         <View style={styles.inputcontainer}>
-          <PrimaryText children="EMAIL" />
+          <PrimaryText required={true}>EMAIL</PrimaryText>
           <Input
             text="john.doe@example.com"
             value={email}
@@ -203,7 +216,7 @@ const SignUp = () => {
 
         {/*Phone Field */}
         <View style={styles.inputcontainer}>
-          <PrimaryText children="PHONE" />
+          <PrimaryText required={true}>PHONE</PrimaryText>
           <Input
             text="+27 (81) 555-4444"
             value={phone}
@@ -214,7 +227,7 @@ const SignUp = () => {
 
         {/*Date of Birth Field */}
         <View style={styles.inputcontainer}>
-          <PrimaryText children="DATE OF BIRTH" />
+          <PrimaryText required={true}>DATE OF BIRTH</PrimaryText>
           <DatePicker
             placeholder="mm/dd/yyyy"
             value={dob}
@@ -224,7 +237,7 @@ const SignUp = () => {
 
         {/*Password Field */}
         <View style={styles.inputcontainer}>
-          <PrimaryText children="PASSWORD" />
+          <PrimaryText required={true}>PASSWORD</PrimaryText>
           <PasswordInput
             placeholder="••••••••"
             value={password}
@@ -234,7 +247,7 @@ const SignUp = () => {
 
         {/*Confirm Password Field */}
         <View style={styles.inputcontainer}>
-          <PrimaryText children="CONFIRM PASSWORD" />
+          <PrimaryText required={true}>CONFIRM PASSWORD</PrimaryText>
           <PasswordInput
             placeholder="••••••••"
             value={confirmpassword}
@@ -290,8 +303,10 @@ const SignUp = () => {
 
         {/*Login Link */}
         <View style={styles.signupcontainer}>
-          <PrimaryText children="Already a Member?" />
-          <PrimaryLink colour="#00FF5F" url="/Login" children="Login" />
+          <PrimaryText>Already a Member?</PrimaryText>
+          <PrimaryLink colour="#00FF5F" url="/Login">
+            Login
+          </PrimaryLink>
         </View>
       </View>
     </View>
@@ -425,5 +440,16 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 8,
     paddingLeft: 36,
+  },
+  legendText: {
+    color: Colors.TextColour,
+    fontSize: 12,
+    marginBottom: 15,
+    marginTop: 5,
+  },
+  asterisk: {
+    color: "#FF4444",
+    fontWeight: "bold",
+    fontSize: 14,
   },
 });
