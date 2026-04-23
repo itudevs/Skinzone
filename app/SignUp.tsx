@@ -29,6 +29,8 @@ const SignUp = () => {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [surnameError, setSurnameError] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState<Date | undefined>(undefined);
@@ -48,6 +50,75 @@ const SignUp = () => {
     const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
     return phoneRegex.test(phone);
   };
+  const hasOnlyValidNameChars = (value: string): boolean => {
+    return /^[\p{L}\s'-]+$/u.test(value);
+  };
+  const validateNameValue = (value: string): string => {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return "This field is required";
+    }
+
+    if (trimmed.length < 2) {
+      return "Must be at least 2 characters";
+    }
+
+    if (trimmed.length > 50) {
+      return "Must be 50 characters or fewer";
+    }
+
+    if (!hasOnlyValidNameChars(trimmed)) {
+      return "Only letters, spaces, apostrophes, and hyphens are allowed";
+    }
+
+    if (!/^[\p{L}]/u.test(trimmed)) {
+      return "Must start with a letter";
+    }
+
+    return "";
+  };
+  const handleNameChange = (value: string) => {
+    setName(value);
+    setNameError(validateNameValue(value));
+  };
+  const handleSurnameChange = (value: string) => {
+    setSurname(value);
+    setSurnameError(validateNameValue(value));
+  };
+  const validatePassword = (value: string): boolean => {
+    const hasMinLength = value.length >= 8;
+    const hasLetter = /[A-Za-z]/.test(value);
+    const hasNumber = /\d/.test(value);
+    return hasMinLength && hasLetter && hasNumber;
+  };
+  const getPasswordStrength = (value: string) => {
+    if (!value) {
+      return { label: "", color: Colors.TextColour };
+    }
+
+    let score = 0;
+    if (value.length >= 8) score += 1;
+    if (/[A-Za-z]/.test(value)) score += 1;
+    if (/\d/.test(value)) score += 1;
+
+    if (score <= 1) {
+      return { label: "Weak", color: "#FF6B6B" };
+    }
+
+    if (score === 2) {
+      return { label: "Medium", color: "#FFC857" };
+    }
+
+    return { label: "Strong", color: "#00FF5F" };
+  };
+
+  const passwordChecks = {
+    hasMinLength: password.length >= 8,
+    hasLetter: /[A-Za-z]/.test(password),
+    hasNumber: /\d/.test(password),
+  };
+  const passwordStrength = getPasswordStrength(password);
 
   const SignUpHandler = async () => {
     try {
@@ -75,6 +146,19 @@ const SignUp = () => {
         return;
       }
 
+      const validatedNameError = validateNameValue(name);
+      const validatedSurnameError = validateNameValue(surname);
+      setNameError(validatedNameError);
+      setSurnameError(validatedSurnameError);
+
+      if (validatedNameError || validatedSurnameError) {
+        Alert.alert(
+          "Error",
+          "Please correct name and surname. Only letters, spaces, apostrophes, and hyphens are allowed.",
+        );
+        return;
+      }
+
       if (!validateEmail(email)) {
         Alert.alert("Error", "Please enter a valid email address");
         return;
@@ -88,8 +172,11 @@ const SignUp = () => {
         return;
       }
 
-      if (password.length < 13) {
-        Alert.alert("Error", "Password must be at least 13 characters");
+      if (!validatePassword(password)) {
+        Alert.alert(
+          "Error",
+          "Password must be at least 8 characters and include at least one letter and one number",
+        );
         return;
       }
 
@@ -185,9 +272,12 @@ const SignUp = () => {
               placeholder="John"
               placeholderTextColor="#666"
               value={name}
-              onChangeText={setName}
+              onChangeText={handleNameChange}
               autoCapitalize="words"
             />
+            {!!nameError && (
+              <Text style={styles.inlineErrorText}>{nameError}</Text>
+            )}
           </View>
           <View style={styles.halfInput}>
             <PrimaryText required={true}>SURNAME</PrimaryText>
@@ -196,9 +286,12 @@ const SignUp = () => {
               placeholder="Doe"
               placeholderTextColor="#666"
               value={surname}
-              onChangeText={setSurname}
+              onChangeText={handleSurnameChange}
               autoCapitalize="words"
             />
+            {!!surnameError && (
+              <Text style={styles.inlineErrorText}>{surnameError}</Text>
+            )}
           </View>
         </View>
 
@@ -243,6 +336,51 @@ const SignUp = () => {
             value={password}
             onChangeText={setPassword}
           />
+          <Text style={styles.passwordHelperText}>
+            Use at least 8 characters with at least one letter and one number.
+          </Text>
+          {!!password && (
+            <View style={styles.passwordFeedbackContainer}>
+              <Text
+                style={[
+                  styles.passwordStrengthText,
+                  { color: passwordStrength.color },
+                ]}
+              >
+                Strength: {passwordStrength.label}
+              </Text>
+              <Text
+                style={[
+                  styles.passwordRuleText,
+                  passwordChecks.hasMinLength
+                    ? styles.passwordRuleMet
+                    : styles.passwordRuleUnmet,
+                ]}
+              >
+                • At least 8 characters
+              </Text>
+              <Text
+                style={[
+                  styles.passwordRuleText,
+                  passwordChecks.hasLetter
+                    ? styles.passwordRuleMet
+                    : styles.passwordRuleUnmet,
+                ]}
+              >
+                • Contains a letter
+              </Text>
+              <Text
+                style={[
+                  styles.passwordRuleText,
+                  passwordChecks.hasNumber
+                    ? styles.passwordRuleMet
+                    : styles.passwordRuleUnmet,
+                ]}
+              >
+                • Contains a number
+              </Text>
+            </View>
+          )}
         </View>
 
         {/*Confirm Password Field */}
@@ -451,5 +589,36 @@ const styles = StyleSheet.create({
     color: "#FF4444",
     fontWeight: "bold",
     fontSize: 14,
+  },
+  passwordHelperText: {
+    color: Colors.TextColour,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 6,
+    opacity: 0.85,
+  },
+  passwordFeedbackContainer: {
+    marginTop: 8,
+  },
+  passwordStrengthText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  passwordRuleText: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  passwordRuleMet: {
+    color: "#00FF5F",
+  },
+  passwordRuleUnmet: {
+    color: "#FF8A8A",
+  },
+  inlineErrorText: {
+    color: "#FF8A8A",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 6,
   },
 });

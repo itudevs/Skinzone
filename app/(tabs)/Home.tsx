@@ -330,6 +330,8 @@ const Home = () => {
     fetchpoints(() => true);
   }, [fetchpoints]);
 
+  const pointsLeftToClaim = Math.max(0, 500 - total);
+
   return (
     <ScrollView
       style={styles.container}
@@ -465,10 +467,17 @@ const Home = () => {
             </Text>
           </View>
         )}
-        <Text style={styles.balanceAmount}>
-          {" "}
-          {loading ? "Loading..." : total}
-        </Text>
+        <View style={styles.balanceAmountRow}>
+          <Text style={styles.balanceAmount}>
+            {" "}
+            {loading ? "Loading..." : total}
+          </Text>
+          {!loading && (
+            <Text style={styles.pointsLeftText}>
+              {pointsLeftToClaim} points left to claim
+            </Text>
+          )}
+        </View>
         <Text style={styles.balanceLabel}>OVERALL BALANCE</Text>
 
         <View style={styles.balanceFooter}>
@@ -599,6 +608,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000000",
     marginBottom: 5,
+  },
+  balanceAmountRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  pointsLeftText: {
+    fontSize: 12,
+    color: "#2E7D65",
+    marginBottom: 14,
+    maxWidth: 140,
+    textAlign: "right",
+    fontWeight: "600",
   },
   birthdayBadge: {
     backgroundColor: "#000000",

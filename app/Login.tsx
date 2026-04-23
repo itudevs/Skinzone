@@ -20,14 +20,7 @@ import PrimaryButton from "@/components/PrimaryButton";
 import PrimaryLink from "@/components/PrimaryLink";
 import PasswordInput from "@/components/PasswordInput";
 import { useRouter } from "expo-router";
-import {
-  Lock,
-  User,
-  Eye,
-  EyeOff,
-  Square,
-  CheckSquare,
-} from "lucide-react-native";
+import { Square, CheckSquare } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = () => {
@@ -55,8 +48,8 @@ const Login = () => {
         return;
       }
 
-      if (password.length < 13) {
-        Alert.alert("Error", "Password must be at least 13 characters");
+      if (password.length < 8) {
+        Alert.alert("Error", "Password must be at least 8 characters");
         return;
       }
 
@@ -71,7 +64,7 @@ const Login = () => {
         password: password,
       });
 
-      const { data: userData, error: dbError } = await supabase
+      const { data: userData } = await supabase
         .from("User")
         .select("role")
         .eq("id", data.user?.id)
@@ -119,11 +112,11 @@ const Login = () => {
         >
           SKINZONE
         </Text>
-        <PrimaryText children="Welcome back to your skin journey" />
+        <PrimaryText>Welcome back to your skin journey</PrimaryText>
       </View>
 
       <View style={styles.inputcontainer}>
-        <PrimaryText children="Email" />
+        <PrimaryText>Email</PrimaryText>
 
         <Input
           text="user@example.com"
@@ -133,7 +126,7 @@ const Login = () => {
           autoCapitalize="none"
           showUserIcon
         />
-        <PrimaryText children="Password" />
+        <PrimaryText>Password</PrimaryText>
         <PasswordInput
           placeholder="••••••••"
           value={password}
@@ -153,11 +146,9 @@ const Login = () => {
           <Text style={styles.checkboxLabel}>Keep me signed in</Text>
         </Pressable>
 
-        <PrimaryLink
-          colour={Colors.TextColour}
-          url="/ForgotPassword"
-          children="Forgot Password"
-        />
+        <PrimaryLink colour={Colors.TextColour} url="/ForgotPassword">
+          Forgot Password
+        </PrimaryLink>
       </View>
 
       <View>
@@ -167,35 +158,31 @@ const Login = () => {
         />
       </View>
       <View style={styles.signupcontainer}>
-        <PrimaryText children="New to SkinZone?"></PrimaryText>
-        <PrimaryLink colour="#00FF5F" url="./SignUp" children="Sign Up" />
+        <PrimaryText>New to SkinZone?</PrimaryText>
+        <PrimaryLink colour="#00FF5F" url="./SignUp">
+          Sign Up
+        </PrimaryLink>
       </View>
 
       <View style={styles.signupcontainer}>
         <Text style={{ color: "#97999B", paddingTop: 4 }}>
           Are you a staff member?
         </Text>
-        <Link
-          colour={Colors.TextColour}
-          url="mailto:skinzonenaturel@gmail.com"
-          children="Contact Admin"
-        />
+        <Link colour={Colors.TextColour} url="mailto:skinzonenaturel@gmail.com">
+          Contact Admin
+        </Link>
       </View>
 
       <View style={styles.legalLinksContainer}>
-        <PrimaryLink
-          colour={Colors.TextColour}
-          url="/PrivacyPolicy"
-          children="Privacy Policy"
-        />
+        <PrimaryLink colour={Colors.TextColour} url="/PrivacyPolicy">
+          Privacy Policy
+        </PrimaryLink>
         <Text style={{ color: Colors.TextColour, paddingHorizontal: 8 }}>
           •
         </Text>
-        <PrimaryLink
-          colour={Colors.TextColour}
-          url="/TermsOfService"
-          children="Terms of Service"
-        />
+        <PrimaryLink colour={Colors.TextColour} url="/TermsOfService">
+          Terms of Service
+        </PrimaryLink>
       </View>
     </View>
   );

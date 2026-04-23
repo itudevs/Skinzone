@@ -131,7 +131,7 @@ const handleSupabaseAuthError = (error: any): SanitizedError => {
         return {
             title: "Password Error",
             message:
-                "Password does not meet security requirements. Please ensure it's at least 13 characters.",
+                "Password does not meet security requirements. Please use at least 8 characters with at least one letter and one number.",
             isNetworkError: false,
         };
     }
