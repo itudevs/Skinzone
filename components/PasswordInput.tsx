@@ -39,6 +39,7 @@ const PasswordInput = ({
         onChangeText={onChangeText}
         secureTextEntry={!isPasswordVisible}
         autoCapitalize="none"
+        autoComplete="off"
       />
       <TouchableOpacity
         style={styles.eyeContainer}

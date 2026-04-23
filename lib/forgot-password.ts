@@ -34,7 +34,7 @@ export async function sendPasswordResetOTP(email: string): Promise<{
 
     return {
       success: true,
-      message: 'Reset password email sent',
+      message: 'Reset password email sent,Check Spam if email not found in mailbox',
     };
   } catch (error) {
     console.error('Unexpected error sending reset email:', error);

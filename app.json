@@ -2,7 +2,7 @@
   "expo": {
     "name": "Skinzone",
     "slug": "skinzone",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/SkinzoneLogo.jpeg",
     "backgroundColor": "#232323",

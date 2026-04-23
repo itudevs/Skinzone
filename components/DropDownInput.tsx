@@ -12,7 +12,7 @@ interface DropDownValues {
 const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
   const [expanded, setexpanded] = useState(false);
   const [selectedValue, setselectedValue] = useState(value);
-  var Caret = expanded ? ChevronUp : ChevronDown;
+  const Caret = expanded ? ChevronUp : ChevronDown;
 
   // Sync internal state with prop value when it changes
   useEffect(() => {
