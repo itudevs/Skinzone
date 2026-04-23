@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   TextInput,
   StyleSheet,
@@ -18,6 +18,10 @@ interface DatePickerProps {
 const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
   const [date, setDate] = useState<Date | undefined>(value);
   const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    setDate(value);
+  }, [value]);
 
   const onChange = (event: any, selectedDate?: Date) => {
     setTimeout(() => {

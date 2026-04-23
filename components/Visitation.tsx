@@ -6,6 +6,7 @@ import {
   Modal,
   Image,
   Button,
+  Alert,
 } from "react-native";
 import Colors from "./utils/Colours";
 import { useEffect, useState, useMemo } from "react";
@@ -15,25 +16,168 @@ import { Star, Notebook, PartyPopper } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { CustomerDetails } from "./utils/CustomerInterface";
 import { Getvisitations } from "./utils/GetUserData";
+import { cacheManager } from "@/lib/cache";
 
 interface VisitationProps extends CustomerDetails {
   limit?: number;
   visitsData?: any[];
+  allowDelete?: boolean;
+  onVisitDeleted?: (csid: number) => void;
 }
 
-interface visitation {
-  date: string;
-  service: string;
-  stylist: string;
-  points: number;
-  Duration: string;
-  comments: string;
-}
-
-const Visitation = ({ id, limit = 5, visitsData }: VisitationProps) => {
+const Visitation = ({
+  id,
+  limit = 5,
+  visitsData,
+  allowDelete = false,
+  onVisitDeleted,
+}: VisitationProps) => {
   const [isModalActive, setisModalActive] = useState(false);
   const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [visitations, setvisitations] = useState<any[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteVisit = (visitToDelete?: any) => {
+    const targetVisit = visitToDelete || selectedvisit;
+    if (!targetVisit?.csid || isDeleting) return;
+
+    Alert.alert(
+      "Delete Record",
+      "Delete this recorded treatment/product for the selected client?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsDeleting(true);
+              const visitId = targetVisit.csid;
+
+              const { error: lineDeleteError } = await supabase
+                .from("customervisitlines")
+                .delete()
+                .eq("csid", visitId);
+
+              if (lineDeleteError) {
+                Alert.alert("Error 2", lineDeleteError.message);
+                setIsDeleting(false);
+                return;
+              }
+
+              let { data: deletedVisitRows, error: visitDeleteError } =
+                await supabase
+                  .from("customervisits")
+                  .delete()
+                  .eq("csid", visitId)
+                  .select("csid");
+
+              if (visitDeleteError) {
+                Alert.alert("Error", visitDeleteError.message);
+                setIsDeleting(false);
+                return;
+              }
+
+              if (!deletedVisitRows || deletedVisitRows.length === 0) {
+                // Delete may return no error but still affect 0 rows (e.g. RLS policy).
+                const { data: existingVisit } = await supabase
+                  .from("customervisits")
+                  .select("csid")
+                  .eq("csid", visitId)
+                  .maybeSingle();
+
+                if (existingVisit) {
+                  Alert.alert(
+                    "Delete Failed",
+                    "Record is still in database. Check delete permissions/policies for customervisits.",
+                  );
+                  setIsDeleting(false);
+                  return;
+                }
+              }
+
+              const customerIdForInvalidation =
+                targetVisit.customerid || id || "";
+
+              // Free-treatment claims increase User.pointsused when claimed.
+              // Reverse that usage when such a visit is deleted.
+              const deletedVisitPoints =
+                targetVisit.customervisitlines?.reduce(
+                  (acc: number, line: any) =>
+                    acc +
+                    Number(line?.treatments?.Services?.servicepoints || 0),
+                  0,
+                ) || 0;
+
+              if (
+                targetVisit.Freetreatment &&
+                customerIdForInvalidation &&
+                deletedVisitPoints > 0
+              ) {
+                const { data: userData, error: userFetchError } = await supabase
+                  .from("User")
+                  .select("pointsused")
+                  .eq("id", customerIdForInvalidation)
+                  .single();
+
+                if (!userFetchError) {
+                  const currentPointsUsed = Number(userData?.pointsused || 0);
+                  const newPointsUsed = Math.max(
+                    0,
+                    currentPointsUsed - deletedVisitPoints,
+                  );
+
+                  const { error: updatePointsUsedError } = await supabase
+                    .from("User")
+                    .update({ pointsused: newPointsUsed })
+                    .eq("id", customerIdForInvalidation);
+
+                  if (updatePointsUsedError) {
+                    Alert.alert(
+                      "Warning",
+                      "Visit deleted, but points balance could not be fully updated.",
+                    );
+                  }
+                }
+              }
+
+              if (customerIdForInvalidation) {
+                await cacheManager.invalidatePattern(
+                  `visitations_${customerIdForInvalidation}`,
+                );
+                await cacheManager.invalidatePattern(
+                  `points_${customerIdForInvalidation}`,
+                );
+                await cacheManager.invalidatePattern(
+                  `lastvisit_${customerIdForInvalidation}`,
+                );
+              }
+
+              setvisitations((prev) =>
+                prev.filter((visit) => visit.csid !== visitId),
+              );
+              if (selectedvisit?.csid === visitId) {
+                setselectedvisit(null);
+                setisModalActive(false);
+              }
+              onVisitDeleted?.(visitId);
+              Alert.alert("Success", "Recorded treatment/product removed.");
+            } catch {
+              Alert.alert(
+                "Error",
+                "Failed to delete record. Please try again.",
+              );
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   useEffect(() => {
     if (visitsData) {
@@ -118,52 +262,63 @@ const Visitation = ({ id, limit = 5, visitsData }: VisitationProps) => {
           </View>
 
           {group.visits.map((visit, index) => (
-            <Pressable
-              key={index}
-              style={({ pressed }) => pressed && styles.presseditem}
-              onPress={() => {
-                setisModalActive(true);
-                setselectedvisit(visit);
-              }}
-            >
-              <View style={styles.visitCard}>
-                {/* 
+            <View key={index}>
+              <Pressable
+                style={({ pressed }) => pressed && styles.presseditem}
+                onPress={() => {
+                  setisModalActive(true);
+                  setselectedvisit(visit);
+                }}
+              >
+                <View style={styles.visitCard}>
+                  {/* 
                   Removed the date box from here as it's now in the group header.
                   Replaced with icon or just removed. 
                   The image shows an icon on the left (green icon).
                 */}
-                <View style={styles.serviceIconContainer}>
-                  {visit.customervisitlines?.[0]?.treatments?.Services
-                    ?.servicecategory === "product" ? (
-                    <PartyPopper color={Colors.Primary900} size={24} />
-                  ) : (
-                    <Star color={Colors.Primary900} size={24} />
-                  )}
-                </View>
+                  <View style={styles.serviceIconContainer}>
+                    {visit.customervisitlines?.[0]?.treatments?.Services
+                      ?.servicecategory === "product" ? (
+                      <PartyPopper color={Colors.Primary900} size={24} />
+                    ) : (
+                      <Star color={Colors.Primary900} size={24} />
+                    )}
+                  </View>
 
-                <View style={styles.visitInfo}>
-                  <Text style={styles.visitService}>
-                    {visit.customervisitlines?.[0]?.treatments?.Services
-                      ?.servicename || "Unknown Service"}
-                  </Text>
-                  <Text style={styles.visitStylist}>
-                    {visit.customervisitlines?.[0]?.treatments?.Services
-                      ?.servicecategory || "Service"}
-                  </Text>
+                  <View style={styles.visitInfo}>
+                    <Text style={styles.visitService}>
+                      {visit.customervisitlines?.[0]?.treatments?.Services
+                        ?.servicename || "Unknown Service"}
+                    </Text>
+                    <Text style={styles.visitStylist}>
+                      {visit.customervisitlines?.[0]?.treatments?.Services
+                        ?.servicecategory || "Service"}
+                    </Text>
+                  </View>
+                  <View style={styles.pointsColumn}>
+                    <Text style={styles.pointsValueText}>
+                      +
+                      {visit.customervisitlines?.reduce(
+                        (acc: number, line: any) =>
+                          acc + (line.treatments?.Services?.servicepoints || 0),
+                        0,
+                      ) || 0}
+                    </Text>
+                    <Text style={styles.pointsLabelText}>POINTS</Text>
+                  </View>
                 </View>
-                <View style={styles.pointsColumn}>
-                  <Text style={styles.pointsValueText}>
-                    +
-                    {visit.customervisitlines?.reduce(
-                      (acc: number, line: any) =>
-                        acc + (line.treatments?.Services?.servicepoints || 0),
-                      0,
-                    ) || 0}
+              </Pressable>
+              {allowDelete && (
+                <Pressable
+                  style={styles.inlineDeleteButton}
+                  onPress={() => handleDeleteVisit(visit)}
+                >
+                  <Text style={styles.inlineDeleteButtonText}>
+                    {isDeleting ? "Deleting..." : "Delete Treatment/Product"}
                   </Text>
-                  <Text style={styles.pointsLabelText}>POINTS</Text>
-                </View>
-              </View>
-            </Pressable>
+                </Pressable>
+              )}
+            </View>
           ))}
         </View>
       ))}
@@ -218,14 +373,14 @@ const Visitation = ({ id, limit = 5, visitsData }: VisitationProps) => {
                 </View>
                 <View style={styles.TreatmentRow2}>
                   <View style={styles.halfinput}>
-                    <PrimaryText children="DATE" />
+                    <PrimaryText>DATE</PrimaryText>
                     <Text style={{ color: "white" }}>
                       {" "}
                       {new Date(selectedvisit.visit_date).toLocaleDateString()}
                     </Text>
                   </View>
                   <View style={styles.halfinput}>
-                    <PrimaryText children="COST" />
+                    <PrimaryText>COST</PrimaryText>
                     <Text style={{ color: "white" }}>
                       R
                       {selectedvisit.customervisitlines?.[0]?.treatments
@@ -238,7 +393,7 @@ const Visitation = ({ id, limit = 5, visitsData }: VisitationProps) => {
                   selectedvisit.customervisitlines?.[0]?.treatments
                     ?.duration_minutes && (
                     <View style={styles.fullinput}>
-                      <PrimaryText children="DURATION" />
+                      <PrimaryText>DURATION</PrimaryText>
                       <Text style={{ color: "white" }}>
                         {
                           selectedvisit.customervisitlines?.[0]?.treatments
@@ -276,9 +431,9 @@ const Visitation = ({ id, limit = 5, visitsData }: VisitationProps) => {
                 </Text>
                 <Text style={styles.notesHeaderText}>COMMENTS / NOTES</Text>
               </View>
-              <Text style={styles.notesCopy}>
-                "{selectedvisit.notes || "No notes available"}"
-              </Text>
+              <Text
+                style={styles.notesCopy}
+              >{`"${selectedvisit.notes || "No notes available"}"`}</Text>
             </View>
             <View style={styles.therapistcontainer}>
               <Image
@@ -286,7 +441,7 @@ const Visitation = ({ id, limit = 5, visitsData }: VisitationProps) => {
                 source={require("../assets/images/AltSkinzoneLogo.png")}
               />
               <View style={styles.DetailsContainer}>
-                <PrimaryText children="THERAPIST" />
+                <PrimaryText>THERAPIST</PrimaryText>
                 <Text
                   style={{
                     color: "white",
@@ -300,6 +455,12 @@ const Visitation = ({ id, limit = 5, visitsData }: VisitationProps) => {
                 </Text>
               </View>
             </View>
+            {allowDelete && (
+              <PrimaryButton
+                text={isDeleting ? "Deleting..." : "Delete Record"}
+                onPressHandler={() => handleDeleteVisit()}
+              />
+            )}
             <PrimaryButton
               text="Close Details"
               onPressHandler={() => setisModalActive(false)}
@@ -385,6 +546,22 @@ const styles = StyleSheet.create({
   },
   presseditem: {
     opacity: 0.7,
+  },
+  inlineDeleteButton: {
+    alignSelf: "flex-end",
+    backgroundColor: "#2A1111",
+    borderColor: "#B83232",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 12,
+  },
+  inlineDeleteButtonText: {
+    color: "#FF8A8A",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
   ModalContainer: {
     backgroundColor: "#0E1C14",

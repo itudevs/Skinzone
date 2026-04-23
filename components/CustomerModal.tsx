@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import FreeVisit from "./FreeVisit";
 import Visitation from "./Visitation";
+import DatePicker from "./DatePicker";
 import {
   CustomerVisitLineInsert,
   CustomerVisitInsert,
@@ -68,6 +69,7 @@ const CustomerModal = ({
   const [lastvisit, setlastvisit] = useState<number>(0);
   const [idfetched, setidfetched] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [visitDate, setVisitDate] = useState(new Date());
 
   const handleTreatmentSelect = (id: string, value: string) => {
     setSelectedTreatmentId(id);
@@ -129,6 +131,7 @@ const CustomerModal = ({
       staffid: selectedStaffId,
       totalamountpaid: +amountpaid,
       notes: notes,
+      visit_date: visitDate.toISOString(),
     };
 
     const { data, error } = await supabase
@@ -298,6 +301,7 @@ const CustomerModal = ({
       setSelectedTreatmentName("");
       setSelectedProductName("");
       setamountpaid("0.00");
+      setVisitDate(new Date());
       setnotes("");
       setselectedTreatment(undefined);
       setSelectedProduct(undefined);
@@ -465,6 +469,14 @@ const CustomerModal = ({
                 />
               </View>
 
+              {/* Visit Date */}
+              <Text style={styles.InputLabel}>VISIT DATE</Text>
+              <DatePicker
+                placeholder="Select visit date"
+                value={visitDate}
+                onDateChange={setVisitDate}
+              />
+
               {/* Notes */}
               <Text style={styles.InputLabel}>NOTES</Text>
               <View style={[styles.InputContainer, styles.TextAreaContainer]}>
@@ -506,6 +518,8 @@ const CustomerModal = ({
               Surname={Surname}
               Phone={Phone}
               limit={historyLimit}
+              allowDelete={true}
+              onVisitDeleted={() => setRefreshTrigger((prev) => prev + 1)}
             />
 
             <TouchableOpacity

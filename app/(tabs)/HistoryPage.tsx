@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { History } from "lucide-react-native";
 import { Getvisitations } from "@/components/utils/GetUserData";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { UserSession } from "@/components/utils/GetUsersession";
 import { Session } from "@supabase/supabase-js";
 import Visitation from "@/components/Visitation";
@@ -31,18 +31,18 @@ const HistoryPage = () => {
     };
   }, []);
 
-  const fetchvisitation = async () => {
+  const fetchvisitation = useCallback(async () => {
     if (!session?.user.id) {
       setvisitations([]);
       return;
     }
     const data = await Getvisitations(session.user.id, 100);
     setvisitations(data);
-  };
+  }, [session?.user.id]);
 
   useEffect(() => {
     fetchvisitation();
-  }, [session?.user.id]);
+  }, [fetchvisitation]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -56,7 +56,7 @@ const HistoryPage = () => {
         <Text style={{ color: "white", fontWeight: "bold", fontSize: 40 }}>
           History
         </Text>
-        <PrimaryText children="Track your loyalty visitations" />
+        <PrimaryText>Track your loyalty visitations</PrimaryText>
       </View>
       <ScrollView
         style={styles.CardContainer}
@@ -111,7 +111,7 @@ const HistoryPage = () => {
             </View>
           )}
           <View style={{ alignItems: "center", padding: 20 }}>
-            <PrimaryText children="Tap on row to view details" />
+            <PrimaryText>Tap on row to view details</PrimaryText>
           </View>
         </View>
       </ScrollView>

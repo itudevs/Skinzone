@@ -21,7 +21,6 @@ import { UserSession } from "@/components/utils/GetUsersession";
 import {
   GetLastPointvisit,
   GetTotalFinalPoints,
-  GetTotalPoints,
   Getvisitations,
 } from "@/components/utils/GetUserData";
 import FreeVisit from "@/components/FreeVisit";
@@ -89,7 +88,7 @@ const Home = () => {
         setNotificationHistory(notifications);
         setUnreadCount(notifications.filter((n) => !n.read).length);
       }
-    } catch (error) {
+    } catch {
       // Error loading notifications
     }
   };
@@ -131,26 +130,29 @@ const Home = () => {
   }, []);
 
   // Save notification to history
-  const saveNotification = async (title: string, body: string) => {
-    try {
-      const newNotification: StoredNotification = {
-        id: Date.now().toString(),
-        title,
-        body,
-        timestamp: Date.now(),
-        read: false,
-      };
-      const updated = [newNotification, ...notificationHistory];
-      await AsyncStorage.setItem(
-        "notificationHistory",
-        JSON.stringify(updated),
-      );
-      setNotificationHistory(updated);
-      setUnreadCount(updated.filter((n) => !n.read).length);
-    } catch (error) {
-      // Error saving notification
-    }
-  };
+  const saveNotification = useCallback(
+    async (title: string, body: string) => {
+      try {
+        const newNotification: StoredNotification = {
+          id: Date.now().toString(),
+          title,
+          body,
+          timestamp: Date.now(),
+          read: false,
+        };
+        const updated = [newNotification, ...notificationHistory];
+        await AsyncStorage.setItem(
+          "notificationHistory",
+          JSON.stringify(updated),
+        );
+        setNotificationHistory(updated);
+        setUnreadCount(updated.filter((n) => !n.read).length);
+      } catch {
+        // Error saving notification
+      }
+    },
+    [notificationHistory],
+  );
 
   // Mark all as read
   const markAllAsRead = async () => {
@@ -162,7 +164,7 @@ const Home = () => {
       );
       setNotificationHistory(updated);
       setUnreadCount(0);
-    } catch (error) {
+    } catch {
       // Error marking as read
     }
   };
@@ -173,7 +175,7 @@ const Home = () => {
       await AsyncStorage.removeItem("notificationHistory");
       setNotificationHistory([]);
       setUnreadCount(0);
-    } catch (error) {
+    } catch {
       // Error clearing notifications
     }
   };
@@ -183,6 +185,17 @@ const Home = () => {
     setShowNotificationModal(true);
     markAllAsRead();
   };
+
+  const hideNotificationBanner = useCallback(() => {
+    Animated.timing(slideAnim, {
+      toValue: -100,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowNotificationBanner(false);
+      setNotification(null);
+    });
+  }, [slideAnim]);
 
   // Listen for notifications
   useEffect(() => {
@@ -225,18 +238,13 @@ const Home = () => {
     );
 
     return () => subscription.remove();
-  }, [notificationHistory, session?.user.id]);
-
-  const hideNotificationBanner = () => {
-    Animated.timing(slideAnim, {
-      toValue: -100,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowNotificationBanner(false);
-      setNotification(null);
-    });
-  };
+  }, [
+    hideNotificationBanner,
+    notificationHistory,
+    saveNotification,
+    session?.user.id,
+    slideAnim,
+  ]);
 
   const getUserData = useCallback(
     async (isActive: () => boolean) => {
@@ -262,7 +270,7 @@ const Home = () => {
           setUsername(userData.name);
           setProfilePicture(userData.profile_picture);
         }
-      } catch (error) {
+      } catch {
         Alert.alert("Error", "An unexpected error occurred.");
       } finally {
         if (isActive()) {
@@ -415,7 +423,7 @@ const Home = () => {
               <Bell color={Colors.TextColour} size={64} />
               <Text style={styles.emptyStateText}>No notifications yet</Text>
               <Text style={styles.emptyStateSubtext}>
-                You'll see your visit updates here
+                You&apos;ll see your visit updates here
               </Text>
             </View>
           ) : (

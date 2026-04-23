@@ -25,15 +25,14 @@ import {
 } from "./utils/DatabaseTypes";
 import { cacheManager } from "@/lib/cache";
 
-interface FreeVisit {
+interface FreeVisitProps {
   points: number;
   customerid: string;
   onClaimSuccess?: () => void;
 }
 
-const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
+const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
   const [isModalActive, setisModalActive] = useState(false);
-  const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [clicked, setclicked] = useState(false);
   const [selectedtreatmentid, setselectedtreatmentid] = useState("");
   const [selectedStaffId, setSelectedStaffId] = useState("");
@@ -44,7 +43,6 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
     "Select Free Treatment",
   );
   const [isClaimed, setIsClaimed] = useState(false);
-  const [claimedTreatmentName, setClaimedTreatmentName] = useState("");
 
   const handletreatment = (id: string, value: string) => {
     setselectedtreatmentid(id);
@@ -79,7 +77,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
   // Check if treatment has already been claimed
   useEffect(() => {
     const checkClaimed = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("customervisits")
         .select(
           `
@@ -103,7 +101,6 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
         if (visitLines && visitLines.length > 0) {
           const treatmentData = visitLines[0].treatments as any;
           if (treatmentData?.treatmentname) {
-            setClaimedTreatmentName(treatmentData.treatmentname);
             setSelectedTreatmentName(treatmentData.treatmentname);
           }
         }
@@ -161,6 +158,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
           ? `Free treatment claim - ${notes}`
           : "Free treatment claim",
         Freetreatment: true,
+        visit_date: new Date().toISOString(),
       };
 
       const { data, error } = await supabase
@@ -237,13 +235,12 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
       setclicked(false);
       setisModalActive(false);
       setIsClaimed(true);
-      setClaimedTreatmentName(selectedTreatmentName);
 
       // Call the callback to refresh parent component
       if (onClaimSuccess) {
         onClaimSuccess();
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "An unexpected error occurred");
       setclicked(false);
     }
@@ -320,7 +317,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
                   ></Text>
                 </View>
                 <View style={styles.VisitHolder}>
-                  <PrimaryText children="TREATMENT" />
+                  <PrimaryText>TREATMENT</PrimaryText>
                   <DropDownInput
                     id="freetreatment"
                     value={"Select Free Treatment"}
@@ -329,7 +326,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
                   />
                 </View>
                 <View style={styles.VisitHolder}>
-                  <PrimaryText children="STAFF MEMBER" />
+                  <PrimaryText>STAFF MEMBER</PrimaryText>
                   <View
                     style={{
                       paddingVertical: 10,
@@ -351,7 +348,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
                   </View>
                 </View>
                 <View style={styles.VisitHolder}>
-                  <PrimaryText children="AMOUNT PAID" />
+                  <PrimaryText>AMOUNT PAID</PrimaryText>
                   <View
                     style={{
                       flexDirection: "row",
@@ -385,7 +382,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisit) => {
                 </View>
 
                 <View style={styles.VisitHolder}>
-                  <PrimaryText children="NOTES" />
+                  <PrimaryText>NOTES</PrimaryText>
 
                   <TextInput
                     multiline={true}
