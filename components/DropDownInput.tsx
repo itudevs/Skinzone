@@ -3,13 +3,24 @@ import { Text, View, StyleSheet, Pressable } from "react-native";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import Colors from "./utils/Colours";
 import { DropDownItems } from "./utils/utilinterfaces";
+import SearchBar from "./SearchBar";
 interface DropDownValues {
   value: string;
   id: string;
   DropDownItem: DropDownItems[];
   onSelect: (id: string, value: string) => void;
+  searchValue?: string;
+  onSearchChange?: (text: string) => void;
+  searchPlaceholder?: string;
 }
-const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
+const DropDownInput = ({
+  onSelect,
+  value,
+  DropDownItem,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder = "Search",
+}: DropDownValues) => {
   const [expanded, setexpanded] = useState(false);
   const [selectedValue, setselectedValue] = useState(value);
   const Caret = expanded ? ChevronUp : ChevronDown;
@@ -49,6 +60,14 @@ const DropDownInput = ({ onSelect, value, DropDownItem }: DropDownValues) => {
       </Pressable>
       {expanded ? (
         <View style={styles.listitems}>
+          {onSearchChange && (
+            <SearchBar
+              Placeholder={searchPlaceholder}
+              size="compact"
+              value={searchValue}
+              onChangeText={onSearchChange}
+            />
+          )}
           {DropDownItem.map((item, index) => (
             <View key={item.value}>
               <Pressable

@@ -25,6 +25,7 @@ import { GetTreatments, GetProducts } from "@/components/utils/GetServices";
 import { DropDownItems } from "@/components/utils/utilinterfaces";
 import { TrashIcon } from "lucide-react-native";
 import { cacheManager } from "@/lib/cache";
+import SearchBar from "@/components/SearchBar";
 const AddTreatment = () => {
   const [treatmentname, settreatmentname] = useState("");
   const [price, setprice] = useState("");
@@ -40,6 +41,15 @@ const AddTreatment = () => {
   const [productprice, setproductprice] = useState("");
   const [producttype, setproducttype] = useState("");
   const [productdescription, setproductdescription] = useState("");
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+
+  const filteredTreatments = treatments.filter((item) =>
+    item.value.toLowerCase().includes(treatmentSearch.trim().toLowerCase()),
+  );
+  const filteredProducts = products.filter((item) =>
+    item.value.toLowerCase().includes(productSearch.trim().toLowerCase()),
+  );
 
   const HandleproductName = (text: string) => {
     setproductname(text);
@@ -494,8 +504,14 @@ const AddTreatment = () => {
               />
             </View>
             <Text style={styles.maintexts}>Current Treatments</Text>
+            <SearchBar
+              Placeholder="Search current treatments"
+              size="compact"
+              value={treatmentSearch}
+              onChangeText={setTreatmentSearch}
+            />
             <View>
-              {treatments.map((item) => (
+              {filteredTreatments.map((item) => (
                 <View key={item.id} style={styles.TreatMain}>
                   <View style={styles.Treatment}>
                     <Text
@@ -597,8 +613,14 @@ const AddTreatment = () => {
               />
             </View>
             <Text style={styles.maintexts}>Current Products</Text>
+            <SearchBar
+              Placeholder="Search current products"
+              size="compact"
+              value={productSearch}
+              onChangeText={setProductSearch}
+            />
             <View>
-              {products.map((item) => (
+              {filteredProducts.map((item) => (
                 <View key={item.id} style={styles.TreatMain}>
                   <View style={styles.Treatment}>
                     <Text

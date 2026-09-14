@@ -25,10 +25,11 @@ import PrimaryButton from "./PrimaryButton";
 import DropDownInput from "./DropDownInput";
 import { DropDownItems } from "./utils/utilinterfaces";
 import { supabase } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import FreeVisit from "./FreeVisit";
 import Visitation from "./Visitation";
 import DatePicker from "./DatePicker";
+import SearchBar from "./SearchBar";
 import {
   CustomerVisitLineInsert,
   CustomerVisitInsert,
@@ -64,12 +65,39 @@ const CustomerModal = ({
   const [selectedProductName, setSelectedProductName] = useState("");
   const [selectedTreatment, setselectedTreatment] = useState<DropDownItems>();
   const [selectedProduct, setSelectedProduct] = useState<DropDownItems>();
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
   const [point, setpoint] = useState(0);
   const [visits, setvisits] = useState<any[]>([]);
   const [lastvisit, setlastvisit] = useState<number>(0);
   const [idfetched, setidfetched] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [visitDate, setVisitDate] = useState(new Date());
+
+  const filteredTreatments = useMemo(() => {
+    const query = treatmentSearch.trim().toLowerCase();
+    if (!query) return treatment;
+    return treatment.filter((item) => item.value.toLowerCase().includes(query));
+  }, [treatment, treatmentSearch]);
+
+  const filteredProducts = useMemo(() => {
+    const query = productSearch.trim().toLowerCase();
+    if (!query) return products;
+    return products.filter((item) => item.value.toLowerCase().includes(query));
+  }, [products, productSearch]);
+
+  const filteredVisits = useMemo(() => {
+    const query = historySearch.trim().toLowerCase();
+    if (!query) return visits;
+
+    return visits.filter((visit) => {
+      const service = visit.customervisitlines?.[0]?.treatments?.Services || {};
+      return [service.servicename, service.servicecategory]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+  }, [historySearch, visits]);
 
   const handleTreatmentSelect = (id: string, value: string) => {
     setSelectedTreatmentId(id);
@@ -303,6 +331,9 @@ const CustomerModal = ({
       setamountpaid("0.00");
       setVisitDate(new Date());
       setnotes("");
+      setTreatmentSearch("");
+      setProductSearch("");
+      setHistorySearch("");
       setselectedTreatment(undefined);
       setSelectedProduct(undefined);
       setHistoryLimit(5);
@@ -431,8 +462,11 @@ const CustomerModal = ({
               <DropDownInput
                 value={selectedTreatmentName || "Select Treatment"}
                 id="treatment-select"
-                DropDownItem={treatment}
+                DropDownItem={filteredTreatments}
                 onSelect={handleTreatmentSelect}
+                searchValue={treatmentSearch}
+                onSearchChange={setTreatmentSearch}
+                searchPlaceholder="Search treatments"
               />
 
               {/* Products Dropdown */}
@@ -440,8 +474,11 @@ const CustomerModal = ({
               <DropDownInput
                 value={selectedProductName || "Select Product"}
                 id="product-select"
-                DropDownItem={products}
+                DropDownItem={filteredProducts}
                 onSelect={handleProductSelect}
+                searchValue={productSearch}
+                onSearchChange={setProductSearch}
+                searchPlaceholder="Search products"
               />
 
               {/* Staff Member Dropdown */}
@@ -511,16 +548,26 @@ const CustomerModal = ({
               </View>
             </View>
 
-            {/* History List */}
-            <Visitation
-              id={id}
-              Name={Name}
-              Surname={Surname}
-              Phone={Phone}
-              limit={historyLimit}
-              allowDelete={true}
-              onVisitDeleted={() => setRefreshTrigger((prev) => prev + 1)}
+            <SearchBar
+              Placeholder="Search old treatments or products"
+              size="compact"
+              value={historySearch}
+              onChangeText={setHistorySearch}
             />
+
+            {/* History List */}
+            <View style={styles.HistoryList}>
+              <Visitation
+                id={id}
+                Name={Name}
+                Surname={Surname}
+                Phone={Phone}
+                limit={historyLimit}
+                visitsData={filteredVisits}
+                allowDelete={true}
+                onVisitDeleted={() => setRefreshTrigger((prev) => prev + 1)}
+              />
+            </View>
 
             <TouchableOpacity
               onPress={() => setHistoryLimit((prev) => prev + 5)}
@@ -711,5 +758,9 @@ const styles = StyleSheet.create({
   BadgeText: {
     color: "#666",
     fontSize: 10,
+  },
+  HistoryList: {
+    width: "100%",
+    alignSelf: "stretch",
   },
 });

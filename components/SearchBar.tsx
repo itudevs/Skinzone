@@ -1,6 +1,7 @@
 import { View, TextInput, StyleSheet, Text, Pressable } from "react-native";
 interface SearchProps {
   Placeholder: string;
+  size?: "default" | "compact";
   value?: string;
   onChangeText?: (text: string) => void;
   suggestions?: Array<{
@@ -17,6 +18,7 @@ import { Search } from "lucide-react-native";
 import Colors from "./utils/Colours";
 const SearchBar = ({
   Placeholder,
+  size = "default",
   value,
   onChangeText,
   suggestions = [],
@@ -25,7 +27,7 @@ const SearchBar = ({
 }: SearchProps) => {
   return (
     <View>
-      <View style={styles.Main}>
+      <View style={[styles.Main, size === "compact" && styles.compactMain]}>
         <Search color={Colors.TextColour} />
         <TextInput
           style={{ paddingHorizontal: 10, flex: 1, color: Colors.TextColour }}
@@ -72,6 +74,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.TextColour,
     borderWidth: 0.3,
     alignItems: "center",
+  },
+  compactMain: {
+    padding: 10,
+    margin: 8,
+    marginBottom: 8,
+    borderRadius: 10,
   },
   suggestionContainer: {
     backgroundColor: Colors.PrimaryBackground,

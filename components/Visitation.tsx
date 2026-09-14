@@ -525,6 +525,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 10,
     alignItems: "center",
+    width: "100%",
   },
   serviceIconContainer: {
     width: 40,
@@ -543,6 +544,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFFFFF",
     marginBottom: 4,
+    flexShrink: 1,
   },
   visitStylist: {
     fontSize: 13,
