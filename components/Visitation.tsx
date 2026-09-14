@@ -37,6 +37,25 @@ const Visitation = ({
   const [visitations, setvisitations] = useState<any[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const getRawVisitPoints = useMemo(
+    () => (visit: any) =>
+      visit?.customervisitlines?.reduce(
+        (acc: number, line: any) =>
+          acc + Number(line?.treatments?.Services?.servicepoints || 0),
+        0,
+      ) || 0,
+    [],
+  );
+
+  const getSignedVisitPoints = useMemo(
+    () => (visit: any) => {
+      const rawPoints = getRawVisitPoints(visit);
+      const scaled = visit?.Freetreatment ? rawPoints * 10 : rawPoints;
+      return visit?.Freetreatment ? -scaled : scaled;
+    },
+    [getRawVisitPoints],
+  );
+
   const handleDeleteVisit = (visitToDelete?: any) => {
     const targetVisit = visitToDelete || selectedvisit;
     if (!targetVisit?.csid || isDeleting) return;
@@ -104,7 +123,7 @@ const Visitation = ({
 
               // Free-treatment claims increase User.pointsused when claimed.
               // Reverse that usage when such a visit is deleted.
-              const deletedVisitPoints =
+              const deletedVisitPointsRaw =
                 targetVisit.customervisitlines?.reduce(
                   (acc: number, line: any) =>
                     acc +
@@ -112,11 +131,11 @@ const Visitation = ({
                   0,
                 ) || 0;
 
-              if (
-                targetVisit.Freetreatment &&
-                customerIdForInvalidation &&
-                deletedVisitPoints > 0
-              ) {
+              const deletedVisitPoints = targetVisit.Freetreatment
+                ? deletedVisitPointsRaw * 10
+                : deletedVisitPointsRaw;
+
+              if (customerIdForInvalidation && deletedVisitPoints > 0) {
                 const { data: userData, error: userFetchError } = await supabase
                   .from("User")
                   .select("pointsused")
@@ -228,12 +247,7 @@ const Visitation = ({
       // The current code only displays the first line's service name.
       // I will sum points from all lines if possible, or just the first one to match existing logic.
       // Let's iterate lines to be safe for points.
-      const visitPoints =
-        visit.customervisitlines?.reduce(
-          (acc: number, line: any) =>
-            acc + (line.treatments?.Services?.servicepoints || 0),
-          0,
-        ) || 0;
+      const visitPoints = getSignedVisitPoints(visit);
 
       groups[dateKey].points += visitPoints;
     });
@@ -242,7 +256,7 @@ const Visitation = ({
     return Object.values(groups).sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-  }, [visitations]);
+  }, [visitations, getSignedVisitPoints]);
 
   return (
     <View>
@@ -257,7 +271,9 @@ const Visitation = ({
               })}
             </Text>
             <View style={styles.groupPointsBadge}>
-              <Text style={styles.groupPointsText}>+{group.points} PTS</Text>
+              <Text style={styles.groupPointsText}>
+                {group.points > 0 ? `+${group.points}` : group.points} PTS
+              </Text>
             </View>
           </View>
 
@@ -297,12 +313,9 @@ const Visitation = ({
                   </View>
                   <View style={styles.pointsColumn}>
                     <Text style={styles.pointsValueText}>
-                      +
-                      {visit.customervisitlines?.reduce(
-                        (acc: number, line: any) =>
-                          acc + (line.treatments?.Services?.servicepoints || 0),
-                        0,
-                      ) || 0}
+                      {getSignedVisitPoints(visit) > 0
+                        ? `+${getSignedVisitPoints(visit)}`
+                        : getSignedVisitPoints(visit)}
                     </Text>
                     <Text style={styles.pointsLabelText}>POINTS</Text>
                   </View>
@@ -412,12 +425,16 @@ const Visitation = ({
                 </Text>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={styles.pointsValue}>
-                    +
-                    {selectedvisit.customervisitlines?.[0]?.treatments?.Services
-                      ?.servicepoints || 0}{" "}
+                    {getSignedVisitPoints(selectedvisit) > 0
+                      ? `+${getSignedVisitPoints(selectedvisit)}`
+                      : getSignedVisitPoints(selectedvisit)}{" "}
                     Points
                   </Text>
-                  <Text style={styles.pointsSubtitle}>Earned this visit</Text>
+                  <Text style={styles.pointsSubtitle}>
+                    {selectedvisit?.Freetreatment
+                      ? "Used on free claim"
+                      : "Earned this visit"}
+                  </Text>
                 </View>
                 <Text style={styles.pointsEmoji}>
                   <PartyPopper color={"white"} />

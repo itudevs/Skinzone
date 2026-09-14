@@ -11,7 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { PlusCircle, X } from "lucide-react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PrimaryButton from "./PrimaryButton";
 import PrimaryText from "./PrimaryText";
 import Colors from "./utils/Colours";
@@ -43,6 +43,20 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
     "Select Free Treatment",
   );
   const [isClaimed, setIsClaimed] = useState(false);
+
+  const getScaledPoints = (rawPoints?: string | null) => {
+    const basePoints = parseInt(rawPoints || "0", 10);
+    return Number.isNaN(basePoints) ? 0 : basePoints * 10;
+  };
+
+  const treatmentDropdownItems = useMemo(
+    () =>
+      treatment.map((item) => ({
+        ...item,
+        points: getScaledPoints(item.points).toString(),
+      })),
+    [treatment],
+  );
 
   const handletreatment = (id: string, value: string) => {
     setselectedtreatmentid(id);
@@ -104,16 +118,26 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
             setSelectedTreatmentName(treatmentData.treatmentname);
           }
         }
+      } else {
+        setIsClaimed(false);
       }
     };
 
     if (customerid) {
       checkClaimed();
     }
-  }, [customerid]);
+  }, [customerid, isModalActive]);
 
   const AddCLAIMHandler = async () => {
     if (clicked) return;
+
+    if (isClaimed) {
+      Alert.alert(
+        "Already Claimed",
+        "This free treatment has already been claimed.",
+      );
+      return;
+    }
 
     // Validate treatment selection
     if (!selectedtreatmentid) {
@@ -132,15 +156,13 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
     }
 
     // Check if user has enough points
-    const requiredPoints = selectedTreatment.points
-      ? parseInt(selectedTreatment.points)
-      : 0;
+    const requiredPoints = getScaledPoints(selectedTreatment.points);
     const availablePoints = points;
 
     if (availablePoints < requiredPoints) {
       Alert.alert(
         "Not Enough Points",
-        `You need ${requiredPoints} points to claim this treatment. Your current balance is ${points} points  available for claims).`,
+        `You need ${requiredPoints} points to claim this treatment. Your current balance is ${points} points  available for claims.`,
       );
       return;
     }
@@ -210,7 +232,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
       }
 
       const currentPointsUsed = userData?.pointsused || 0;
-      const treatmentPoints = parseInt(selectedTreatment.points || "0");
+      const treatmentPoints = getScaledPoints(selectedTreatment.points);
       const newPointsUsed = currentPointsUsed + treatmentPoints;
 
       const { error: errorpoints } = await supabase
@@ -262,11 +284,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
     <View>
       <Pressable
         style={({ pressed }) => pressed && styles.presseditem}
-        onPress={() => {
-          if (!isClaimed) {
-            setisModalActive(true);
-          }
-        }}
+        onPress={() => setisModalActive(true)}
       >
         <View style={styles.visitCard}>
           <View style={styles.visitDate}>
@@ -320,8 +338,8 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
                   <PrimaryText>TREATMENT</PrimaryText>
                   <DropDownInput
                     id="freetreatment"
-                    value={"Select Free Treatment"}
-                    DropDownItem={treatment}
+                    value={selectedTreatmentName}
+                    DropDownItem={treatmentDropdownItems}
                     onSelect={handletreatment}
                   />
                 </View>
@@ -404,7 +422,13 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
                 </View>
 
                 <PrimaryButton
-                  text={!clicked ? "CLAIM" : "CLAIMING..."}
+                  text={
+                    isClaimed
+                      ? "ALREADY CLAIMED"
+                      : !clicked
+                        ? "CLAIM"
+                        : "CLAIMING..."
+                  }
                   onPressHandler={AddCLAIMHandler}
                 />
               </View>

@@ -10,6 +10,10 @@ const TabLayout = () => {
         options={{ headerShown: false, title: "Home" }}
       />
       <Tabs.Screen
+        name="Booking"
+        options={{ headerShown: false, title: "Booking" }}
+      />
+      <Tabs.Screen
         name="HistoryPage"
         options={{ headerShown: false, title: "History" }}
       />
@@ -24,7 +28,6 @@ const TabLayout = () => {
           title: "Staff DashBoard",
         }}
       />
-     
     </Tabs>
   );
 };

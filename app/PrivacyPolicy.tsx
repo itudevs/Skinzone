@@ -24,11 +24,10 @@ const PrivacyPolicy = () => {
 
         <Text style={styles.sectionTitle}>1. Introduction</Text>
         <Text style={styles.text}>
-          Skinzone Naturel ("we," "our," or "us"), owned by Vukosi J Chabangu,
-          respects your privacy and is committed to protecting your personal
-          data. This privacy policy explains how we collect, use, disclose, and
-          safeguard your information when you use our mobile application and
-          services.
+          Skinzone Naturel , respects your privacy and is committed to
+          protecting your personal data. This privacy policy explains how we
+          collect, use, disclose, and safeguard your information when you use
+          our mobile application and services.
         </Text>
 
         <Text style={styles.sectionTitle}>2. Information We Collect</Text>
@@ -62,7 +61,7 @@ const PrivacyPolicy = () => {
           • Process appointments and send reminders
         </Text>
         <Text style={styles.bulletPoint}>
-          • Customize your "Get The Glow" experience
+          • Customize your Get The Glow experience
         </Text>
         <Text style={styles.bulletPoint}>
           • Communicate with you regarding updates, offers, and new services
@@ -88,7 +87,7 @@ const PrivacyPolicy = () => {
 
         <Text style={styles.sectionTitle}>6. Tracking</Text>
         <Text style={styles.text}>
-          Skinzone does not track you across other companies' apps or websites
+          Skinzone does not track you across other companies apps or websites
           for advertising purposes. We do not use third-party advertising SDKs,
           data brokers, or cross-app profiling.
         </Text>
@@ -113,7 +112,7 @@ const PrivacyPolicy = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.Primary900,
+    backgroundColor: Colors.PrimaryBackground,
   },
   header: {
     flexDirection: "row",

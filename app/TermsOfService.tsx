@@ -1,8 +1,7 @@
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import Colors from "@/components/utils/Colours";
 import { useRouter } from "expo-router";
 import { X } from "lucide-react-native";
-import { Pressable } from "react-native";
 
 const TermsOfService = () => {
   const router = useRouter();
@@ -26,7 +25,7 @@ const TermsOfService = () => {
           By accessing or using the Skinzone Naturel mobile application and
           services, you agree to be bound by these Terms of Service. These terms
           constitute a legally binding agreement between you and Skinzone
-          Naturel (owned by Vukosi J Chabangu).
+          Naturel.
         </Text>
 
         <Text style={styles.sectionTitle}>2. Description of Service</Text>
@@ -52,7 +51,7 @@ const TermsOfService = () => {
           advice.
         </Text>
         <Text style={styles.bulletPoint}>
-          • Results ("Get The Glow") may vary based on individual physiology.
+          • Results (Get The Glow ) may vary based on individual physiology.
         </Text>
         <Text style={styles.bulletPoint}>
           • You must disclose all relevant medical history and allergies before
@@ -66,7 +65,7 @@ const TermsOfService = () => {
         <Text style={styles.sectionTitle}>4. Appointments & Cancellations</Text>
         <Text style={styles.text}>Please respect our scheduling policies:</Text>
         <Text style={styles.bulletPoint}>
-          • Please provide at least 24 hours' notice for cancellations.
+          • Please provide at least 24 hours notice for cancellations.
         </Text>
         <Text style={styles.bulletPoint}>
           • Late cancellations or no-shows may incur a fee.
@@ -120,7 +119,7 @@ const TermsOfService = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.Primary900,
+    backgroundColor: Colors.PrimaryBackground,
   },
   header: {
     flexDirection: "row",

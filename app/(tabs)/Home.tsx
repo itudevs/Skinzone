@@ -334,9 +334,13 @@ const Home = () => {
   );
 
   const handleClaimSuccess = useCallback(() => {
-    // Refresh points after claiming a free visit
-    fetchpoints(() => true);
-  }, [fetchpoints]);
+    const alwaysActive = () => true;
+
+    // Refresh all Home data impacted by a free-visit claim.
+    fetchpoints(alwaysActive);
+    fetchVisitations(alwaysActive);
+    loadBirthdayBonusStatus();
+  }, [fetchpoints, fetchVisitations, loadBirthdayBonusStatus]);
 
   const pointsLeftToClaim = Math.max(0, 500 - total);
 
