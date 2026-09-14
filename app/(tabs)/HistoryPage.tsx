@@ -9,10 +9,13 @@ import {
 } from "react-native";
 import { History } from "lucide-react-native";
 import { Getvisitations } from "@/components/utils/GetUserData";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { UserSession } from "@/components/utils/GetUsersession";
 import { Session } from "@supabase/supabase-js";
 import Visitation from "@/components/Visitation";
+import SearchBar from "@/components/SearchBar";
+
+type DateFilter = "all" | "30days" | "90days" | "year";
 
 const HistoryPage = () => {
   const [visitations, setvisitations] = useState<any[]>([]);
@@ -20,6 +23,39 @@ const HistoryPage = () => {
     UserSession.getSession(),
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+
+  const filteredVisitations = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const today = new Date();
+    const startDate = new Date(today);
+
+    if (dateFilter === "30days") {
+      startDate.setDate(today.getDate() - 30);
+    } else if (dateFilter === "90days") {
+      startDate.setDate(today.getDate() - 90);
+    } else if (dateFilter === "year") {
+      startDate.setMonth(0, 1);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    return visitations.filter((visit) => {
+      const visitDate = new Date(visit.visit_date);
+      const matchesDate =
+        dateFilter === "all" || (visitDate >= startDate && visitDate <= today);
+      const service = visit.customervisitlines?.[0]?.treatments?.Services || {};
+      const matchesSearch = [
+        service.servicename,
+        service.servicecategory,
+        visit.notes,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+
+      return matchesDate && (!query || matchesSearch);
+    });
+  }, [dateFilter, searchQuery, visitations]);
 
   useEffect(() => {
     const unsubscribe = UserSession.onSessionChange((nextSession) => {
@@ -98,14 +134,41 @@ const HistoryPage = () => {
           >
             ---------------------------------------
           </Text>
+          <SearchBar
+            Placeholder="Search treatments or products"
+            size="compact"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <View style={styles.filterRow}>
+            {(
+              [
+                ["all", "All"],
+                ["30days", "30 days"],
+                ["90days", "90 days"],
+                ["year", "This year"],
+              ] as [DateFilter, string][]
+            ).map(([value, label]) => (
+              <Text
+                key={value}
+                onPress={() => setDateFilter(value)}
+                style={[
+                  styles.filterChip,
+                  dateFilter === value && styles.filterChipActive,
+                ]}
+              >
+                {label}
+              </Text>
+            ))}
+          </View>
           <View style={{ paddingHorizontal: 15 }}>
             <Visitation
               id={session?.user.id || ""}
               limit={100}
-              visitsData={visitations}
+              visitsData={filteredVisitations}
             />
           </View>
-          {visitations.length === 0 && (
+          {filteredVisitations.length === 0 && (
             <View style={{ alignItems: "center", padding: 20 }}>
               <Text style={{ color: Colors.TextColour }}>No visits found</Text>
             </View>
@@ -149,5 +212,25 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     marginBottom: 20,
     paddingBottom: 20,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 15,
+    marginBottom: 12,
+  },
+  filterChip: {
+    flex: 1,
+    color: Colors.TextColour,
+    backgroundColor: Colors.background100,
+    borderRadius: 8,
+    paddingVertical: 8,
+    textAlign: "center",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  filterChipActive: {
+    color: Colors.PrimaryBackground,
+    backgroundColor: Colors.Primary900,
   },
 });

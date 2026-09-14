@@ -1,7 +1,7 @@
 import { View, TextInput, StyleSheet, Text, Pressable } from "react-native";
 interface SearchProps {
   Placeholder: string;
-  size?: "default" | "compact";
+  size?: "default" | "compact" | "fullWidthCompact";
   value?: string;
   onChangeText?: (text: string) => void;
   suggestions?: Array<{
@@ -27,7 +27,13 @@ const SearchBar = ({
 }: SearchProps) => {
   return (
     <View>
-      <View style={[styles.Main, size === "compact" && styles.compactMain]}>
+      <View
+        style={[
+          styles.Main,
+          size === "compact" && styles.compactMain,
+          size === "fullWidthCompact" && styles.fullWidthCompactMain,
+        ]}
+      >
         <Search color={Colors.TextColour} />
         <TextInput
           style={{ paddingHorizontal: 10, flex: 1, color: Colors.TextColour }}
@@ -80,6 +86,13 @@ const styles = StyleSheet.create({
     margin: 8,
     marginBottom: 8,
     borderRadius: 10,
+  },
+  fullWidthCompactMain: {
+    padding: 10,
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 12,
+    borderRadius: 12,
   },
   suggestionContainer: {
     backgroundColor: Colors.PrimaryBackground,

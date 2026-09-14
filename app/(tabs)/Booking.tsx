@@ -7,7 +7,7 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { Calendar, Check, ChevronDown, X } from "lucide-react-native";
+import { Calendar, Check, ChevronDown } from "lucide-react-native";
 import BookingCalendar from "@/components/BookingCalendar";
 import SearchBar from "@/components/SearchBar";
 import Colors from "@/components/utils/Colours";
@@ -187,6 +187,7 @@ const Booking = () => {
       </SafeAreaView>
       <SearchBar
         Placeholder="Search by treatment"
+        size="fullWidthCompact"
         value={searchQuery}
         onChangeText={setSearchQuery}
       />
