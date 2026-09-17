@@ -115,13 +115,11 @@ const ForgotPassword = () => {
         >
           Forgot Password
         </Text>
-        <PrimaryText
-          children={
-            step === "request"
-              ? "Secure Password Update"
-              : "Verify & Set New Password"
-          }
-        />
+        <PrimaryText>
+          {step === "request"
+            ? "Secure Password Update"
+            : "Verify & Set New Password"}
+        </PrimaryText>
       </View>
 
       <View style={styles.CardContainer}>
@@ -135,7 +133,7 @@ const ForgotPassword = () => {
             </View>
 
             <View style={styles.inputcontainer}>
-              <PrimaryText children="EMAIL" />
+              <PrimaryText>EMAIL</PrimaryText>
               <Input
                 text="user@example.com"
                 value={email}
@@ -155,7 +153,7 @@ const ForgotPassword = () => {
         ) : (
           <>
             <View style={styles.inputcontainer}>
-              <PrimaryText children="EMAIL" />
+              <PrimaryText>EMAIL</PrimaryText>
               <Input
                 text="user@example.com"
                 value={email}
@@ -166,7 +164,7 @@ const ForgotPassword = () => {
             </View>
 
             <View style={styles.inputcontainer}>
-              <PrimaryText children="VERIFICATION TOKEN" />
+              <PrimaryText>VERIFICATION TOKEN</PrimaryText>
               <Input
                 text="12345678"
                 value={verificationToken}
@@ -176,7 +174,7 @@ const ForgotPassword = () => {
             </View>
 
             <View style={styles.inputcontainer}>
-              <PrimaryText children="NEW PASSWORD" />
+              <PrimaryText>NEW PASSWORD</PrimaryText>
               <PasswordInput
                 placeholder="••••••••"
                 value={newPassword}
@@ -185,7 +183,7 @@ const ForgotPassword = () => {
             </View>
 
             <View style={styles.inputcontainer}>
-              <PrimaryText children="CONFIRM PASSWORD" />
+              <PrimaryText>CONFIRM PASSWORD</PrimaryText>
               <PasswordInput
                 placeholder="••••••••"
                 value={confirmPassword}
@@ -215,8 +213,10 @@ const ForgotPassword = () => {
         )}
 
         <View style={styles.backContainer}>
-          <PrimaryText children="Remember your password?" />
-          <PrimaryLink colour="#00FF5F" url="/Login" children="Back to Login" />
+          <PrimaryText>Remember your password?</PrimaryText>
+          <PrimaryLink colour="#00FF5F" url="/Login">
+            Back to Login
+          </PrimaryLink>
         </View>
       </View>
     </View>

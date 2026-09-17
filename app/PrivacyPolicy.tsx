@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView , Pressable } from "react-native";
 import Colors from "@/components/utils/Colours";
 import { useRouter } from "expo-router";
 import { X } from "lucide-react-native";
-import { Pressable } from "react-native";
+
 
 const PrivacyPolicy = () => {
   const router = useRouter();

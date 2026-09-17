@@ -1,21 +1,21 @@
 import { View, TextInput, StyleSheet, Text, Pressable } from "react-native";
+
+import { Search } from "lucide-react-native";
+import Colors from "./utils/Colours";
 interface SearchProps {
   Placeholder: string;
   size?: "default" | "compact" | "fullWidthCompact";
   value?: string;
   onChangeText?: (text: string) => void;
-  suggestions?: Array<{
+  suggestions?: {
     id: string;
     name: string;
     surname: string;
     phone: string;
-  }>;
+  }[];
   onSelectSuggestion?: (item: any) => void;
   keyboardType?: "default" | "numeric" | "email-address" | "phone-pad";
 }
-
-import { Search } from "lucide-react-native";
-import Colors from "./utils/Colours";
 const SearchBar = ({
   Placeholder,
   size = "default",

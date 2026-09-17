@@ -84,6 +84,12 @@ const Login = () => {
           // Navigate to home screen here
           router.replace("/(tabs)/Home");
         }
+        //set the user id for later usage
+        // Store persistence preference
+        await AsyncStorage.setItem(
+          "keep_signed_in",
+          keepSignedIn ? "true" : "false",
+        );
       }
     } catch (error) {
       Alert.alert("Error", "An unexpected error occurred. Please try again.");

@@ -11,7 +11,9 @@ import { Calendar, Check, ChevronDown } from "lucide-react-native";
 import BookingCalendar from "@/components/BookingCalendar";
 import SearchBar from "@/components/SearchBar";
 import Colors from "@/components/utils/Colours";
+import { UserSession } from "@/components/utils/GetUsersession";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "@/lib/supabase";
 
 type ClientType = "first" | "returning";
 
@@ -44,8 +46,20 @@ const treatmentOptions: TreatmentOption[] = [
   },
 ];
 
-const slotOptions = ["09:30 AM", "11:00 AM", "02:15 PM", "04:00 PM"];
+const slotOptions = [
+  "09:00 AM",
+  "10:00 AM",
+  "11:00 PM",
+  "12:00 PM",
+  "13:00 PM",
+  "14:00 PM",
+  "15:00 PM",
+  "16:00 PM",
+];
+enum BookingStatus{Completed,Pending,Booked}
 
+
+const loggedInUser=UserSession.getSession();
 const Booking = () => {
   const [clientType, setClientType] = useState<ClientType>("returning");
   const [selectedTreatment, setSelectedTreatment] = useState(
@@ -147,7 +161,18 @@ const Booking = () => {
         (value) => matchesSearch(value),
       ),
   );
-
+  const bookClient = async () => {
+    setClientType("first");
+    try{
+    const {data,error}=await supabase.from('bookings').insert(
+      customerid:loggedInUser?.user.id,
+      bookingdate:selectedDate,
+      status:BookingStatus.Pending.toString()
+    )
+    }catch(bookingError){
+      console.log(bookingError)
+    }
+  };
   const renderReturningClientScreen = () => (
     <ScrollView
       style={styles.screen}
@@ -363,10 +388,7 @@ const Booking = () => {
     >
       <SafeAreaView>
         <View style={styles.toggleRow}>
-          <Pressable
-            onPress={() => setClientType("first")}
-            style={toggleButtonStyle("first")}
-          >
+          <Pressable onPress={bookClient} style={toggleButtonStyle("first")}>
             <Text
               style={[
                 styles.toggleText,
@@ -498,7 +520,7 @@ const Booking = () => {
           <Text style={styles.totalValue}>R300.00</Text>
         </View>
       </View>
-      <Pressable style={styles.ctaButton}>
+      <Pressable onPress={bookClient} style={styles.ctaButton}>
         <Text style={styles.ctaText}>Continue to Confirmation</Text>
         <Text style={styles.ctaArrow}>→</Text>
       </Pressable>

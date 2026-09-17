@@ -49,11 +49,11 @@ const BookingCalendar = ({
     const startDayIndex = (firstDay.getDay() + 6) % 7;
     const prevMonthLastDate = new Date(year, month, 0).getDate();
 
-    const items: Array<{
+    const items: {
       date: Date;
       isCurrentMonth: boolean;
       isMuted: boolean;
-    }> = [];
+    }[] = [];
 
     for (let i = 0; i < startDayIndex; i += 1) {
       const day = prevMonthLastDate - startDayIndex + i + 1;

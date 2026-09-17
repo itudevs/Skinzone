@@ -9,7 +9,7 @@ import {
   Alert,
   Pressable,
   TextInput,
-} from "react-native";
+ ScrollView } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Input from "@/components/Input";
 import PrimaryButton from "@/components/PrimaryButton";
@@ -19,7 +19,7 @@ import {
   TrearmentInsert,
 } from "@/components/utils/DatabaseTypes";
 import Colors from "@/components/utils/Colours";
-import { ScrollView } from "react-native";
+
 import { supabase } from "@/lib/supabase";
 import { GetTreatments, GetProducts } from "@/components/utils/GetServices";
 import { DropDownItems } from "@/components/utils/utilinterfaces";
