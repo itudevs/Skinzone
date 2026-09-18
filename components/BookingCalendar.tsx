@@ -24,8 +24,18 @@ interface BookingCalendarProps {
   onDateChange?: (date: Date) => void;
 }
 
+const isBeforeToday = (date: Date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const candidate = new Date(date);
+  candidate.setHours(0, 0, 0, 0);
+
+  return candidate < today;
+};
+
 const BookingCalendar = ({
-  selectedDate = new Date(2026, 2, 19),
+  selectedDate = new Date(),
   onDateChange,
 }: BookingCalendarProps) => {
   const [visibleMonth, setVisibleMonth] = useState(
@@ -85,6 +95,10 @@ const BookingCalendar = ({
   }, [visibleMonth]);
 
   const handlePress = (date: Date) => {
+    if (isBeforeToday(date)) {
+      return;
+    }
+
     setActiveDate(date);
     setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1));
     onDateChange?.(date);
@@ -140,15 +154,18 @@ const BookingCalendar = ({
               {week.map((cell, dayIndex) => {
                 const isSelected =
                   cell.date.toDateString() === activeDate.toDateString();
+                const isPast = isBeforeToday(cell.date);
 
                 return (
                   <Pressable
                     key={`${weekIndex}-${dayIndex}-${cell.date.toISOString()}`}
+                    disabled={isPast}
                     onPress={() => handlePress(cell.date)}
                     style={[
                       styles.dateCell,
                       isSelected && styles.dateCellSelected,
                       cell.isMuted && styles.dateCellMuted,
+                      isPast && styles.dateCellDisabled,
                     ]}
                   >
                     <Text
@@ -156,6 +173,7 @@ const BookingCalendar = ({
                         styles.dateText,
                         isSelected && styles.dateTextSelected,
                         cell.isMuted && styles.dateTextMuted,
+                        isPast && styles.dateTextDisabled,
                       ]}
                     >
                       {cell.date.getDate()}
@@ -240,6 +258,9 @@ const styles = StyleSheet.create({
   dateCellMuted: {
     opacity: 0.4,
   },
+  dateCellDisabled: {
+    opacity: 0.25,
+  },
   dateText: {
     color: Colors.TextColour,
     fontSize: 13,
@@ -251,6 +272,9 @@ const styles = StyleSheet.create({
   },
   dateTextMuted: {
     color: "#a4a4a4",
+  },
+  dateTextDisabled: {
+    color: "#777777",
   },
   dateDot: {
     position: "absolute",
