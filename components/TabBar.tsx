@@ -25,6 +25,7 @@ const TabBar = (props: any) => {
     StaffDashBoard: Home,
     StaffProfile: Settings,
     AddTreatment: Stethoscope,
+    AdminBooking: Calendar,
   };
 
   return (

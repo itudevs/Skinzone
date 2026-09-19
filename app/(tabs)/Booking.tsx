@@ -22,13 +22,10 @@ import { UserSession } from "@/components/utils/GetUsersession";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { BookingInsert } from "@/components/utils/DatabaseTypes";
+import { GetTreatments } from "@/components/utils/GetServices";
+import type { DropDownItems } from "@/components/utils/utilinterfaces";
+import { BookingStatus } from "@/components/utils/utilinterfaces";
 type ClientType = "first" | "returning";
-
-enum BookingStatus {
-  Completed,
-  Pending,
-  Booked,
-}
 
 const defaultSlotOptions = [
   "09:00",
@@ -47,6 +44,8 @@ interface userBooking {
   status: string;
   notes: string;
   time: string;
+  treatmentName: string;
+  bookingState: "active" | "completed";
 }
 const Booking = () => {
   const loggedInUser = UserSession.getSession();
@@ -61,6 +60,21 @@ const Booking = () => {
   const [bookings, setBookings] = useState<userBooking[]>([]);
   const [showBookingConfirmation, setShowBookingConfirmation] = useState(false);
   const [showFeeExplanation, setShowFeeExplanation] = useState(false);
+  const [treatments, setTreatments] = useState<DropDownItems[]>([]);
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [selectedTreatmentId, setSelectedTreatmentId] = useState<string | null>(
+    null,
+  );
+  const [selectedTreatmentName, setSelectedTreatmentName] = useState("");
+
+  const filteredTreatments = useMemo(() => {
+    const query = treatmentSearch.trim().toLowerCase();
+    if (!query) return treatments;
+
+    return treatments.filter((treatment) =>
+      treatment.value.toLowerCase().includes(query),
+    );
+  }, [treatments, treatmentSearch]);
 
   const selectedDayLabel = useMemo(
     () =>
@@ -82,44 +96,15 @@ const Booking = () => {
       clientType === type ? "rgba(255,255,255,0.08)" : "transparent",
   });
 
-  const currentBookings = [
-    {
-      status: "Confirmed",
-      title: "Modified Jessner Clinical Peel",
-      date: "Mar 26, 2026 • 10:30 AM",
-      room: "Room 02",
-      specialist: "Admin S",
-      isPending: false,
-    },
-    {
-      status: "Pending Payment",
-      title: "Microneedling & Peel",
-      date: "Apr 02, 2026 • 02:15 PM",
-      room: "Room 01",
-      specialist: "Admin S",
-      fee: "R300.00",
-      isPending: true,
-    },
-  ];
+  const normalizeBookingState = (status: string): "active" | "completed" => {
+    const normalizedStatus = status.trim().toLowerCase();
 
-  const pastBookings = [
-    {
-      status: "Completed",
-      title: "Back (Acne/Pimples)",
-      date: "Mar 19, 2026 • 11:00 AM",
-      specialist: "Admin S",
-      reward: "+100 PTS",
-      rewardLabel: "Earned",
-    },
-    {
-      status: "Completed",
-      title: "Facial Hydration & Glow",
-      date: "Feb 28, 2026 • 01:30 PM",
-      specialist: "Admin S",
-      reward: "+70 PTS",
-      rewardLabel: "Earned",
-    },
-  ];
+    if (normalizedStatus.includes("complete")) {
+      return "completed";
+    }
+
+    return "active";
+  };
 
   const matchesSearch = (value: string) => {
     const query = searchQuery.trim().toLowerCase();
@@ -128,52 +113,92 @@ const Booking = () => {
     return value.toLowerCase().includes(query);
   };
 
-  const filteredCurrentBookings = bookings.filter(
-    (booking) =>
-      (activeFilter === "all" || activeFilter === "active") &&
-      [
-        booking.id.toString(),
-        booking.bookingDate.toString(),
-        booking.status,
-      ].some((value) => matchesSearch(value)),
-  );
+  const filteredCurrentBookings = bookings.filter((booking) => {
+    const isActiveBooking = booking.bookingState === "active";
 
-  const filteredPastBookings = bookings.filter(
-    (booking) =>
-      (activeFilter === "all" || activeFilter === "completed") &&
+    return (
+      (activeFilter === "all" || activeFilter === "active") &&
+      isActiveBooking &&
       [
         booking.id.toString(),
         booking.bookingDate.toString(),
         booking.status,
-      ].some((value) => matchesSearch(value)),
-  );
+        booking.treatmentName,
+        booking.notes,
+      ].some((value) => matchesSearch(value))
+    );
+  });
+
+  const filteredPastBookings = bookings.filter((booking) => {
+    const isCompletedBooking = booking.bookingState === "completed";
+
+    return (
+      (activeFilter === "all" || activeFilter === "completed") &&
+      isCompletedBooking &&
+      [
+        booking.id.toString(),
+        booking.bookingDate.toString(),
+        booking.status,
+        booking.treatmentName,
+        booking.notes,
+      ].some((value) => matchesSearch(value))
+    );
+  });
   const validateBooking = () => {
+    if (!selectedTreatmentId) {
+      Alert.alert("Error", "Please select a treatment");
+      return false;
+    }
     if (!selectedSlot) {
       Alert.alert("Error", "Please select an available slot");
       return false;
     }
     return true;
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    GetTreatments().then((items) => {
+      if (mounted) {
+        setTreatments(items);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  const userId = loggedInUser?.user.id;
+
   useEffect(() => {
     const getUserBookings = async () => {
       try {
         const { data, error } = await supabase
           .from("bookings")
           .select("bookingid,bookingdate,status,notes,time")
-          .eq("customerid", loggedInUser?.user.id);
+          .eq("customerid", userId);
 
         if (error) {
           console.log("Error", error);
           return;
         }
         if (data) {
-          const formattedBooking: userBooking[] = data.map((booking) => {
+          const formattedBooking: userBooking[] = data.map((booking: any) => {
+            const rawStatus = String(booking.status ?? "").trim();
+
+            const treatmentName =
+              String(booking.notes).trim() || "Treatment Booking";
+            const bookingState = normalizeBookingState(rawStatus);
+
             return {
               bookingDate: booking.bookingdate,
               id: booking.bookingid,
-              status: booking.status,
+              status: rawStatus || "Pending",
               time: booking.time,
-              notes: booking.notes,
+              notes: booking.notes ?? "",
+              treatmentName,
+              bookingState,
             };
           });
           setBookings(formattedBooking);
@@ -183,7 +208,7 @@ const Booking = () => {
       }
     };
     getUserBookings();
-  }, [clientType === "returning", loggedInUser?.user.id]);
+  }, [userId, clientType === "returning"]);
   useEffect(() => {
     const getAvailableSlots = async () => {
       try {
@@ -212,7 +237,53 @@ const Booking = () => {
     };
     getAvailableSlots();
   }, [showBookingConfirmation, selectedDate]);
+  const BookedUser = async (userid: string, date: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("bookingid")
+        .eq("customerid", userid)
+        .eq("bookingdate", date)
+        .limit(1);
 
+      if (error) {
+        console.log("could not fetch booking");
+      }
+      return data?.length! > 0;
+    } catch (error) {
+      console.log("Error", error);
+      return false;
+    }
+  };
+  const CancelBooking = async (id: number) => {
+    try {
+      //first get cooking can't cancel on day of booking without calling first
+      const foundBooking = bookings.find((booking) => booking.id === id);
+      if (foundBooking !== undefined) {
+        if (
+          foundBooking.bookingDate.toString() ===
+          new Date().toISOString().split("T")[0]
+        ) {
+          Alert.alert(
+            "Cancel Error",
+            "Cannot cancel booking on day of booking please call Skinzone Naturel to cancel or reschedule",
+          );
+          return;
+        }
+      }
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status: BookingStatus.Cancelled })
+        .eq("bookingid", id);
+      if (error) {
+        Alert.alert("Error", "Please Try Again");
+        console.log("booked user error", error);
+      }
+    } catch (error) {
+      Alert.alert("Failed to cancel booking");
+      console.log(error);
+    }
+  };
   const bookClient = async () => {
     setClientType("first");
     if (!validateBooking()) {
@@ -226,11 +297,25 @@ const Booking = () => {
           {
             text: "Confirm",
             onPress: async () => {
+              if (
+                await BookedUser(
+                  loggedInUser!.user.id,
+                  selectedDate.toISOString(),
+                )
+              ) {
+                Alert.alert(
+                  "Cannot Book",
+                  "Please reschedule or cancel booking ",
+                );
+                return;
+              }
               const Booking: BookingInsert = {
                 customerid: loggedInUser!.user.id,
                 bookingdate: selectedDate.toISOString(),
-                status: BookingStatus.Pending.toString(),
+                status: BookingStatus.Pending,
                 time: selectedSlot ?? "",
+                notes: selectedTreatmentName || "Treatment Booking",
+                treatmentid: parseInt(selectedTreatmentId!),
               };
               const { error } = await supabase.from("bookings").insert(Booking);
               if (error) {
@@ -252,6 +337,21 @@ const Booking = () => {
     } catch (bookingError) {
       console.log(bookingError);
     }
+  };
+  const getBookingStatus = (status: string | number): BookingStatus => {
+    const normalizedStatus = String(status).trim().toLowerCase();
+
+    if (normalizedStatus === "0" || normalizedStatus.includes("complete")) {
+      return BookingStatus.Completed;
+    }
+
+    if (normalizedStatus === "1" || normalizedStatus.includes("pending")) {
+      return BookingStatus.Pending;
+    }
+    if (normalizedStatus === "2" || normalizedStatus.includes("booked")) {
+      return BookingStatus.Booked;
+    }
+    return BookingStatus.Cancelled;
   };
   const renderReturningClientScreen = () => (
     <ScrollView
@@ -312,7 +412,7 @@ const Booking = () => {
                 : styles.filterChipText
             }
           >
-            All ({currentBookings.length + pastBookings.length})
+            All ({bookings.length})
           </Text>
         </Pressable>
         <Pressable
@@ -353,70 +453,97 @@ const Booking = () => {
 
       <Text style={styles.sectionHeading}>
         Current Bookings{" "}
-        <Text style={styles.countBadge}>{bookings.length}</Text>
+        <Text style={styles.countBadge}>{filteredCurrentBookings.length}</Text>
       </Text>
 
       {filteredCurrentBookings.length === 0 ? (
         <Text style={styles.emptyStateText}>No matching current bookings.</Text>
       ) : (
-        filteredCurrentBookings.map((booking) => (
-          <View key={booking.id} style={styles.bookingCard}>
-            <View style={styles.bookingHeaderRow}>
-              <View style={styles.bookingStatusWrap}>
-                <View
-                  style={[
-                    styles.statusDot,
-                    booking.status === "Pending"
-                      ? styles.statusDotWarning
-                      : styles.statusDotSuccess,
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.bookingStatusText,
-                    booking.status === "Pending" &&
-                      styles.bookingStatusTextWarning,
-                  ]}
-                >
-                  {booking.status}
+        filteredCurrentBookings.map((booking) => {
+          const isPendingBooking = getBookingStatus(booking.status).includes(
+            "Pending",
+          );
+
+          return (
+            <View key={booking.id} style={styles.bookingCard}>
+              <View style={styles.bookingHeaderRow}>
+                <View style={styles.bookingStatusWrap}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      isPendingBooking
+                        ? styles.statusDotWarning
+                        : styles.statusDotSuccess,
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.bookingStatusText,
+                      isPendingBooking && styles.bookingStatusTextWarning,
+                    ]}
+                  >
+                    {getBookingStatus(booking.status)}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.bookingTitle}>{booking.treatmentName}</Text>
+
+              <View style={styles.bookingMetaRow}>
+                <Text style={styles.metaText}>
+                  {booking.bookingDate.toString()}
                 </Text>
+                <Text style={styles.metaText}>{booking.time}</Text>
               </View>
+
+              {isPendingBooking ? (
+                <View style={styles.pendingFooter}>
+                  <Pressable style={styles.primaryActionWide}>
+                    <Text style={styles.primaryActionWideText}>
+                      Pay Booking Fee R300
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      Alert.alert(
+                        "Cancel Booking",
+                        `Are you sure you wish to cancel the booking on ${booking.bookingDate} `,
+                        [
+                          {
+                            text: "Confirm",
+                            onPress: () => {
+                              CancelBooking(booking.id);
+                            },
+                            style: "destructive",
+                          },
+                          {
+                            text: "Cancel",
+                            onPress: () => {},
+                            style: "cancel",
+                          },
+                        ],
+                      );
+                    }}
+                    style={styles.secondaryAction}
+                  >
+                    <Text style={styles.secondaryActionText}>Cancel</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.actionRow}>
+                  <Pressable style={styles.actionButton}>
+                    <Text style={styles.actionButtonText}>
+                      Manage / Reschedule
+                    </Text>
+                  </Pressable>
+                  <Pressable style={styles.iconButton}>
+                    <Calendar color={Colors.TextColour} size={18} />
+                  </Pressable>
+                </View>
+              )}
             </View>
-
-            <Text style={styles.bookingTitle}>{booking.id}</Text>
-
-            <View style={styles.bookingMetaRow}>
-              <Text style={styles.metaText}>
-                {booking.bookingDate.toString()}
-              </Text>
-              <Text style={styles.metaText}>Room 01</Text>
-            </View>
-
-            {booking.status === "Pending" ? (
-              <View style={styles.pendingFooter}>
-                <Pressable style={styles.primaryActionWide}>
-                  <Text style={styles.primaryActionWideText}>
-                    Pay Booking Fee R300
-                  </Text>
-                </Pressable>
-                <Pressable style={styles.secondaryAction}>
-                  <Text style={styles.secondaryActionText}>Cancel</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <View style={styles.actionRow}>
-                <Pressable style={styles.actionButton}>
-                  <Text style={styles.actionButtonText}>
-                    Manage / Reschedule
-                  </Text>
-                </Pressable>
-                <Pressable style={styles.iconButton}>
-                  <Calendar color={Colors.TextColour} size={18} />
-                </Pressable>
-              </View>
-            )}
-          </View>
-        ))
+          );
+        })
       )}
 
       <Text style={styles.sectionHeading}>
@@ -434,13 +561,14 @@ const Booking = () => {
             </View>
 
             <View style={styles.rewardRow}>
-              <Text style={styles.bookingTitle}>{booking.id}</Text>
+              <Text style={styles.bookingTitle}>{booking.treatmentName}</Text>
             </View>
 
             <View style={styles.bookingMetaRow}>
               <Text style={styles.metaText}>
                 {booking.bookingDate.toString()}
               </Text>
+              <Text style={styles.metaText}>{booking.time}</Text>
             </View>
 
             <View style={styles.actionRow}>
@@ -559,6 +687,52 @@ const Booking = () => {
           ) : null}
         </View>
       </View>
+      <Text style={styles.sectionTitle}>Select Treatment</Text>
+      <SearchBar
+        Placeholder="Search treatments"
+        size="fullWidthCompact"
+        value={treatmentSearch}
+        onChangeText={setTreatmentSearch}
+      />
+
+      {treatments.length === 0 ? (
+        <Text style={styles.emptyStateText}>Loading treatments...</Text>
+      ) : filteredTreatments.length === 0 ? (
+        <Text style={styles.emptyStateText}>
+          No treatments match your search.
+        </Text>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.treatmentScroller}
+        >
+          {filteredTreatments.map((treatment) => {
+            const isSelected = selectedTreatmentId === treatment.id;
+            const priceLabel = treatment.cost
+              ? `From R${Number(treatment.cost).toFixed(2)}`
+              : "Price on request";
+
+            return (
+              <Pressable
+                key={treatment.id}
+                onPress={() => {
+                  setSelectedTreatmentId(treatment.id);
+                  setSelectedTreatmentName(treatment.value);
+                }}
+                style={[
+                  styles.treatmentCard,
+                  isSelected && styles.treatmentCardSelected,
+                ]}
+              >
+                <Text style={styles.treatmentName}>{treatment.value}</Text>
+                <Text style={styles.treatmentMeta}>{priceLabel}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+
       <Text style={styles.sectionTitle}>Select Booking Date</Text>
       <BookingCalendar
         selectedDate={selectedDate}
@@ -592,6 +766,13 @@ const Booking = () => {
       </ScrollView>
       <View style={styles.summaryCard}>
         <View style={styles.summaryRow}></View>
+
+        <View style={styles.summaryRowSecondary}>
+          <Text style={styles.summaryLabelMuted}>Treatment</Text>
+          <Text style={styles.summaryValueStrong}>
+            {selectedTreatmentName || "Not selected"}
+          </Text>
+        </View>
 
         <View style={styles.summaryRowSecondary}>
           <Text style={styles.summaryLabelMuted}>Slot</Text>
@@ -826,22 +1007,21 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 12,
   },
-  treatmentGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 18,
+  treatmentScroller: {
+    paddingRight: 6,
+    paddingBottom: 4,
     gap: 12,
   },
   treatmentCard: {
-    width: "48%",
-    minHeight: 98,
+    width: 180,
+    minHeight: 108,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderRadius: 16,
     padding: 16,
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "transparent",
+    marginRight: 12,
   },
   treatmentCardSelected: {
     backgroundColor: "rgba(0,255,95,0.14)",
