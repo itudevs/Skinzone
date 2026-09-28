@@ -38,6 +38,17 @@ const defaultSlotOptions = [
   "16:00",
 ];
 
+const saturdaySlotOptions = [
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+];
+
 interface userBooking {
   id: number;
   bookingDate: Date;
@@ -49,9 +60,18 @@ interface userBooking {
 }
 const Booking = () => {
   const loggedInUser = UserSession.getSession();
-  const [slotOptions, setSlotOptions] = useState<string[]>(defaultSlotOptions);
+  const currentDay = new Date().toLocaleDateString("en-us", {
+    weekday: "long",
+  }); //Output 'Saturday' or current day
+  const [slotOptions, setSlotOptions] = useState<string[]>(
+    currentDay === "Saturday"
+      ? saturdaySlotOptions
+      : currentDay !== "Sunday"
+        ? defaultSlotOptions
+        : [],
+  );
   const [clientType, setClientType] = useState<ClientType>("returning");
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<
@@ -62,9 +82,7 @@ const Booking = () => {
   const [showFeeExplanation, setShowFeeExplanation] = useState(false);
   const [treatments, setTreatments] = useState<DropDownItems[]>([]);
   const [treatmentSearch, setTreatmentSearch] = useState("");
-  const [selectedTreatmentId, setSelectedTreatmentId] = useState<string | null>(
-    null,
-  );
+  const [selectedTreatmentId, setSelectedTreatmentId] = useState<string[]>([]);
   const [selectedTreatmentName, setSelectedTreatmentName] = useState("");
 
   const filteredTreatments = useMemo(() => {
@@ -284,6 +302,17 @@ const Booking = () => {
       console.log(error);
     }
   };
+  //method to automatically select slots from first selected slots
+  const selectSlots = (selectedSlot: string): string[] => {
+    let selectSlotOptions: string[] = [];
+    let slotIndex = -1;
+    //get selected slot index
+    slotIndex = slotOptions.indexOf(selectedSlot);
+    for (let i = slotIndex; i < slotOptions.length - 1; i++) {
+      selectSlotOptions.push(slotOptions[i]);
+    }
+    return selectSlotOptions;
+  };
   const bookClient = async () => {
     setClientType("first");
     if (!validateBooking()) {
@@ -309,19 +338,32 @@ const Booking = () => {
                 );
                 return;
               }
-              const Booking: BookingInsert = {
-                customerid: loggedInUser!.user.id,
-                bookingdate: selectedDate.toISOString(),
-                status: BookingStatus.Pending,
-                time: selectedSlot ?? "",
-                notes: selectedTreatmentName || "Treatment Booking",
-                treatmentid: parseInt(selectedTreatmentId!),
-              };
-              const { error } = await supabase.from("bookings").insert(Booking);
-              if (error) {
-                Alert.alert("Error", error.message);
-                return;
-              }
+              let slotIndex = -1;
+              //get selected slot index
+
+              slotIndex = slotOptions.indexOf(selectedSlot[0]!);
+
+              selectedTreatmentId.forEach(async (treatmentId) => {
+                setSelectedSlot((prevSlots) => [
+                  ...prevSlots,
+                  slotOptions[slotIndex++],
+                ]);
+                const Booking: BookingInsert = {
+                  customerid: loggedInUser!.user.id,
+                  bookingdate: selectedDate.toISOString(),
+                  status: BookingStatus.Pending,
+                  time: selectedSlot[slotIndex] ?? "",
+                  notes: selectedTreatmentName || "Treatment Booking",
+                  treatmentid: parseInt(treatmentId!),
+                };
+                const { error } = await supabase
+                  .from("bookings")
+                  .insert(Booking);
+                if (error) {
+                  Alert.alert("Error", error.message);
+                  return;
+                }
+              });
 
               setShowBookingConfirmation(true);
             },
@@ -708,7 +750,10 @@ const Booking = () => {
           contentContainerStyle={styles.treatmentScroller}
         >
           {filteredTreatments.map((treatment) => {
-            const isSelected = selectedTreatmentId === treatment.id;
+            const isSelected =
+              selectedTreatmentId.find(
+                (givenTreatment) => givenTreatment === treatment.id,
+              ) === treatment.id;
             const priceLabel = treatment.cost
               ? `From R${Number(treatment.cost).toFixed(2)}`
               : "Price on request";
@@ -717,8 +762,13 @@ const Booking = () => {
               <Pressable
                 key={treatment.id}
                 onPress={() => {
-                  setSelectedTreatmentId(treatment.id);
-                  setSelectedTreatmentName(treatment.value);
+                  if (!isSelected) {
+                    setSelectedTreatmentId((prevIds) => [
+                      ...prevIds,
+                      treatment.id,
+                    ]);
+                    setSelectedTreatmentName(treatment.value);
+                  }
                 }}
                 style={[
                   styles.treatmentCard,
@@ -748,11 +798,17 @@ const Booking = () => {
         contentContainerStyle={styles.slotRow}
       >
         {slotOptions.map((slot) => {
-          const active = selectedSlot === slot;
+          const active = selectedSlot.find((fSlot) => fSlot === slot);
           return (
             <Pressable
               key={slot}
-              onPress={() => setSelectedSlot(slot)}
+              onPress={() => {
+                if (!active) {
+                  //checks that its not already selected
+                  setSelectedSlot((prevSlots) => [...prevSlots, slot]);
+                  selectSlots(slot);
+                }
+              }}
               style={[styles.slotCard, active && styles.slotCardSelected]}
             >
               <Text
@@ -777,7 +833,8 @@ const Booking = () => {
         <View style={styles.summaryRowSecondary}>
           <Text style={styles.summaryLabelMuted}>Slot</Text>
           <Text style={styles.summaryValueStrong}>
-            {selectedDayLabel} • {selectedSlot}
+            {selectedDayLabel} • {selectedSlot[0]} -{" "}
+            {selectedSlot[selectedSlot.length - 1]}
           </Text>
         </View>
 
