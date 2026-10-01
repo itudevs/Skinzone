@@ -324,7 +324,7 @@ const Booking = () => {
     try {
       Alert.alert(
         "Confirm",
-        `Are you sure you want to confirm your booking for ${selectedDayLabel}? at ${selectedSlot}`,
+        `Are you sure you want to confirm your booking for ${selectedDayLabel}? at ${selectedSlot[0]} to ${selectedSlot[selectedSlot.length - 1]}`,
         [
           {
             text: "Confirm",
@@ -349,7 +349,7 @@ const Booking = () => {
                 customerid: loggedInUser!.user.id,
                 bookingdate: selectedDate.toISOString(),
                 status: BookingStatus.Pending,
-                time: selectedSlot[slotIndex] ?? "",
+
                 notes: selectedTreatmentName || "Treatment Booking",
               };
               const { data, error } = await supabase
@@ -370,6 +370,7 @@ const Booking = () => {
                   const BookingLine: BookingLineInsert = {
                     booking_id: data?.bookingid,
                     treatment_id: parseInt(treatmentId),
+                    time: selectedSlot[slotIndex] ?? "",
                   };
                   //insert specific booking_line
                   const { error } = await supabase
@@ -378,6 +379,7 @@ const Booking = () => {
                   if (error) {
                     Alert.alert("Booking Error", "Could not book treatment");
                     console.log("booking line insert error ", error);
+                    return;
                   }
                 });
               } else if (error) {
