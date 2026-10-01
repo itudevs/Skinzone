@@ -21,7 +21,10 @@ import Colors from "@/components/utils/Colours";
 import { UserSession } from "@/components/utils/GetUsersession";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
-import { BookingInsert } from "@/components/utils/DatabaseTypes";
+import {
+  BookingInsert,
+  BookingLineInsert,
+} from "@/components/utils/DatabaseTypes";
 import { GetTreatments } from "@/components/utils/GetServices";
 import type { DropDownItems } from "@/components/utils/utilinterfaces";
 import { BookingStatus } from "@/components/utils/utilinterfaces";
@@ -342,29 +345,45 @@ const Booking = () => {
               //get selected slot index
 
               slotIndex = slotOptions.indexOf(selectedSlot[0]!);
+              const Booking: BookingInsert = {
+                customerid: loggedInUser!.user.id,
+                bookingdate: selectedDate.toISOString(),
+                status: BookingStatus.Pending,
+                time: selectedSlot[slotIndex] ?? "",
+                notes: selectedTreatmentName || "Treatment Booking",
+              };
+              const { data, error } = await supabase
+                .from("bookings")
+                .insert(Booking)
+                .select()
+                .single();
 
-              selectedTreatmentId.forEach(async (treatmentId) => {
-                setSelectedSlot((prevSlots) => [
-                  ...prevSlots,
-                  slotOptions[slotIndex++],
-                ]);
-                const Booking: BookingInsert = {
-                  customerid: loggedInUser!.user.id,
-                  bookingdate: selectedDate.toISOString(),
-                  status: BookingStatus.Pending,
-                  time: selectedSlot[slotIndex] ?? "",
-                  notes: selectedTreatmentName || "Treatment Booking",
-                  treatmentid: parseInt(treatmentId!),
-                };
-                const { error } = await supabase
-                  .from("bookings")
-                  .insert(Booking);
-                if (error) {
-                  Alert.alert("Error", error.message);
-                  return;
-                }
-              });
+              if (data) {
+                //no error occurred in inserting booking
+                //booking line insert
+                selectedTreatmentId.forEach(async (treatmentId) => {
+                  setSelectedSlot((prevSlots) => [
+                    ...prevSlots,
+                    slotOptions[slotIndex++],
+                  ]);
 
+                  const BookingLine: BookingLineInsert = {
+                    booking_id: data?.bookingid,
+                    treatment_id: parseInt(treatmentId),
+                  };
+                  //insert specific booking_line
+                  const { error } = await supabase
+                    .from("booking_line")
+                    .insert(BookingLine);
+                  if (error) {
+                    Alert.alert("Booking Error", "Could not book treatment");
+                    console.log("booking line insert error ", error);
+                  }
+                });
+              } else if (error) {
+                Alert.alert("Error", error.message);
+                return;
+              }
               setShowBookingConfirmation(true);
             },
             style: "default",
