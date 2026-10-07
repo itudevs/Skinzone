@@ -5,12 +5,12 @@
     "version": "1.2",
     "orientation": "portrait",
     "icon": "./assets/images/SkinzoneLogo.jpeg",
-    "backgroundColor": "#232323",
+    "backgroundColor": "#FFFFFF",
     "scheme": "za.co.skinzone",
     "userInterfaceStyle": "automatic",
     "description": "A loyalty and visit tracking app for Skinzone beauty salon customers",
     "newArchEnabled": true,
-    "primaryColor": "#000000",
+    "primaryColor": "#00C94F",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "za.co.skinzone.app",
@@ -52,7 +52,7 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#ffffff"
+            "backgroundColor": "#191919"
           }
         }
       ],

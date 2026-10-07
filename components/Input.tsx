@@ -1,6 +1,6 @@
 import { View, TextInput, StyleSheet } from "react-native";
 import { User } from "lucide-react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 
 interface Inputprops {
   text: string;
@@ -18,19 +18,20 @@ const Input = ({
   autoCapitalize = "none",
   showUserIcon = false,
 }: Inputprops) => {
+  const theme = useTheme();
   return (
-    <View style={styles.container}>
+    <View style={styles(theme).container}>
       {showUserIcon && (
-        <View style={styles.iconContainer}>
-          <User color={"#999999"} size={18} />
+        <View style={styles(theme).iconContainer}>
+          <User color={theme.icon} size={18} />
         </View>
       )}
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        style={styles.input}
+        style={styles(theme).input}
         placeholder={text}
-        placeholderTextColor="#666"
+        placeholderTextColor={theme.placeholder}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
       />
@@ -40,13 +41,13 @@ const Input = ({
 
 export default Input;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   container: {
     marginTop: 8,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.PrimaryBackground,
-    borderColor: "#8b8b8bff",
+    backgroundColor: theme.PrimaryBackground,
+    borderColor: theme.bordercolor,
     borderWidth: 0.5,
     borderRadius: 10,
     paddingHorizontal: 12,
@@ -59,6 +60,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     paddingVertical: 12,
-    color: Colors.TextColour,
+    color: theme.TextColour,
   },
 });

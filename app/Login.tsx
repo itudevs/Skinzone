@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import PrimaryText from "@/components/PrimaryText";
 import Input from "../components/Input";
 import Link from "@/components/Link";
@@ -24,6 +24,7 @@ import { Square, CheckSquare } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = () => {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -100,17 +101,17 @@ const Login = () => {
   };
 
   const renderContent = () => (
-    <View style={styles.content}>
+    <View style={styles(theme).content}>
       <View style={{ alignItems: "center" }}>
         <Image
-          style={styles.imgContainer}
+          style={styles(theme).imgContainer}
           source={require("../assets/images/SkinzoneLogo.jpeg")}
         />
       </View>
-      <View style={styles.textContainer}>
+      <View style={styles(theme).textContainer}>
         <Text
           style={{
-            color: "white",
+            color: theme.TextColour,
             fontSize: 40,
             fontWeight: "bold",
             padding: 10,
@@ -121,7 +122,7 @@ const Login = () => {
         <PrimaryText>Welcome back to your skin journey</PrimaryText>
       </View>
 
-      <View style={styles.inputcontainer}>
+      <View style={styles(theme).inputcontainer}>
         <PrimaryText>Email</PrimaryText>
 
         <Input
@@ -141,18 +142,18 @@ const Login = () => {
 
         {/* Keep Me Signed In Checkbox */}
         <Pressable
-          style={styles.checkboxContainer}
+          style={styles(theme).checkboxContainer}
           onPress={() => setKeepSignedIn(!keepSignedIn)}
         >
           {keepSignedIn ? (
-            <CheckSquare size={20} color={Colors.TextColour} />
+            <CheckSquare size={20} color={theme.TextColour} />
           ) : (
-            <Square size={20} color={Colors.TextColour} />
+            <Square size={20} color={theme.TextColour} />
           )}
-          <Text style={styles.checkboxLabel}>Keep me signed in</Text>
+          <Text style={styles(theme).checkboxLabel}>Keep me signed in</Text>
         </Pressable>
 
-        <PrimaryLink colour={Colors.TextColour} url="/ForgotPassword">
+        <PrimaryLink colour={theme.TextColour} url="/ForgotPassword">
           Forgot Password
         </PrimaryLink>
       </View>
@@ -163,30 +164,30 @@ const Login = () => {
           onPressHandler={LoginHandler}
         />
       </View>
-      <View style={styles.signupcontainer}>
+      <View style={styles(theme).signupcontainer}>
         <PrimaryText>New to SkinZone?</PrimaryText>
         <PrimaryLink colour="#00FF5F" url="./SignUp">
           Sign Up
         </PrimaryLink>
       </View>
 
-      <View style={styles.signupcontainer}>
+      <View style={styles(theme).signupcontainer}>
         <Text style={{ color: "#97999B", paddingTop: 4 }}>
           Are you a staff member?
         </Text>
-        <Link colour={Colors.TextColour} url="mailto:skinzonenaturel@gmail.com">
+        <Link colour={theme.TextColour} url="mailto:skinzonenaturel@gmail.com">
           Contact Admin
         </Link>
       </View>
 
-      <View style={styles.legalLinksContainer}>
-        <PrimaryLink colour={Colors.TextColour} url="/PrivacyPolicy">
+      <View style={styles(theme).legalLinksContainer}>
+        <PrimaryLink colour={theme.TextColour} url="/PrivacyPolicy">
           Privacy Policy
         </PrimaryLink>
-        <Text style={{ color: Colors.TextColour, paddingHorizontal: 8 }}>
+        <Text style={{ color: theme.TextColour, paddingHorizontal: 8 }}>
           •
         </Text>
-        <PrimaryLink colour={Colors.TextColour} url="/TermsOfService">
+        <PrimaryLink colour={theme.TextColour} url="/TermsOfService">
           Terms of Service
         </PrimaryLink>
       </View>
@@ -194,10 +195,10 @@ const Login = () => {
   );
 
   return (
-    <View style={styles.Container}>
+    <View style={styles(theme).Container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
+        style={styles(theme).keyboardView}
         keyboardVerticalOffset={0}
       >
         <FlatList
@@ -205,7 +206,7 @@ const Login = () => {
           renderItem={renderContent}
           keyExtractor={(item) => item.key}
           contentContainerStyle={[
-            styles.scrollContent,
+            styles(theme).scrollContent,
             { paddingTop: insets.top, paddingBottom: insets.bottom },
           ]}
           showsVerticalScrollIndicator={false}
@@ -219,9 +220,9 @@ const Login = () => {
 
 export default Login;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Container: {
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     flex: 1,
   },
   keyboardView: {
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 35,
-    borderColor: Colors.SecondaryColour100,
+    borderColor: theme.SecondaryColour100,
     borderWidth: 3,
     alignItems: "center",
   },
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   checkboxLabel: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     marginLeft: 10,
     fontSize: 14,
   },

@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, FlatList, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import PrimaryText from "@/components/PrimaryText";
 import PasswordInput from "@/components/PasswordInput";
 import PrimaryButton from "@/components/PrimaryButton";
@@ -10,6 +10,7 @@ import Input from "@/components/Input";
 import { useRouter } from "expo-router";
 
 const ChangePassword = () => {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -112,12 +113,12 @@ const ChangePassword = () => {
   };
 
   const renderContent = () => (
-    <View style={styles.content}>
+    <View style={styles(theme).content}>
       <View style={{ alignItems: "center", marginBottom: 30 }}>
         <Text
           style={{
             fontSize: 32,
-            color: "white",
+            color: theme.TextColour,
             fontWeight: "bold",
             textAlign: "center",
           }}
@@ -133,17 +134,17 @@ const ChangePassword = () => {
         />
       </View>
 
-      <View style={styles.CardContainer}>
+      <View style={styles(theme).CardContainer}>
         {step === "request" ? (
           <>
-            <View style={styles.infoContainer}>
-              <Text style={styles.infoText}>
+            <View style={styles(theme).infoContainer}>
+              <Text style={styles(theme).infoText}>
                 For your security, verify your identity first. Tap the button
                 below to receive a verification code via email.
               </Text>
             </View>
 
-            <View style={styles.buttonContainer}>
+            <View style={styles(theme).buttonContainer}>
               <PrimaryButton
                 text={loading ? "Sending Code..." : "SEND VERIFICATION CODE"}
                 onPressHandler={sendVerificationCode}
@@ -152,7 +153,7 @@ const ChangePassword = () => {
           </>
         ) : (
           <>
-            <View style={styles.inputcontainer}>
+            <View style={styles(theme).inputcontainer}>
               <PrimaryText children="VERIFICATION CODE" />
               <Input
                 text="123456"
@@ -163,7 +164,7 @@ const ChangePassword = () => {
               />
             </View>
 
-            <View style={styles.inputcontainer}>
+            <View style={styles(theme).inputcontainer}>
               <PrimaryText children="NEW PASSWORD" />
               <PasswordInput
                 placeholder="••••••••"
@@ -172,7 +173,7 @@ const ChangePassword = () => {
               />
             </View>
 
-            <View style={styles.inputcontainer}>
+            <View style={styles(theme).inputcontainer}>
               <PrimaryText children="CONFIRM PASSWORD" />
               <PasswordInput
                 placeholder="••••••••"
@@ -181,7 +182,7 @@ const ChangePassword = () => {
               />
             </View>
 
-            <View style={styles.buttonContainer}>
+            <View style={styles(theme).buttonContainer}>
               <PrimaryButton
                 text={loading ? "Updating..." : "CHANGE PASSWORD"}
                 onPressHandler={updatePassword}
@@ -203,7 +204,7 @@ const ChangePassword = () => {
   return (
     <View
       style={[
-        styles.Container,
+        styles(theme).Container,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
@@ -211,7 +212,7 @@ const ChangePassword = () => {
         data={[{ key: "form" }]}
         renderItem={renderContent}
         keyExtractor={(item) => item.key}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles(theme).scrollContent}
         keyboardShouldPersistTaps="handled"
       />
     </View>
@@ -220,9 +221,9 @@ const ChangePassword = () => {
 
 export default ChangePassword;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Container: {
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     flex: 1,
   },
   content: {
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
   },
   CardContainer: {
     marginTop: 20,
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     padding: 30,
     borderColor: "#5f5e5eff",
     borderWidth: 2,
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   infoText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     textAlign: "center",
     fontSize: 14,
     lineHeight: 20,

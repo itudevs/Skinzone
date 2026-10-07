@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Text, View, StyleSheet, Pressable } from "react-native";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 import { DropDownItems } from "./utils/utilinterfaces";
 import SearchBar from "./SearchBar";
 interface DropDownValues {
@@ -21,6 +21,7 @@ const DropDownInput = ({
   onSearchChange,
   searchPlaceholder = "Search",
 }: DropDownValues) => {
+  const theme = useTheme();
   const [expanded, setexpanded] = useState(false);
   const [selectedValue, setselectedValue] = useState(value);
   const Caret = expanded ? ChevronUp : ChevronDown;
@@ -47,19 +48,19 @@ const DropDownInput = ({
     <View style={{ marginVertical: 5 }}>
       <Pressable
         onPress={OpenCloseList}
-        style={({ pressed }) => pressed && styles.presseditem}
+        style={({ pressed }) => pressed && styles(theme).presseditem}
       >
-        <View style={styles.dropdown}>
-          <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">
+        <View style={styles(theme).dropdown}>
+          <Text style={styles(theme).text} numberOfLines={1} ellipsizeMode="tail">
             {selectedValue}
           </Text>
-          <View style={styles.careticon}>
-            <Caret size={15} color={Colors.TextColour} />
+          <View style={styles(theme).careticon}>
+            <Caret size={15} color={theme.TextColour} />
           </View>
         </View>
       </Pressable>
       {expanded ? (
-        <View style={styles.listitems}>
+        <View style={styles(theme).listitems}>
           {onSearchChange && (
             <SearchBar
               Placeholder={searchPlaceholder}
@@ -72,9 +73,9 @@ const DropDownInput = ({
             <View key={item.value}>
               <Pressable
                 onPress={() => handlepressitem(item)}
-                style={({ pressed }) => pressed && styles.presseditem}
+                style={({ pressed }) => pressed && styles(theme).presseditem}
               >
-                <Text style={{ color: "white", padding: 10 }}>
+                <Text style={{ color: theme.TextColour, padding: 10 }}>
                   {item.value}
                   {"("}
                   {item.points}
@@ -93,9 +94,9 @@ const DropDownInput = ({
 };
 export default DropDownInput;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   dropdown: {
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -105,13 +106,13 @@ const styles = StyleSheet.create({
   },
   listitems: {
     marginVertical: 5,
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
     marginHorizontal: 20,
     marginRight: 30,
   },
   text: {
     padding: 10,
-    color: "white",
+    color: theme.TextColour,
     flex: 1,
     marginRight: 10,
   },

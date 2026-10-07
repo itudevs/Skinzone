@@ -14,8 +14,7 @@ import { PlusCircle, X } from "lucide-react-native";
 import { useState, useEffect, useMemo } from "react";
 import PrimaryButton from "./PrimaryButton";
 import PrimaryText from "./PrimaryText";
-import Colors from "./utils/Colours";
-import DropDownInput from "./DropDownInput";
+import { Theme, useTheme } from "./utils/Colours";
 import { GetTreatments } from "./utils/GetServices";
 import { DropDownItems } from "./utils/utilinterfaces";
 import { supabase } from "@/lib/supabase";
@@ -32,11 +31,13 @@ interface FreeVisitProps {
 }
 
 const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
+  const theme = useTheme();
   const [isModalActive, setisModalActive] = useState(false);
   const [clicked, setclicked] = useState(false);
   const [selectedtreatmentid, setselectedtreatmentid] = useState("");
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [treatment, settreatment] = useState<DropDownItems[]>([]);
+  const [treatmentSearch, setTreatmentSearch] = useState("");
   const [amountpaid, setamountpaid] = useState("0.00");
   const [notes, setnotes] = useState("");
   const [selectedTreatmentName, setSelectedTreatmentName] = useState(
@@ -51,11 +52,15 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
 
   const treatmentDropdownItems = useMemo(
     () =>
-      treatment.map((item) => ({
+      treatment
+        .filter((item) =>
+          item.value.toLowerCase().includes(treatmentSearch.trim().toLowerCase()),
+        )
+        .map((item) => ({
         ...item,
         points: getScaledPoints(item.points).toString(),
-      })),
-    [treatment],
+        })),
+    [treatment, treatmentSearch],
   );
 
   const handletreatment = (id: string, value: string) => {
@@ -67,6 +72,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
       setamountpaid(selectedTreatment.cost);
     } else {
       setamountpaid("0.00");
+      setTreatmentSearch("");
     }
   };
   useEffect(() => {
@@ -276,6 +282,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
       setamountpaid("0.00");
       setnotes("");
       setclicked(false);
+      setTreatmentSearch("");
       setSelectedTreatmentName("Select Free Treatment");
     }
   }, [isModalActive, customerid]);
@@ -283,19 +290,19 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
   return (
     <View>
       <Pressable
-        style={({ pressed }) => pressed && styles.presseditem}
+        style={({ pressed }) => pressed && styles(theme).presseditem}
         onPress={() => setisModalActive(true)}
       >
-        <View style={styles.visitCard}>
-          <View style={styles.visitDate}>
-            <Text style={styles.visitDateText}>FREE</Text>
+        <View style={styles(theme).visitCard}>
+          <View style={styles(theme).visitDate}>
+            <Text style={styles(theme).visitDateText}>FREE</Text>
           </View>
-          <View style={styles.visitInfo}>
-            <Text style={styles.visitService}>{selectedTreatmentName}</Text>
-            <Text style={styles.visitStylist}>Stylist: {""}</Text>
+          <View style={styles(theme).visitInfo}>
+            <Text style={styles(theme).visitService}>{selectedTreatmentName}</Text>
+            <Text style={styles(theme).visitStylist}>Stylist: {""}</Text>
           </View>
-          <View style={styles.pointsBadge}>
-            <Text style={styles.pointsBadgeText}>{points} pts</Text>
+          <View style={styles(theme).pointsBadge}>
+            <Text style={styles(theme).pointsBadgeText}>{points} pts</Text>
           </View>
         </View>
       </Pressable>
@@ -306,57 +313,90 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          <View style={styles.Main}>
+          <View style={styles(theme).Main}>
             <Pressable
-              style={styles.closeButton}
+              style={styles(theme).closeButton}
               onPress={() => setisModalActive(false)}
             >
-              <X color={Colors.TextColour} size={24} />
+              <X color={theme.treatmentModalText} size={24} />
             </Pressable>
             <ScrollView
               style={{ flex: 1 }}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.scrollContainer}
+              contentContainerStyle={styles(theme).scrollContainer}
             >
-              <View style={styles.headerContainer}>
-                <Text style={styles.modalHeading}>Claim Free Treatment</Text>
+              <View style={styles(theme).headerContainer}>
+                <Text style={styles(theme).modalHeading}>Claim Free Treatment</Text>
               </View>
 
-              <View style={styles.TreatmentContainer}>
-                <View style={styles.VisitHeader}>
-                  <PlusCircle color={Colors.Primary900} size={24} />
+              <View style={styles(theme).TreatmentContainer}>
+                <View style={styles(theme).VisitHeader}>
+                  <PlusCircle color={theme.Primary900} size={24} />
                   <Text
                     style={{
                       fontWeight: "bold",
                       fontSize: 20,
                       paddingLeft: 10,
-                      color: "white",
+                      color: theme.treatmentModalText,
                     }}
                   ></Text>
                 </View>
-                <View style={styles.VisitHolder}>
+                <View style={styles(theme).VisitHolder}>
                   <PrimaryText>TREATMENT</PrimaryText>
-                  <DropDownInput
-                    id="freetreatment"
-                    value={selectedTreatmentName}
-                    DropDownItem={treatmentDropdownItems}
-                    onSelect={handletreatment}
+                  <TextInput
+                    value={treatmentSearch}
+                    onChangeText={setTreatmentSearch}
+                    placeholder="Search free treatments"
+                    placeholderTextColor={theme.placeholder}
+                    style={styles(theme).treatmentSearchInput}
                   />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles(theme).treatmentPicker}
+                  >
+                    {treatmentDropdownItems.map((item) => {
+                      const isSelected = item.id === selectedtreatmentid;
+                      return (
+                        <Pressable
+                          key={item.id}
+                          onPress={() => handletreatment(item.id, item.value)}
+                          style={[
+                            styles(theme).treatmentOption,
+                            isSelected && styles(theme).treatmentOptionSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles(theme).treatmentOptionText,
+                              isSelected &&
+                                styles(theme).treatmentOptionTextSelected,
+                            ]}
+                            numberOfLines={2}
+                          >
+                            {item.value}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
-                <View style={styles.VisitHolder}>
+                <View style={styles(theme).VisitHolder}>
                   <PrimaryText>STAFF MEMBER</PrimaryText>
                   <View
                     style={{
-                      paddingVertical: 10,
-                      marginVertical: 10,
-                      marginRight: 20,
-                      backgroundColor: Colors.PrimaryBackground,
+                      paddingVertical: 6,
+                      marginVertical: 6,
+                      marginRight: 0,
+                      backgroundColor: theme.treatmentModalBackground,
                       borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: theme.adminBorder,
                     }}
                   >
                     <Text
                       style={{
-                        color: Colors.TextColour,
+                        color: theme.treatmentModalText,
                         paddingLeft: 10,
                         fontWeight: "600",
                       }}
@@ -365,24 +405,25 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
                     </Text>
                   </View>
                 </View>
-                <View style={styles.VisitHolder}>
+                <View style={styles(theme).VisitHolder}>
                   <PrimaryText>AMOUNT PAID</PrimaryText>
                   <View
                     style={{
                       flexDirection: "row",
 
-                      paddingVertical: 10,
-                      marginVertical: 10,
-
-                      marginRight: 20,
-                      backgroundColor: Colors.PrimaryBackground,
+                      paddingVertical: 6,
+                      marginVertical: 6,
+                      marginRight: 0,
+                      backgroundColor: theme.treatmentModalBackground,
                       borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: theme.adminBorder,
                     }}
                   >
                     <Text
                       style={{
                         paddingHorizontal: 10,
-                        color: Colors.TextColour,
+                        color: theme.treatmentModalText,
                         fontWeight: "bold",
                       }}
                     >
@@ -390,7 +431,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
                     </Text>
                     <TextInput
                       placeholder="  0.00"
-                      style={{ color: Colors.TextColour, paddingLeft: 10 }}
+                      style={{ color: theme.treatmentModalText, paddingLeft: 10 }}
                       blurOnSubmit={true}
                       value={amountpaid}
                       editable={false}
@@ -399,21 +440,23 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
                   </View>
                 </View>
 
-                <View style={styles.VisitHolder}>
+                <View style={styles(theme).VisitHolder}>
                   <PrimaryText>NOTES</PrimaryText>
 
                   <TextInput
                     multiline={true}
                     placeholder="   Additional Comments Before You claim"
                     style={{
-                      color: Colors.TextColour,
-                      paddingVertical: 10,
+                      color: theme.treatmentModalText,
+                      paddingVertical: 6,
                       paddingLeft: 10,
-                      paddingBottom: 50,
-                      marginVertical: 10,
-                      marginRight: 20,
-                      backgroundColor: Colors.PrimaryBackground,
+                      paddingBottom: 30,
+                      marginVertical: 6,
+                      marginRight: 0,
+                      backgroundColor: theme.treatmentModalBackground,
                       borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: theme.adminBorder,
                     }}
                     blurOnSubmit={true}
                     value={notes}
@@ -442,10 +485,10 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
 
 export default FreeVisit;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   visitCard: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.PrimaryBackground,
     borderRadius: 15,
     padding: 18,
     marginBottom: 12,
@@ -473,7 +516,7 @@ const styles = StyleSheet.create({
   visitService: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#000000",
+    color: theme.treatmentModalText,
     marginBottom: 4,
   },
   visitStylist: {
@@ -481,13 +524,13 @@ const styles = StyleSheet.create({
     color: "#666666",
   },
   pointsBadge: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   pointsBadgeText: {
-    color: "#FFFFFF",
+    color: theme.treatmentModalText,
     fontSize: 13,
     fontWeight: "bold",
   },
@@ -496,6 +539,7 @@ const styles = StyleSheet.create({
   },
   Main: {
     flex: 1,
+    backgroundColor: theme.freeTreatmentModalBackground,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -509,18 +553,18 @@ const styles = StyleSheet.create({
   modalHeading: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "white",
+    color: theme.treatmentModalText,
     textAlign: "center",
     letterSpacing: 1,
   },
   CustomerDetails: {
     padding: "2%",
     margin: "5%",
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.treatmentModalBackground,
     borderRadius: 20,
   },
   CustomerCard: {
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.treatmentModalBackground,
     borderRadius: 15,
     padding: 16,
     flexDirection: "row",
@@ -540,13 +584,13 @@ const styles = StyleSheet.create({
   },
   CustomerName: {
     fontSize: 18,
-    color: "#FFFFFF",
+    color: theme.treatmentModalText,
     fontWeight: "bold",
     marginBottom: 12,
   },
   ContactNumber: {
     fontSize: 14,
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontWeight: "600",
     letterSpacing: 1,
     paddingLeft: 10,
@@ -560,26 +604,71 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   Verticalline: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
     paddingHorizontal: 100,
     paddingVertical: 1,
     borderRadius: 30,
   },
   TreatmentContainer: {
-    backgroundColor: Colors.background100,
-    padding: 20,
-    marginHorizontal: 20,
+    backgroundColor: theme.treatmentModalBackground,
+    padding: 12,
+    marginHorizontal: 12,
     borderRadius: 20,
+    borderWidth: 2,
+    borderColor: theme.adminBorder,
     alignSelf: "center",
     width: "90%",
     maxWidth: 400,
   },
   VisitHeader: {
     flexDirection: "row",
-    padding: 15,
+    padding: 8,
   },
   VisitHolder: {
-    paddingLeft: 20,
+    padding: 8,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
+    borderRadius: 12,
+  },
+  treatmentSearchInput: {
+    color: theme.treatmentModalText,
+    backgroundColor: theme.treatmentModalBackground,
+    borderColor: theme.adminBorder,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  treatmentPicker: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  treatmentOption: {
+    alignItems: "center",
+    backgroundColor: theme.treatmentModalBackground,
+    borderColor: theme.adminBorder,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 52,
+    paddingHorizontal: 12,
+    width: 150,
+  },
+  treatmentOptionSelected: {
+    backgroundColor: theme.Primary900,
+    borderColor: theme.Primary900,
+  },
+  treatmentOptionText: {
+    color: theme.treatmentModalText,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  treatmentOptionTextSelected: {
+    color: "#000000",
+    fontWeight: "800",
   },
   closeButton: {
     position: "absolute",
@@ -587,7 +676,7 @@ const styles = StyleSheet.create({
     left: 20,
     width: 40,
     height: 40,
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",

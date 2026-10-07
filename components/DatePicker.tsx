@@ -6,7 +6,7 @@ import {
   View,
   Platform,
 } from "react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 interface DatePickerProps {
@@ -16,6 +16,7 @@ interface DatePickerProps {
 }
 
 const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
+  const theme = useTheme();
   const [date, setDate] = useState<Date | undefined>(value);
   const [show, setShow] = useState(false);
 
@@ -44,9 +45,9 @@ const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
     <View>
       <TouchableOpacity onPress={() => setShow(true)}>
         <TextInput
-          style={styles.main}
+          style={styles(theme).main}
           placeholder={placeholder}
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.placeholder}
           value={date ? formatDate(date) : ""}
           editable={false}
           pointerEvents="none"
@@ -59,7 +60,7 @@ const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
           display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={onChange}
           maximumDate={new Date()}
-          textColor="#ffffff"
+          textColor={theme.TextColour}
         />
       )}
     </View>
@@ -68,13 +69,13 @@ const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
 
 export default DatePicker;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   main: {
     marginTop: 8,
     padding: 15,
-    color: Colors.TextColour,
-    backgroundColor: Colors.PrimaryBackground,
-    borderColor: "#8b8b8bff",
+    color: theme.TextColour,
+    backgroundColor: theme.PrimaryBackground,
+    borderColor: theme.bordercolor,
     borderWidth: 0.5,
     borderRadius: 10,
   },

@@ -5,12 +5,13 @@ import {
   StyleSheet,
   TextInput,
   ScrollView,
+  Pressable,
   Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
 } from "react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 import { CustomerModalprops } from "./utils/CustomerInterface";
 import {
   PlusCircle,
@@ -22,7 +23,6 @@ import {
 } from "lucide-react-native";
 import PrimaryText from "./PrimaryText";
 import PrimaryButton from "./PrimaryButton";
-import DropDownInput from "./DropDownInput";
 import { DropDownItems } from "./utils/utilinterfaces";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useMemo, useState } from "react";
@@ -51,20 +51,16 @@ const CustomerModal = ({
   Surname,
   Phone,
 }: CustomerModalprops) => {
+  const theme = useTheme();
   const [selectedStaffId, setSelectedStaffId] = useState("");
-  const [selectedTreatmentId, setSelectedTreatmentId] = useState("");
-  const [selectedProductId, setSelectedProductId] = useState("");
+  const [selectedTreatments, setSelectedTreatments] = useState<DropDownItems[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<DropDownItems[]>([]);
   const [clicked, setclicked] = useState(false);
   const [treatment, settreatment] = useState<DropDownItems[]>([]);
   const [products, setProducts] = useState<DropDownItems[]>([]);
-  const [amountpaid, setamountpaid] = useState("0.00");
   const [notes, setnotes] = useState("");
   const [historyLimit, setHistoryLimit] = useState(5);
   const [selectedStaffName, setSelectedStaffName] = useState("");
-  const [selectedTreatmentName, setSelectedTreatmentName] = useState("");
-  const [selectedProductName, setSelectedProductName] = useState("");
-  const [selectedTreatment, setselectedTreatment] = useState<DropDownItems>();
-  const [selectedProduct, setSelectedProduct] = useState<DropDownItems>();
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [historySearch, setHistorySearch] = useState("");
@@ -87,6 +83,15 @@ const CustomerModal = ({
     return products.filter((item) => item.value.toLowerCase().includes(query));
   }, [products, productSearch]);
 
+  const totalAmount = useMemo(
+    () =>
+      [...selectedTreatments, ...selectedProducts].reduce(
+        (total, item) => total + (Number(item.cost) || 0),
+        0,
+      ),
+    [selectedProducts, selectedTreatments],
+  );
+
   const filteredVisits = useMemo(() => {
     const query = historySearch.trim().toLowerCase();
     if (!query) return visits;
@@ -100,38 +105,22 @@ const CustomerModal = ({
   }, [historySearch, visits]);
 
   const handleTreatmentSelect = (id: string, value: string) => {
-    setSelectedTreatmentId(id);
-    setSelectedTreatmentName(value);
-    // Clear product selection (mutual exclusivity)
-    setSelectedProductId("");
-    setSelectedProductName("");
-    setSelectedProduct(undefined);
-    // Find the treatment and set the amount
-    const selected = treatment.find((t) => t.id === id);
-    setselectedTreatment(selected);
-    if (selected && selected.cost) {
-      setamountpaid(selected.cost);
-    } else {
-      setamountpaid("0.00");
-    }
+    const selected = treatment.find((item) => item.id === id);
+    if (!selected || selectedTreatments.some((item) => item.id === id)) return;
+    setSelectedTreatments((current) => [...current, selected]);
   };
 
   const handleProductSelect = (id: string, value: string) => {
-    setSelectedProductId(id);
-    setSelectedProductName(value);
-    // Clear treatment selection (mutual exclusivity)
-    setSelectedTreatmentId("");
-    setSelectedTreatmentName("");
-    setselectedTreatment(undefined);
-    // Find the product and set the amount
-    const selected = products.find((p) => p.id === id);
-    setSelectedProduct(selected);
-    if (selected && selected.cost) {
-      setamountpaid(selected.cost);
-    } else {
-      setamountpaid("0.00");
-    }
+    const selected = products.find((item) => item.id === id);
+    if (!selected || selectedProducts.some((item) => item.id === id)) return;
+    setSelectedProducts((current) => [...current, selected]);
   };
+
+  const removeTreatment = (id: string) =>
+    setSelectedTreatments((current) => current.filter((item) => item.id !== id));
+
+  const removeProduct = (id: string) =>
+    setSelectedProducts((current) => current.filter((item) => item.id !== id));
 
   const AddVisitHandler = async () => {
     if (clicked) return; // Prevent multiple submissions
@@ -142,7 +131,7 @@ const CustomerModal = ({
       return;
     }
 
-    if (!selectedTreatmentId && !selectedProductId) {
+    if (selectedTreatments.length === 0 && selectedProducts.length === 0) {
       Alert.alert("Error", "Please select a treatment or product");
       return;
     }
@@ -150,14 +139,16 @@ const CustomerModal = ({
     setclicked(true);
 
     let visitData: CustomerVisitInsert;
-    let visitLine: CustomerVisitLineInsert;
     let idString: string = id || "";
-    const isProduct = !!selectedProductId;
+    const selectedItems = [
+      ...selectedTreatments.map((item) => ({ item, isProduct: false })),
+      ...selectedProducts.map((item) => ({ item, isProduct: true })),
+    ];
 
     visitData = {
       customerid: idString,
       staffid: selectedStaffId,
-      totalamountpaid: +amountpaid,
+      totalamountpaid: totalAmount,
       notes: notes,
       visit_date: visitDate.toISOString(),
     };
@@ -174,13 +165,8 @@ const CustomerModal = ({
       return;
     }
 
-    // Insert visitline - need to handle treatments vs products differently
-    const serviceId = selectedTreatmentId || selectedProductId;
-
-    // For products, we need to check if a treatment record exists with this ServiceId
-    // since customervisitlines.treatmentid references treatments.treatmentid
-    if (isProduct) {
-      // Check if this product has a corresponding treatment entry
+    for (const selectedItem of selectedItems.filter((entry) => entry.isProduct)) {
+      const serviceId = selectedItem.item.id;
       const { data: treatmentCheck, error: treatmentCheckError } =
         await supabase
           .from("treatments")
@@ -199,7 +185,6 @@ const CustomerModal = ({
         return;
       }
 
-      // If no treatment record exists for this product's ServiceId, create one
       if (!treatmentCheck) {
         const { error: treatmentInsertError } = await supabase
           .from("treatments")
@@ -225,17 +210,14 @@ const CustomerModal = ({
       }
     }
 
-    visitLine = {
+    const visitLines: CustomerVisitLineInsert[] = selectedItems.map(({ item }) => ({
       quantity: 1,
-      treatmentid: +serviceId,
+      treatmentid: +item.id,
       csid: data.csid,
-    };
-
+    }));
     const { error: lineError } = await supabase
       .from("customervisitlines")
-      .insert(visitLine)
-      .select()
-      .single();
+      .insert(visitLines);
 
     if (lineError) {
       // Rollback: delete the customer visit
@@ -247,7 +229,7 @@ const CustomerModal = ({
 
     // Send notification to customer
     try {
-      const serviceName = selectedTreatmentName || selectedProductName;
+      const serviceName = selectedItems.map(({ item }) => item.value).join(", ");
       await sendVisitNotification(serviceName, selectedStaffName, idString);
     } catch (error) {
       // Notification failed, but visit was added successfully
@@ -257,8 +239,7 @@ const CustomerModal = ({
     await cacheManager.invalidatePattern(`points_${idString}`);
     await cacheManager.invalidatePattern(`lastvisit_${idString}`);
 
-    const itemType = isProduct ? "Product purchase" : "Visit";
-    Alert.alert("Success", `${itemType} added successfully!`);
+    Alert.alert("Success", "Visit added successfully!");
     setclicked(false);
     setRefreshTrigger((prev) => prev + 1); // Trigger refresh
     Onclose();
@@ -323,19 +304,14 @@ const CustomerModal = ({
     if (!Visible) {
       // Reset form when modal is closed
       setSelectedStaffId("");
-      setSelectedTreatmentId("");
-      setSelectedProductId("");
       setSelectedStaffName("");
-      setSelectedTreatmentName("");
-      setSelectedProductName("");
-      setamountpaid("0.00");
       setVisitDate(new Date());
       setnotes("");
       setTreatmentSearch("");
       setProductSearch("");
       setHistorySearch("");
-      setselectedTreatment(undefined);
-      setSelectedProduct(undefined);
+      setSelectedTreatments([]);
+      setSelectedProducts([]);
       setHistoryLimit(5);
     }
   }, [Visible]);
@@ -373,48 +349,48 @@ const CustomerModal = ({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <View style={styles.Main}>
-          <View style={styles.ModalHeader}>
-            <TouchableOpacity onPress={Onclose} style={styles.CloseButton}>
-              <X color="#fff" size={24} />
+        <View style={styles(theme).Main}>
+          <View style={styles(theme).ModalHeader}>
+            <TouchableOpacity onPress={Onclose} style={styles(theme).CloseButton}>
+              <X color={theme.treatmentModalText} size={24} />
             </TouchableOpacity>
-            <Text style={styles.HeaderTitle}>ADD NEW VISIT FOR USERS</Text>
+            <Text style={styles(theme).HeaderTitle}>ADD NEW VISIT FOR USERS</Text>
             <View style={{ width: 24 }} />
           </View>
 
           <ScrollView
             style={{ flex: 1 }}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.ScrollContent}
+            contentContainerStyle={styles(theme).ScrollContent}
           >
             {/* Customer Profile Card */}
-            <View style={styles.Card}>
-              <View style={styles.RowBetween}>
+            <View style={styles(theme).Card}>
+              <View style={styles(theme).RowBetween}>
                 <View>
-                  <Text style={styles.Label}>CUSTOMER</Text>
-                  <Text style={styles.CustomerName}>
+                  <Text style={styles(theme).Label}>CUSTOMER</Text>
+                  <Text style={styles(theme).CustomerName}>
                     {Name} {Surname}
                   </Text>
 
-                  <Text style={[styles.Label, { marginTop: 12 }]}>CONTACT</Text>
-                  <View style={styles.IconRow}>
+                  <Text style={[styles(theme).Label, { marginTop: 12 }]}>CONTACT</Text>
+                  <View style={styles(theme).IconRow}>
                     <PhoneIcon size={14} color="#00ff44" />
-                    <Text style={styles.ContactText}>{Phone}</Text>
+                    <Text style={styles(theme).ContactText}>{Phone}</Text>
                   </View>
                 </View>
-                <View style={styles.Avatar}>
-                  <User size={24} color="#fff" />
+                <View style={styles(theme).Avatar}>
+                  <User size={24} color={theme.treatmentModalText} />
                 </View>
               </View>
             </View>
 
             {/* Points & Status Card */}
-            <View style={[styles.Card, styles.RowBetween]}>
-              <View style={styles.PointsContainer}>
-                <View style={styles.GreenBar} />
+            <View style={[styles(theme).Card, styles(theme).RowBetween]}>
+              <View style={styles(theme).PointsContainer}>
+                <View style={styles(theme).GreenBar} />
                 <View>
-                  <Text style={styles.Label}>CURRENT POINTS</Text>
-                  <Text style={styles.PointsValue}>{point}</Text>
+                  <Text style={styles(theme).Label}>CURRENT POINTS</Text>
+                  <Text style={styles(theme).PointsValue}>{point}</Text>
                 </View>
               </View>
 
@@ -423,14 +399,14 @@ const CustomerModal = ({
               >
                 <Text
                   style={[
-                    styles.Label,
+                    styles(theme).Label,
                     { textAlign: "right", marginBottom: 5 },
                   ]}
                 >
                   STATUS
                 </Text>
-                <View style={styles.StatusPill}>
-                  <Text style={styles.StatusText}>
+                <View style={styles(theme).StatusPill}>
+                  <Text style={styles(theme).StatusText}>
                     {!idfetched ? (
                       "Loading..."
                     ) : point >= 500 ? (
@@ -451,63 +427,141 @@ const CustomerModal = ({
             </View>
 
             {/* Add New Visit Form */}
-            <View style={styles.Card}>
-              <View style={styles.SectionHeader}>
+            <View style={styles(theme).Card}>
+              <View style={styles(theme).SectionHeader}>
                 <PlusCircle size={24} color="#00ff44" />
-                <Text style={styles.SectionTitle}>Add New Visit</Text>
+                <Text style={styles(theme).SectionTitle}>Add New Visit</Text>
               </View>
 
-              {/* Treatment Dropdown */}
-              <Text style={styles.InputLabel}>TREATMENT</Text>
-              <DropDownInput
-                value={selectedTreatmentName || "Select Treatment"}
-                id="treatment-select"
-                DropDownItem={filteredTreatments}
-                onSelect={handleTreatmentSelect}
-                searchValue={treatmentSearch}
-                onSearchChange={setTreatmentSearch}
-                searchPlaceholder="Search treatments"
+              {/* Treatment Picker */}
+              <Text style={styles(theme).InputLabel}>TREATMENT</Text>
+              <TextInput
+                value={treatmentSearch}
+                onChangeText={setTreatmentSearch}
+                placeholder="Search treatments"
+                placeholderTextColor={theme.placeholder}
+                style={styles(theme).pickerSearchInput}
               />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles(theme).pickerOptions}
+              >
+                {filteredTreatments.map((item) => {
+                  const isSelected = selectedTreatments.some(
+                    (selected) => selected.id === item.id,
+                  );
+                  return (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => handleTreatmentSelect(item.id, item.value)}
+                      style={[
+                        styles(theme).pickerOption,
+                        isSelected && styles(theme).pickerOptionSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles(theme).pickerOptionText,
+                          isSelected && styles(theme).pickerOptionTextSelected,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {item.value}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <View style={styles(theme).selectionList}>
+                {selectedTreatments.map((item) => (
+                  <View key={item.id} style={styles(theme).selectionChip}>
+                    <Text style={styles(theme).selectionChipText}>{item.value}</Text>
+                    <TouchableOpacity onPress={() => removeTreatment(item.id)}>
+                      <X color={theme.treatmentModalText} size={16} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
 
-              {/* Products Dropdown */}
-              <Text style={styles.InputLabel}>PRODUCTS</Text>
-              <DropDownInput
-                value={selectedProductName || "Select Product"}
-                id="product-select"
-                DropDownItem={filteredProducts}
-                onSelect={handleProductSelect}
-                searchValue={productSearch}
-                onSearchChange={setProductSearch}
-                searchPlaceholder="Search products"
+              {/* Product Picker */}
+              <Text style={styles(theme).InputLabel}>PRODUCTS</Text>
+              <TextInput
+                value={productSearch}
+                onChangeText={setProductSearch}
+                placeholder="Search products"
+                placeholderTextColor={theme.placeholder}
+                style={styles(theme).pickerSearchInput}
               />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles(theme).pickerOptions}
+              >
+                {filteredProducts.map((item) => {
+                  const isSelected = selectedProducts.some(
+                    (selected) => selected.id === item.id,
+                  );
+                  return (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => handleProductSelect(item.id, item.value)}
+                      style={[
+                        styles(theme).pickerOption,
+                        isSelected && styles(theme).pickerOptionSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles(theme).pickerOptionText,
+                          isSelected && styles(theme).pickerOptionTextSelected,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {item.value}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <View style={styles(theme).selectionList}>
+                {selectedProducts.map((item) => (
+                  <View key={item.id} style={styles(theme).selectionChip}>
+                    <Text style={styles(theme).selectionChipText}>{item.value}</Text>
+                    <TouchableOpacity onPress={() => removeProduct(item.id)}>
+                      <X color={theme.treatmentModalText} size={16} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
 
               {/* Staff Member Dropdown */}
-              <Text style={styles.InputLabel}>STAFF MEMBER</Text>
-              <View style={styles.InputContainer}>
+              <Text style={styles(theme).InputLabel}>STAFF MEMBER</Text>
+              <View style={styles(theme).InputContainer}>
                 <TextInput
-                  style={styles.TextInput}
+                  style={styles(theme).TextInput}
                   value={selectedStaffName || "Current Staff"}
                   editable={false}
                   placeholder="Current Staff"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={theme.placeholder}
                 />
               </View>
 
               {/* Amount Paid */}
-              <Text style={styles.InputLabel}>AMOUNT PAID</Text>
-              <View style={styles.InputContainer}>
-                <Text style={styles.CurrencySymbol}>R</Text>
+              <Text style={styles(theme).InputLabel}>AMOUNT PAID</Text>
+              <View style={styles(theme).InputContainer}>
+                <Text style={styles(theme).CurrencySymbol}>R</Text>
                 <TextInput
-                  style={styles.TextInput}
-                  value={amountpaid}
+                  style={styles(theme).TextInput}
+                  value={totalAmount.toFixed(2)}
                   editable={false} // Assuming amount is auto-calculated based on selection
                   placeholder="0.00"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={theme.placeholder}
                 />
               </View>
 
               {/* Visit Date */}
-              <Text style={styles.InputLabel}>VISIT DATE</Text>
+              <Text style={styles(theme).InputLabel}>VISIT DATE</Text>
               <DatePicker
                 placeholder="Select visit date"
                 value={visitDate}
@@ -515,14 +569,14 @@ const CustomerModal = ({
               />
 
               {/* Notes */}
-              <Text style={styles.InputLabel}>NOTES</Text>
-              <View style={[styles.InputContainer, styles.TextAreaContainer]}>
+              <Text style={styles(theme).InputLabel}>NOTES</Text>
+              <View style={[styles(theme).InputContainer, styles(theme).TextAreaContainer]}>
                 <TextInput
-                  style={[styles.TextInput, styles.TextArea]}
+                  style={[styles(theme).TextInput, styles(theme).TextArea]}
                   value={notes}
                   onChangeText={HandleNotes}
                   placeholder="Add Treatment Notes"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={theme.placeholder}
                   multiline={true}
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -539,10 +593,10 @@ const CustomerModal = ({
             </View>
 
             {/* History Section */}
-            <View style={styles.HistoryHeader}>
-              <Text style={styles.HistoryTitle}>HISTORY</Text>
-              <View style={styles.Badge}>
-                <Text style={styles.BadgeText}>
+            <View style={styles(theme).HistoryHeader}>
+              <Text style={styles(theme).HistoryTitle}>HISTORY</Text>
+              <View style={styles(theme).Badge}>
+                <Text style={styles(theme).BadgeText}>
                   Showing last {historyLimit} visits
                 </Text>
               </View>
@@ -556,7 +610,7 @@ const CustomerModal = ({
             />
 
             {/* History List */}
-            <View style={styles.HistoryList}>
+            <View style={styles(theme).HistoryList}>
               <Visitation
                 id={id}
                 Name={Name}
@@ -590,10 +644,10 @@ const CustomerModal = ({
 
 export default CustomerModal;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Main: {
     flex: 1,
-    backgroundColor: Colors.PrimaryBackground || "#121212",
+    backgroundColor: theme.PrimaryBackground,
   },
   ModalHeader: {
     flexDirection: "row",
@@ -604,7 +658,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   HeaderTitle: {
-    color: "#888",
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 1,
@@ -634,7 +688,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   CustomerName: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "bold",
     marginTop: 4,
@@ -694,7 +748,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   SectionTitle: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -706,25 +760,87 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: 0.5,
   },
+  pickerSearchInput: {
+    backgroundColor: theme.treatmentModalBackground,
+    borderColor: theme.bordercolor,
+    borderRadius: 8,
+    borderWidth: 1,
+    color: theme.treatmentModalText,
+    marginBottom: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  pickerOptions: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  pickerOption: {
+    alignItems: "center",
+    backgroundColor: theme.treatmentModalBackground,
+    borderColor: theme.bordercolor,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 52,
+    paddingHorizontal: 12,
+    width: 150,
+  },
+  pickerOptionSelected: {
+    backgroundColor: theme.Primary900,
+    borderColor: theme.Primary900,
+  },
+  pickerOptionText: {
+    color: theme.treatmentModalText,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  pickerOptionTextSelected: {
+    color: "#000000",
+    fontWeight: "800",
+  },
+  selectionList: {
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  selectionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: theme.SecondaryColour100,
+    borderColor: theme.Primary900,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  selectionChipText: {
+    color: theme.treatmentModalText,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    marginRight: 8,
+  },
   InputContainer: {
-    backgroundColor: Colors.PrimaryBackground || "#121212",
+    backgroundColor: theme.treatmentModalBackground,
     borderRadius: 8,
     paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 0.5,
-    borderColor: "#8b8b8bff",
+    borderColor: theme.bordercolor,
     marginTop: 8,
   },
   CurrencySymbol: {
-    color: "#fff",
+    color: theme.treatmentModalText,
     fontSize: 14,
     fontWeight: "bold",
     marginRight: 8,
   },
   TextInput: {
     flex: 1,
-    color: "#fff",
+    color: theme.treatmentModalText,
     paddingVertical: 14,
     fontSize: 14,
   },

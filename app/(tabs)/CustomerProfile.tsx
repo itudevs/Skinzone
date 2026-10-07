@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { View, Text, StyleSheet, Alert } from "react-native";
 import { Session } from "@supabase/supabase-js";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import ProfileImage from "../../components/ProfileImage";
 import EditModal from "@/components/EditModal";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -11,6 +11,7 @@ import { UserSession } from "@/components/utils/GetUsersession";
 import { pickImage, uploadProfileImage } from "@/lib/imageUpload";
 
 const CustomerProfile = () => {
+  const theme = useTheme();
   const router = useRouter();
   const session = UserSession;
   const userId = session?.getSession()?.user.id;
@@ -92,8 +93,8 @@ const CustomerProfile = () => {
   };
 
   return (
-    <View style={styles.Container}>
-      <View style={styles.CardContainer}>
+    <View style={styles(theme).Container}>
+      <View style={styles(theme).CardContainer}>
         <ProfileImage
           imagehandler={handleImageUpload}
           imageUrl={profilePicture}
@@ -101,7 +102,7 @@ const CustomerProfile = () => {
         />
         <Text
           style={{
-            color: Colors.TextColour,
+            color: theme.TextColour,
             textAlign: "center",
             paddingTop: 1,
           }}
@@ -118,9 +119,9 @@ const CustomerProfile = () => {
 
 export default CustomerProfile;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Container: {
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     flex: 1,
     paddingTop: 40,
     paddingBottom: 20,
@@ -128,9 +129,9 @@ const styles = StyleSheet.create({
   },
   CardContainer: {
     flex: 1,
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     alignItems: "center",
-    borderColor: Colors.bordercolor,
+    borderColor: theme.bordercolor,
     borderWidth: 1,
     borderRadius: 50,
     paddingBottom: 30,

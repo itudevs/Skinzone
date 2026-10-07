@@ -1,5 +1,5 @@
 import PrimaryText from "@/components/PrimaryText";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import SearchBar from "@/components/SearchBar";
 type DateFilter = "all" | "30days" | "90days" | "year";
 
 const HistoryPage = () => {
+  const theme = useTheme();
   const [visitations, setvisitations] = useState<any[]>([]);
   const [session, setSession] = useState<Session | null>(
     UserSession.getSession(),
@@ -87,15 +88,15 @@ const HistoryPage = () => {
   };
 
   return (
-    <View style={styles.Container}>
-      <View style={styles.header}>
-        <Text style={{ color: "white", fontWeight: "bold", fontSize: 40 }}>
+    <View style={styles(theme).Container}>
+      <View style={styles(theme).header}>
+        <Text style={{ color: theme.TextColour, fontWeight: "bold", fontSize: 40 }}>
           History
         </Text>
         <PrimaryText>Track your loyalty visitations</PrimaryText>
       </View>
       <ScrollView
-        style={styles.CardContainer}
+        style={styles(theme).CardContainer}
         contentContainerStyle={{ paddingBottom: 20 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -109,13 +110,13 @@ const HistoryPage = () => {
             paddingRight: 15,
           }}
         >
-          <Text style={{ color: Colors.Primary900, padding: 15 }}>Logs</Text>
-          <History color={Colors.TextColour} size={20} />
+          <Text style={{ color: theme.Primary900, padding: 15 }}>Logs</Text>
+          <History color={theme.TextColour} size={20} />
         </View>
-        <View style={styles.InnerCard}>
+        <View style={styles(theme).InnerCard}>
           <Text
             style={{
-              color: "white",
+              color: theme.TextColour,
               fontWeight: "bold",
               fontSize: 20,
               paddingHorizontal: 15,
@@ -127,7 +128,7 @@ const HistoryPage = () => {
           </Text>
           <Text
             style={{
-              color: Colors.TextColour,
+              color: theme.TextColour,
               paddingHorizontal: 20,
               paddingBottom: 10,
             }}
@@ -140,7 +141,7 @@ const HistoryPage = () => {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          <View style={styles.filterRow}>
+          <View style={styles(theme).filterRow}>
             {(
               [
                 ["all", "All"],
@@ -153,8 +154,8 @@ const HistoryPage = () => {
                 key={value}
                 onPress={() => setDateFilter(value)}
                 style={[
-                  styles.filterChip,
-                  dateFilter === value && styles.filterChipActive,
+                  styles(theme).filterChip,
+                  dateFilter === value && styles(theme).filterChipActive,
                 ]}
               >
                 {label}
@@ -170,7 +171,7 @@ const HistoryPage = () => {
           </View>
           {filteredVisitations.length === 0 && (
             <View style={{ alignItems: "center", padding: 20 }}>
-              <Text style={{ color: Colors.TextColour }}>No visits found</Text>
+              <Text style={{ color: theme.TextColour }}>No visits found</Text>
             </View>
           )}
           <View style={{ alignItems: "center", padding: 20 }}>
@@ -184,10 +185,10 @@ const HistoryPage = () => {
 
 export default HistoryPage;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Container: {
     flex: 1,
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
   },
   header: {
     paddingTop: 60,
@@ -196,8 +197,8 @@ const styles = StyleSheet.create({
   },
   CardContainer: {
     flex: 1,
-    backgroundColor: Colors.background100,
-    borderColor: Colors.bordercolor,
+    backgroundColor: theme.background100,
+    borderColor: theme.bordercolor,
     borderWidth: 1,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -205,8 +206,8 @@ const styles = StyleSheet.create({
   },
   InnerCard: {
     flex: 1,
-    backgroundColor: Colors.PrimaryBackground,
-    borderColor: Colors.bordercolor,
+    backgroundColor: theme.PrimaryBackground,
+    borderColor: theme.bordercolor,
     borderWidth: 0.5,
     borderRadius: 20,
     marginHorizontal: 10,
@@ -221,8 +222,8 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     flex: 1,
-    color: Colors.TextColour,
-    backgroundColor: Colors.background100,
+    color: theme.TextColour,
+    backgroundColor: theme.background100,
     borderRadius: 8,
     paddingVertical: 8,
     textAlign: "center",
@@ -230,7 +231,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   filterChipActive: {
-    color: Colors.PrimaryBackground,
-    backgroundColor: Colors.Primary900,
+    color: theme.PrimaryBackground,
+    backgroundColor: theme.Primary900,
   },
 });

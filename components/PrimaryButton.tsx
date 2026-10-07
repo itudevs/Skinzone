@@ -1,18 +1,19 @@
 import { Pressable, View, Text, StyleSheet } from "react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 interface PrimaryButtonprops {
   text: string;
   onPressHandler: () => void;
 }
 const PrimaryButton = ({ text, onPressHandler }: PrimaryButtonprops) => {
+  const theme = useTheme();
   return (
     <Pressable
       onPress={onPressHandler}
-      style={({ pressed }) => pressed && styles.presseditem}
+      style={({ pressed }) => pressed && styles(theme).presseditem}
     >
       {/*Button Container*/}
-      <View style={styles.main}>
-        <Text style={{ color: "black", fontWeight: "bold", fontSize: 15 }}>
+      <View style={styles(theme).main}>
+        <Text style={{ color: theme.TextColour, fontWeight: "bold", fontSize: 15 }}>
           {text}
         </Text>
       </View>
@@ -22,7 +23,7 @@ const PrimaryButton = ({ text, onPressHandler }: PrimaryButtonprops) => {
 
 export default PrimaryButton;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   main: {
     margin: 10,
     padding: 10,
