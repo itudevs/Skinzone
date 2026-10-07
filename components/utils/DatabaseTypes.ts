@@ -6,10 +6,11 @@ export let treatments: Tables<'treatments'>
 export let Product: Tables<'Product'>
 export let Services: Tables<'Services'>
 export let bookings: Tables<'bookings'>
-
+export let booking_lines: Tables<'booking_line'>
 export type CustomerVisitInsert = Database['public']['Tables']['customervisits']['Insert']
 export type CustomerVisitLineInsert = Database['public']['Tables']['customervisitlines']['Insert']
 export type TrearmentInsert = Database['public']['Tables']['treatments']['Insert']
 export type ProductsInsert = Database['public']['Tables']['Product']['Insert']
 export type SerivceInsert = Database['public']['Tables']['Services']['Insert']
 export type BookingInsert = Database['public']['Tables']['bookings']['Insert']
+export type BookingLineInsert = Database['public']['Tables']['booking_line']['Insert']

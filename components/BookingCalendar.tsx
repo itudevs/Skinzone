@@ -34,6 +34,8 @@ const isBeforeToday = (date: Date) => {
   return candidate < today;
 };
 
+const isSunday = (date: Date) => date.getDay() === 0;
+
 const BookingCalendar = ({
   selectedDate = new Date(),
   onDateChange,
@@ -95,7 +97,7 @@ const BookingCalendar = ({
   }, [visibleMonth]);
 
   const handlePress = (date: Date) => {
-    if (isBeforeToday(date)) {
+    if (isBeforeToday(date) || isSunday(date)) {
       return;
     }
 
@@ -155,17 +157,18 @@ const BookingCalendar = ({
                 const isSelected =
                   cell.date.toDateString() === activeDate.toDateString();
                 const isPast = isBeforeToday(cell.date);
+                const isUnavailable = isPast || isSunday(cell.date);
 
                 return (
                   <Pressable
                     key={`${weekIndex}-${dayIndex}-${cell.date.toISOString()}`}
-                    disabled={isPast}
+                    disabled={isUnavailable}
                     onPress={() => handlePress(cell.date)}
                     style={[
                       styles.dateCell,
                       isSelected && styles.dateCellSelected,
                       cell.isMuted && styles.dateCellMuted,
-                      isPast && styles.dateCellDisabled,
+                      isUnavailable && styles.dateCellDisabled,
                     ]}
                   >
                     <Text
@@ -173,7 +176,7 @@ const BookingCalendar = ({
                         styles.dateText,
                         isSelected && styles.dateTextSelected,
                         cell.isMuted && styles.dateTextMuted,
-                        isPast && styles.dateTextDisabled,
+                        isUnavailable && styles.dateTextDisabled,
                       ]}
                     >
                       {cell.date.getDate()}
