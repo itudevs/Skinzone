@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  Linking,
 } from "react-native";
 import { CheckCircle2, Search } from "lucide-react-native";
 import { Theme, useTheme } from "@/components/utils/Colours";
@@ -31,6 +32,7 @@ interface AdminBookingItem {
   id: number;
   customerId: number;
   customerName: string;
+  customerPhone?: string;
   status: string;
   bookingDate: Date;
   lines: AdminBookingLine[];
@@ -158,7 +160,7 @@ const AdminBooking = () => {
               .in("booking_id", bookingIds),
             supabase
               .from("User")
-              .select("id,name,surname")
+              .select("id,name,surname,phone")
               .in("id", customerIds),
           ]);
 
@@ -181,8 +183,12 @@ const AdminBooking = () => {
         const usersById = new Map(
           (userData ?? []).map((user) => [
             user.id,
-            [user.name, user.surname].filter(Boolean).join(" ").trim() ||
-              "Customer",
+            {
+              name:
+                [user.name, user.surname].filter(Boolean).join(" ").trim() ||
+                "Customer",
+              phone: user.phone,
+            },
           ]),
         );
         const servicesById = new Map(
@@ -213,7 +219,9 @@ const AdminBooking = () => {
             return {
               id: booking.bookingid,
               customerId: booking.customerid,
-              customerName: usersById.get(booking.customerid) ?? "Customer",
+              customerName:
+                usersById.get(booking.customerid)?.name ?? "Customer",
+              customerPhone: usersById.get(booking.customerid)?.phone,
               status,
               bookingDate,
               lines: linesByBooking.get(booking.bookingid) ?? [],
@@ -361,7 +369,6 @@ const AdminBooking = () => {
             rescheduleTime,
             selectedBooking.lines.length,
             BOOKING_SLOT_OPTIONS,
-            getSlotOptionsForDate(nextDate),
             getSlotOptionsForDate(rescheduleDate),
           )
         : [],
@@ -768,6 +775,21 @@ const AdminBooking = () => {
               {selectedBooking ? (
                 <>
                 <Text style={styles(theme).modalValue}>{selectedBooking.customerName}</Text>
+                {selectedBooking.customerPhone ? (
+                  <Pressable
+                    onPress={() =>
+                      void Linking.openURL(`tel:${selectedBooking.customerPhone}`)
+                    }
+                  >
+                    <Text style={styles(theme).modalContact}>
+                      Contact: {selectedBooking.customerPhone}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Text style={styles(theme).modalContact}>
+                    Contact: Not available
+                  </Text>
+                )}
                 <Text style={styles(theme).modalLabel}>
                   {selectedBooking.bookingDate.toISOString().slice(0, 10)} •{" "}
                   {selectedBooking.status}
@@ -1283,6 +1305,13 @@ const styles = (theme: Theme) => StyleSheet.create({
     color: theme.modalText,
     fontSize: 17,
     fontWeight: "700",
+  },
+  modalContact: {
+    color: theme.Primary900,
+    fontSize: 14,
+    marginTop: -6,
+    opacity: 0.9,
+    textDecorationLine: "underline",
   },
   modalLabel: {
     color: theme.modalText,

@@ -98,6 +98,8 @@ interface userBooking {
   notes: string;
   time: string;
   treatmentName: string;
+  slotCount: number;
+  lines: { id: number; time: string }[];
   bookingState: "active" | "completed" | "past";
 }
 
@@ -133,6 +135,10 @@ const Booking = () => {
     null,
   );
   const [showBookingDetails, setShowBookingDetails] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(new Date());
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [isRescheduling, setIsRescheduling] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [showFeeExplanation, setShowFeeExplanation] = useState(false);
@@ -321,7 +327,7 @@ const Booking = () => {
             bookingIds.length > 0
               ? await supabase
                   .from("booking_line")
-                  .select("booking_id,time")
+                  .select("id,booking_id,time")
                   .in("booking_id", bookingIds)
               : { data: [], error: null };
 
@@ -330,19 +336,21 @@ const Booking = () => {
             return;
           }
 
-          const timesByBooking = new Map<number, string[]>();
+          const linesByBooking = new Map<number, { id: number; time: string }[]>();
           (lineData ?? []).forEach((line) => {
-            const times = timesByBooking.get(line.booking_id) ?? [];
-            times.push(line.time.slice(0, 5));
-            timesByBooking.set(line.booking_id, times);
+            const lines = linesByBooking.get(line.booking_id) ?? [];
+            lines.push({ id: line.id, time: line.time.slice(0, 5) });
+            linesByBooking.set(line.booking_id, lines);
           });
 
           const formattedBooking: userBooking[] = data.map((booking) => {
             const rawStatus = String(booking.status ?? "").trim();
 
             const notes = String(booking.notes ?? "").trim();
-            const bookingTimes = (timesByBooking.get(booking.bookingid) ?? [])
-              .sort();
+            const bookingLines = (linesByBooking.get(booking.bookingid) ?? []).sort(
+              (left, right) => left.time.localeCompare(right.time),
+            );
+            const bookingTimes = bookingLines.map((line) => line.time);
             const startTime = bookingTimes[0] ?? "";
             const endTime = bookingTimes[bookingTimes.length - 1] ?? startTime;
             const bookingDate = new Date(booking.bookingdate);
@@ -358,6 +366,8 @@ const Booking = () => {
                   : startTime || "Time not assigned",
               notes,
               treatmentName: notes || "Treatment Booking",
+              slotCount: Math.max(bookingTimes.length, 1),
+              lines: bookingLines,
               bookingState,
             };
           });
@@ -454,6 +464,7 @@ const Booking = () => {
   const areSlotsAvailable = async (
     date: Date,
     requestedSlots: string[],
+    excludedBookingId?: number,
   ): Promise<boolean> => {
     try {
       const startOfDay = new Date(
@@ -474,6 +485,7 @@ const Booking = () => {
 
       const activeBookingIds = (bookingData ?? [])
         .filter((booking) => booking.status !== BookingStatus.Cancelled)
+        .filter((booking) => booking.bookingid !== excludedBookingId)
         .map((booking) => booking.bookingid);
       if (activeBookingIds.length === 0) return true;
 
@@ -495,6 +507,117 @@ const Booking = () => {
         "Could not verify slot availability. Please try again.",
       );
       return false;
+    }
+  };
+
+  const openRescheduleModal = (booking: userBooking) => {
+    const startTime = booking.time.split(" - ")[0];
+    if (
+      getBookingStatus(booking.status) !== BookingStatus.Booked ||
+      booking.bookingState !== "active" ||
+      startTime === "Time not assigned"
+    ) {
+      Alert.alert("Cannot reschedule", "This booking cannot be rescheduled.");
+      return;
+    }
+
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const bookingStart = new Date(booking.bookingDate);
+    bookingStart.setHours(hours, minutes, 0, 0);
+    if (bookingStart.getTime() - Date.now() <= 24 * 60 * 60 * 1000) {
+      Alert.alert(
+        "Cannot reschedule",
+        "Bookings can only be rescheduled more than 24 hours before the scheduled start time.",
+      );
+      return;
+    }
+
+    setSelectedBooking(booking);
+    setRescheduleDate(new Date(booking.bookingDate));
+    setRescheduleTime(startTime);
+    setShowRescheduleModal(true);
+  };
+
+  const rescheduleCustomerBooking = async () => {
+    if (!selectedBooking || !rescheduleTime || isRescheduling) return;
+
+    const targetSlotOptions = getSlotOptionsForDate(rescheduleDate);
+    const availableSlots = targetSlotOptions.filter(
+      (slot) =>
+        !isSlotElapsed(rescheduleDate, slot, currentTime),
+    );
+    const requestedSlots = getContiguousSlots(
+      rescheduleTime,
+      selectedBooking.slotCount,
+      availableSlots,
+      targetSlotOptions,
+    );
+    const targetStart = new Date(rescheduleDate);
+    const [hours, minutes] = rescheduleTime.split(":").map(Number);
+    targetStart.setHours(hours, minutes, 0, 0);
+
+    if (
+      isSunday(rescheduleDate) ||
+      targetStart.getTime() - Date.now() < 24 * 60 * 60 * 1000 ||
+      requestedSlots.length !== selectedBooking.slotCount
+    ) {
+      Alert.alert(
+        "Invalid reschedule",
+        "Choose an available time that is more than 24 hours away.",
+      );
+      return;
+    }
+
+    if (!(await areSlotsAvailable(rescheduleDate, requestedSlots, selectedBooking.id))) {
+      Alert.alert("Time unavailable", "One or more selected slots is no longer available.");
+      return;
+    }
+
+    setIsRescheduling(true);
+    try {
+      if (selectedBooking.lines.length !== selectedBooking.slotCount) {
+        throw new Error("Booking time lines could not be loaded.");
+      }
+
+      const { error: bookingError } = await supabase
+        .from("bookings")
+        .update({ bookingdate: rescheduleDate.toISOString() })
+        .eq("bookingid", selectedBooking.id);
+      if (bookingError) throw bookingError;
+
+      const lineUpdates = await Promise.all(
+        selectedBooking.lines.map((line, index) =>
+          supabase
+            .from("booking_line")
+            .update({ time: `${requestedSlots[index]}:00` })
+            .eq("id", line.id)
+            .eq("booking_id", selectedBooking.id),
+        ),
+      );
+      const lineUpdateError = lineUpdates.find((result) => result.error)?.error;
+      if (lineUpdateError) throw lineUpdateError;
+
+      const updatedBooking = {
+        ...selectedBooking,
+        bookingDate: rescheduleDate,
+        time:
+          requestedSlots.length > 1
+            ? `${requestedSlots[0]} - ${requestedSlots[requestedSlots.length - 1]}`
+            : requestedSlots[0],
+      };
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === updatedBooking.id ? updatedBooking : booking,
+        ),
+      );
+      setSelectedBooking(updatedBooking);
+      setShowRescheduleModal(false);
+      Alert.alert("Booking rescheduled", "Your booking was successfully rescheduled.");
+    } catch (error) {
+      console.log("Could not reschedule booking:", error);
+      Alert.alert("Error", "The booking could not be rescheduled. Please try again.");
+    } finally {
+      setIsRescheduling(false);
     }
   };
   const CancelBooking = async (id: number) => {
@@ -851,8 +974,7 @@ const Booking = () => {
                   <Pressable
                     style={styles(theme).actionButton}
                     onPress={() => {
-                      setSelectedBooking(booking);
-                      setShowBookingDetails(true);
+                      openRescheduleModal(booking);
                     }}
                   >
                     <Text style={styles(theme).actionButtonText}>
@@ -862,8 +984,7 @@ const Booking = () => {
                   <Pressable
                     style={styles(theme).iconButton}
                     onPress={() => {
-                      setSelectedBooking(booking);
-                      setShowBookingDetails(true);
+                      openRescheduleModal(booking);
                     }}
                   >
                     <Calendar color={theme.TextColour} size={18} />
@@ -1018,6 +1139,78 @@ const Booking = () => {
             >
               <Text style={styles(theme).bookingDetailsCloseText}>Close</Text>
             </Pressable>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showRescheduleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRescheduleModal(false)}
+      >
+        <View style={styles(theme).bookingDetailsOverlay}>
+          <View style={styles(theme).rescheduleModal}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles(theme).bookingDetailsTitle}>Reschedule Booking</Text>
+              {selectedBooking ? (
+                <Text style={styles(theme).bookingDetailsTreatment}>
+                  {selectedBooking.treatmentName}
+                </Text>
+              ) : null}
+              <Text style={styles(theme).bookingDetailsLabel}>New date</Text>
+              <BookingCalendar
+                selectedDate={rescheduleDate}
+                onDateChange={(date) => {
+                  setRescheduleDate(date);
+                  setRescheduleTime("");
+                }}
+                textColor={theme.treatmentModalText}
+              />
+              <Text style={styles(theme).bookingDetailsLabel}>Available time</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles(theme).rescheduleSlotRow}
+              >
+                {getSlotOptionsForDate(rescheduleDate).map((slot) => {
+                  const isSelected = slot === rescheduleTime;
+                  return (
+                    <Pressable
+                      key={slot}
+                      onPress={() => setRescheduleTime(slot)}
+                      style={[
+                        styles(theme).rescheduleSlot,
+                        isSelected && styles(theme).rescheduleSlotSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles(theme).rescheduleSlotText,
+                          isSelected && styles(theme).rescheduleSlotTextSelected,
+                        ]}
+                      >
+                        {slot}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable
+                style={styles(theme).confirmationButton}
+                disabled={isRescheduling}
+                onPress={() => void rescheduleCustomerBooking()}
+              >
+                <Text style={styles(theme).confirmationButtonText}>
+                  {isRescheduling ? "Rescheduling..." : "Confirm Reschedule"}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles(theme).bookingDetailsClose}
+                onPress={() => setShowRescheduleModal(false)}
+              >
+                <Text style={styles(theme).bookingDetailsCloseText}>Close</Text>
+              </Pressable>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1630,6 +1823,42 @@ const styles = (theme: Theme) => StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     padding: 28,
+  },
+  rescheduleModal: {
+    width: "100%",
+    maxWidth: 420,
+    maxHeight: "92%",
+    backgroundColor: theme.treatmentModalBackground,
+    borderColor: "rgba(0,255,95,0.55)",
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 22,
+  },
+  rescheduleSlotRow: {
+    gap: 10,
+    paddingVertical: 10,
+  },
+  rescheduleSlot: {
+    minWidth: 82,
+    alignItems: "center",
+    backgroundColor: theme.treatmentModalItemBackground,
+    borderColor: theme.adminBorder,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  rescheduleSlotSelected: {
+    backgroundColor: theme.Primary900,
+    borderColor: theme.Primary900,
+  },
+  rescheduleSlotText: {
+    color: theme.treatmentModalText,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  rescheduleSlotTextSelected: {
+    color: "#0B0F0D",
   },
   bookingDetailsTitle: {
     color: theme.treatmentModalText,
