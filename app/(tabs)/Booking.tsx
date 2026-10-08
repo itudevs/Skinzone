@@ -1602,7 +1602,7 @@ const styles = (theme: Theme) => StyleSheet.create({
     paddingVertical: 14,
   },
   confirmationButtonText: {
-    color: theme.modalText,
+    color: "#0B0F0D",
     fontSize: 16,
     fontWeight: "800",
   },
