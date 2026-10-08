@@ -13,7 +13,7 @@ const PrimaryButton = ({ text, onPressHandler }: PrimaryButtonprops) => {
     >
       {/*Button Container*/}
       <View style={styles(theme).main}>
-        <Text style={{ color: theme.TextColour, fontWeight: "bold", fontSize: 15 }}>
+        <Text style={{ color: "#000000", fontWeight: "bold", fontSize: 15 }}>
           {text}
         </Text>
       </View>
