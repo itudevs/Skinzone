@@ -1,7 +1,7 @@
 import { View, TextInput, StyleSheet, Text, Pressable } from "react-native";
 
 import { Search } from "lucide-react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 interface SearchProps {
   Placeholder: string;
   size?: "default" | "compact" | "fullWidthCompact";
@@ -25,38 +25,39 @@ const SearchBar = ({
   keyboardType,
   onSelectSuggestion,
 }: SearchProps) => {
+  const theme = useTheme();
   return (
     <View>
       <View
         style={[
-          styles.Main,
-          size === "compact" && styles.compactMain,
-          size === "fullWidthCompact" && styles.fullWidthCompactMain,
+          styles(theme).Main,
+          size === "compact" && styles(theme).compactMain,
+          size === "fullWidthCompact" && styles(theme).fullWidthCompactMain,
         ]}
       >
-        <Search color={Colors.TextColour} />
+        <Search color={theme.TextColour} />
         <TextInput
-          style={{ paddingHorizontal: 10, flex: 1, color: Colors.TextColour }}
+          style={{ paddingHorizontal: 10, flex: 1, color: theme.TextColour }}
           placeholder={Placeholder}
-          placeholderTextColor={Colors.TextColour}
+          placeholderTextColor={theme.TextColour}
           value={value}
           onChangeText={onChangeText}
           keyboardType={keyboardType}
         ></TextInput>
       </View>
       {suggestions.length > 0 && (
-        <View style={styles.suggestionContainer}>
+        <View style={styles(theme).suggestionContainer}>
           {suggestions.slice(0, 5).map((item) => (
             <Pressable
               key={item.id}
               style={({ pressed }) => [
-                styles.suggestionItem,
-                pressed && styles.suggestionItemPressed,
+                styles(theme).suggestionItem,
+                pressed && styles(theme).suggestionItemPressed,
               ]}
               onPress={() => onSelectSuggestion && onSelectSuggestion(item)}
             >
-              <Text style={styles.suggestionPhone}>{item.phone}</Text>
-              <Text style={styles.suggestionName}>
+              <Text style={styles(theme).suggestionPhone}>{item.phone}</Text>
+              <Text style={styles(theme).suggestionName}>
                 {item.name} {item.surname}
               </Text>
             </Pressable>
@@ -69,15 +70,15 @@ const SearchBar = ({
 
 export default SearchBar;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Main: {
     flexDirection: "row",
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
     padding: 20,
     margin: 30,
     marginBottom: 10,
     borderRadius: 20,
-    borderColor: Colors.TextColour,
+    borderColor: theme.TextColour,
     borderWidth: 0.3,
     alignItems: "center",
   },
@@ -95,28 +96,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   suggestionContainer: {
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
     marginHorizontal: 30,
     borderRadius: 10,
-    borderColor: Colors.TextColour,
+    borderColor: theme.TextColour,
     borderWidth: 0.3,
     marginBottom: 20,
   },
   suggestionItem: {
     padding: 15,
     borderBottomWidth: 0.3,
-    borderBottomColor: Colors.TextColour,
+    borderBottomColor: theme.TextColour,
   },
   suggestionItemPressed: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
   },
   suggestionPhone: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 16,
     fontWeight: "bold",
   },
   suggestionName: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 14,
     marginTop: 2,
   },

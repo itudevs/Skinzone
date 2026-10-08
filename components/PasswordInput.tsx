@@ -7,7 +7,7 @@ import {
   Text,
 } from "react-native";
 import { Lock, Eye, EyeOff } from "lucide-react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 
 interface PasswordInputProps {
   placeholder: string;
@@ -20,6 +20,7 @@ const PasswordInput = ({
   value,
   onChangeText,
 }: PasswordInputProps) => {
+  const theme = useTheme();
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const togglePasswordVisibility = () => {
@@ -27,14 +28,14 @@ const PasswordInput = ({
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        <Lock color={"#999999"} size={18} />
+    <View style={styles(theme).container}>
+      <View style={styles(theme).iconContainer}>
+        <Lock color={theme.icon} size={18} />
       </View>
       <TextInput
-        style={styles.input}
+        style={styles(theme).input}
         placeholder={placeholder}
-        placeholderTextColor="#666"
+        placeholderTextColor={theme.placeholder}
         value={value}
         onChangeText={onChangeText}
         secureTextEntry={!isPasswordVisible}
@@ -42,7 +43,7 @@ const PasswordInput = ({
         autoComplete="off"
       />
       <TouchableOpacity
-        style={styles.eyeContainer}
+        style={styles(theme).eyeContainer}
         onPress={togglePasswordVisibility}
       >
         {isPasswordVisible ? (
@@ -57,13 +58,13 @@ const PasswordInput = ({
 
 export default PasswordInput;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   container: {
     marginTop: 8,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.PrimaryBackground,
-    borderColor: "#8b8b8bff",
+    backgroundColor: theme.PrimaryBackground,
+    borderColor: theme.bordercolor,
     borderWidth: 0.5,
     borderRadius: 10,
     paddingHorizontal: 15,
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     padding: 15,
-    color: Colors.TextColour,
+    color: theme.TextColour,
   },
   eyeContainer: {
     padding: 5,

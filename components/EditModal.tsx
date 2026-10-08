@@ -13,12 +13,13 @@ import {
   Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 interface EditModalprops {
   Signout: () => void;
   userId?: string;
 }
 const EditModal = ({ Signout, userId }: EditModalprops) => {
+  const theme = useTheme();
   interface ProfileData {
     name: string;
     surname: string;
@@ -371,8 +372,8 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
   ];
 
   const renderProperty = ({ item }: { item: PropertyItem }) => (
-    <View style={styles.row}>
-      <Text style={{ color: Colors.TextColour }}>{item.label}</Text>
+    <View style={styles(theme).row}>
+      <Text style={{ color: theme.TextColour }}>{item.label}</Text>
       <Pressable onPress={() => openEditModal(item.key)}>
         <View
           style={{
@@ -381,43 +382,43 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
             paddingTop: 15,
           }}
         >
-          <Text style={styles.TextColor}>{item.value}</Text>
-          <Text style={styles.editBtn}>Edit</Text>
+          <Text style={styles(theme).TextColor}>{item.value}</Text>
+          <Text style={styles(theme).editBtn}>Edit</Text>
         </View>
       </Pressable>
     </View>
   );
 
   const renderFooter = () => (
-    <View style={styles.buttonsSection}>
+    <View style={styles(theme).buttonsSection}>
       <Pressable
         onPress={() => router.navigate("/ChangePassword")}
-        style={({ pressed }) => pressed && styles.presseditem}
+        style={({ pressed }) => pressed && styles(theme).presseditem}
       >
-        <Text style={styles.buttonPassword}>Change Password</Text>
+        <Text style={styles(theme).buttonPassword}>Change Password</Text>
       </Pressable>
 
       <Pressable
         onPress={Signout}
-        style={({ pressed }) => pressed && styles.presseditem}
+        style={({ pressed }) => pressed && styles(theme).presseditem}
       >
-        <Text style={styles.editBtn}>Sign Out</Text>
+        <Text style={styles(theme).editBtn}>Sign Out</Text>
       </Pressable>
 
       {/* Legal Links */}
-      <View style={styles.legalSection}>
+      <View style={styles(theme).legalSection}>
         <Pressable
           onPress={() => router.navigate("/PrivacyPolicy")}
-          style={({ pressed }) => pressed && styles.presseditem}
+          style={({ pressed }) => pressed && styles(theme).presseditem}
         >
-          <Text style={styles.legalLink}>Privacy Policy</Text>
+          <Text style={styles(theme).legalLink}>Privacy Policy</Text>
         </Pressable>
-        <Text style={styles.legalDivider}>•</Text>
+        <Text style={styles(theme).legalDivider}>•</Text>
         <Pressable
           onPress={() => router.navigate("/TermsOfService")}
-          style={({ pressed }) => pressed && styles.presseditem}
+          style={({ pressed }) => pressed && styles(theme).presseditem}
         >
-          <Text style={styles.legalLink}>Terms of Service</Text>
+          <Text style={styles(theme).legalLink}>Terms of Service</Text>
         </Pressable>
       </View>
 
@@ -425,24 +426,24 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
       <Pressable
         onPress={confirmDeleteAccount}
         style={({ pressed }) => [
-          styles.deleteAccountBtn,
-          pressed && styles.presseditem,
+          styles(theme).deleteAccountBtn,
+          pressed && styles(theme).presseditem,
         ]}
       >
-        <Text style={styles.deleteAccountText}>Delete Account</Text>
+        <Text style={styles(theme).deleteAccountText}>Delete Account</Text>
       </Pressable>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles(theme).container}>
       {/* Properties - Using FlatList for scrollability */}
       <FlatList<PropertyItem>
         data={properties}
         renderItem={renderProperty}
         keyExtractor={(item) => item.key as string}
         scrollEnabled={true}
-        contentContainerStyle={styles.flatListContent}
+        contentContainerStyle={styles(theme).flatListContent}
         ListFooterComponent={renderFooter}
       />
 
@@ -452,16 +453,16 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
         animationType="fade"
         transparent={true}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.deleteModalContent}>
-            <Text style={styles.deleteModalTitle}>⚠️ Final Confirmation</Text>
-            <Text style={styles.deleteModalText}>
+        <View style={styles(theme).modalOverlay}>
+          <View style={styles(theme).deleteModalContent}>
+            <Text style={styles(theme).deleteModalTitle}>⚠️ Final Confirmation</Text>
+            <Text style={styles(theme).deleteModalText}>
               This action is irreversible. Type DELETE to confirm:
             </Text>
             <TextInput
-              style={styles.deleteInput}
+              style={styles(theme).deleteInput}
               placeholder="Type DELETE"
-              placeholderTextColor={Colors.TextColour}
+              placeholderTextColor={theme.TextColour}
               autoCapitalize="characters"
               onChangeText={(text) => {
                 if (text === "DELETE") {
@@ -469,9 +470,9 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
                 }
               }}
             />
-            <View style={styles.buttonGroup}>
+            <View style={styles(theme).buttonGroup}>
               <Pressable onPress={() => setDeleteConfirmVisible(false)}>
-                <Text style={styles.cancelBtn}>Cancel</Text>
+                <Text style={styles(theme).cancelBtn}>Cancel</Text>
               </Pressable>
             </View>
           </View>
@@ -485,13 +486,13 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
         animationType="slide"
         transparent={true}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit {activeField}</Text>
+        <View style={styles(theme).modalOverlay}>
+          <View style={styles(theme).modalContent}>
+            <Text style={styles(theme).modalTitle}>Edit {activeField}</Text>
 
             {activeField === "dob" && showDatePicker ? (
-              <View style={styles.datePickerContainer}>
-                <Text style={styles.dateDisplayText}>
+              <View style={styles(theme).datePickerContainer}>
+                <Text style={styles(theme).dateDisplayText}>
                   Selected: {formatDate(tempDate)}
                 </Text>
                 <DateTimePicker
@@ -505,31 +506,30 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
                   }}
                   maximumDate={new Date()}
                   minimumDate={new Date(1900, 0, 1)}
-                  textColor="#ffffff"
-                  themeVariant="dark"
-                  style={styles.datePicker}
+                  textColor={theme.TextColour}
+                  style={styles(theme).datePicker}
                 />
               </View>
             ) : (
               <TextInput
-                style={styles.input}
+                style={styles(theme).input}
                 value={tempValue}
                 onChangeText={setTempValue}
                 autoFocus={true}
               />
             )}
 
-            <View style={styles.buttonGroup}>
+            <View style={styles(theme).buttonGroup}>
               <Pressable
                 onPress={() => {
                   setModalVisible(false);
                   setShowDatePicker(false);
                 }}
               >
-                <Text style={styles.cancelBtn}>Cancel</Text>
+                <Text style={styles(theme).cancelBtn}>Cancel</Text>
               </Pressable>
               <Pressable onPress={handleSave}>
-                <Text style={styles.saveBtn}>Save</Text>
+                <Text style={styles(theme).saveBtn}>Save</Text>
               </Pressable>
             </View>
           </View>
@@ -541,7 +541,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
 
 export default EditModal;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   container: { padding: 5, flex: 1 },
   flatListContent: {
     paddingBottom: 40,
@@ -549,22 +549,22 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "column",
     justifyContent: "space-between",
-    borderColor: Colors.bordercolor,
+    borderColor: theme.bordercolor,
     borderWidth: 1,
     margin: 10,
     padding: 5,
     paddingLeft: 10,
     paddingRight: 10,
     borderRadius: 10,
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
     width: 275,
   },
   TextColor: {
-    color: "white",
+    color: theme.TextColour,
     fontWeight: "bold",
   },
   editBtn: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontWeight: "bold",
     alignItems: "center",
     paddingBottom: 5,
@@ -577,23 +577,23 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: "80%",
-    backgroundColor: Colors.background100,
-    color: "white",
+    backgroundColor: theme.modalBackground,
+    color: theme.modalText,
     padding: 20,
     borderRadius: 10,
   },
   modalTitle: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 16,
     marginBottom: 15,
     textTransform: "uppercase",
   },
   input: {
     borderBottomWidth: 1,
-    borderColor: "#ccc",
+    borderColor: theme.bordercolor,
     marginBottom: 20,
     padding: 8,
-    color: Colors.TextColour,
+    color: theme.modalText,
     overflow: "hidden",
   },
   datePickerContainer: {
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dateDisplayText: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 15,
@@ -609,11 +609,11 @@ const styles = StyleSheet.create({
   },
   datePicker: {
     width: "100%",
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
   },
   buttonGroup: { flexDirection: "row", justifyContent: "flex-end" },
   cancelBtn: { marginRight: 20, color: "red" },
-  saveBtn: { color: Colors.Primary900, fontWeight: "bold" },
+  saveBtn: { color: theme.Primary900, fontWeight: "bold" },
   presseditem: {
     opacity: 0.5,
   },
@@ -623,10 +623,10 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   buttonPassword: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontWeight: "bold",
     alignItems: "center",
-    borderColor: Colors.Primary900,
+    borderColor: theme.Primary900,
     borderWidth: 1,
     padding: 12,
     marginBottom: 25,
@@ -644,12 +644,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   legalLink: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
     textDecorationLine: "underline",
   },
   legalDivider: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
   },
   deleteAccountBtn: {
@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
   },
   deleteModalContent: {
     width: "80%",
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
     padding: 20,
     borderRadius: 10,
     borderColor: "#FF3B30",
@@ -683,17 +683,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   deleteModalText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 14,
     marginBottom: 15,
     textAlign: "center",
   },
   deleteInput: {
     borderWidth: 1,
-    borderColor: Colors.TextColour,
+    borderColor: theme.TextColour,
     borderRadius: 8,
     padding: 12,
-    color: "#FFFFFF",
+    color: theme.TextColour,
     marginBottom: 20,
     textAlign: "center",
     fontSize: 16,

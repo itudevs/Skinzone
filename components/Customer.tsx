@@ -1,9 +1,10 @@
 import { View, StyleSheet, Text, Pressable } from "react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 import CustomerModal from "./CustomerModal";
 import { useState } from "react";
 import { CustomerDetails } from "./utils/CustomerInterface";
 const Customer = ({ id, Name, Surname, Phone }: CustomerDetails) => {
+  const theme = useTheme();
   const [visible, setVisible] = useState(false);
   const togglemodal = () => {
     if (visible === true) {
@@ -21,20 +22,20 @@ const Customer = ({ id, Name, Surname, Phone }: CustomerDetails) => {
   return (
     <Pressable
       onPress={() => setVisible(true)}
-      style={({ pressed }) => pressed && styles.presseditem}
+      style={({ pressed }) => pressed && styles(theme).presseditem}
     >
-      <View style={styles.Main}>
-        <Text style={styles.TextUserContainer}>
+      <View style={styles(theme).Main}>
+        <Text style={styles(theme).TextUserContainer}>
           {InitialName}
           {InitialSurname}
         </Text>
-        <View style={styles.TextNameContainer}>
-          <Text style={{ color: "white", fontWeight: "bold" }}>
+        <View style={styles(theme).TextNameContainer}>
+          <Text style={{ color: theme.TextColour, fontWeight: "bold" }}>
             {Name} {Surname}
           </Text>
         </View>
-        <View style={styles.TextNumberContainer}>
-          <Text style={{ color: Colors.Primary900, fontWeight: "bold" }}>
+        <View style={styles(theme).TextNumberContainer}>
+          <Text style={{ color: theme.Primary900, fontWeight: "bold" }}>
             {Phone}
           </Text>
         </View>
@@ -53,28 +54,28 @@ const Customer = ({ id, Name, Surname, Phone }: CustomerDetails) => {
 
 export default Customer;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Main: {
     flexDirection: "row",
     gap: 1,
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
     overflow: "hidden",
     alignItems: "center",
     marginHorizontal: 20,
     marginTop: 15,
     borderRadius: 20,
-    borderColor: "white",
+    borderColor: theme.bordercolor,
     borderWidth: 0.3,
     paddingVertical: 20,
     paddingHorizontal: 20,
   },
   TextUserContainer: {
-    color: "white",
+    color: theme.TextColour,
     fontWeight: "bold",
     borderRadius: 25,
     padding: 10,
     backgroundColor: "#9595955c",
-    borderColor: "white",
+    borderColor: theme.bordercolor,
     borderWidth: 1,
     width: 40,
     height: 40,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Pressable, StyleSheet, View, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 
 interface Profileprops {
   imagehandler: () => void;
@@ -17,6 +17,7 @@ const ProfileImage = ({
   imageUrl,
   uploading = false,
 }: Profileprops) => {
+  const theme = useTheme();
   const [imgurl, setimgurl] = useState(imageUrl || DEFAULT_IMAGE);
 
   useEffect(() => {
@@ -39,18 +40,18 @@ const ProfileImage = ({
 
   return (
     <Pressable
-      style={({ pressed }) => pressed && styles.presseditem}
+      style={({ pressed }) => pressed && styles(theme).presseditem}
       onPress={handlePress}
       disabled={uploading}
     >
-      <View style={styles.container}>
+      <View style={styles(theme).container}>
         {uploading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.Primary900} />
+          <View style={styles(theme).loadingContainer}>
+            <ActivityIndicator size="large" color={theme.Primary900} />
           </View>
         ) : (
           <Image
-            style={styles.ImgContainer}
+            style={styles(theme).ImgContainer}
             source={{ uri: imgurl }}
             contentFit="cover"
             transition={200}
@@ -65,7 +66,7 @@ const ProfileImage = ({
 
 export default ProfileImage;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   container: {
     position: "relative",
   },
@@ -89,6 +90,6 @@ const styles = StyleSheet.create({
     borderColor: "#747474ff",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
   },
 });

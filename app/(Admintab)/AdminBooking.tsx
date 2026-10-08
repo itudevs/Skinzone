@@ -10,7 +10,7 @@ import {
   Modal,
 } from "react-native";
 import { CheckCircle2, Search } from "lucide-react-native";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import { supabase } from "@/lib/supabase";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BookingStatus } from "@/components/utils/utilinterfaces";
@@ -105,6 +105,7 @@ const isSlotElapsed = (date: Date, slot: string) => {
 };
 
 const AdminBooking = () => {
+  const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<
     "all" | "pending" | "booked" | "completed" | "cancelled" | "past"
@@ -516,62 +517,62 @@ const AdminBooking = () => {
   return (
     <>
       <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.contentContainer}
+        style={styles(theme).screen}
+        contentContainerStyle={styles(theme).contentContainer}
         showsVerticalScrollIndicator={false}
       >
       <SafeAreaView>
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Total</Text>
-            <Text style={styles.statValue}>{bookings.length}</Text>
-            <Text style={styles.statHint}>Visits logged</Text>
+        <View style={styles(theme).statsRow}>
+          <View style={styles(theme).statCard}>
+            <Text style={styles(theme).statLabel}>Total</Text>
+            <Text style={styles(theme).statValue}>{bookings.length}</Text>
+            <Text style={styles(theme).statHint}>Visits logged</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Pending</Text>
-            <Text style={[styles.statValue, styles.greenText]}>
+          <View style={styles(theme).statCard}>
+            <Text style={styles(theme).statLabel}>Pending</Text>
+            <Text style={[styles(theme).statValue, styles(theme).greenText]}>
               {pendingCount}
             </Text>
-            <Text style={styles.statHint}>Needs action</Text>
+            <Text style={styles(theme).statHint}>Needs action</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Today</Text>
-            <Text style={styles.statValue}>
+          <View style={styles(theme).statCard}>
+            <Text style={styles(theme).statLabel}>Today</Text>
+            <Text style={styles(theme).statValue}>
               {todayCount}
             </Text>
-            <Text style={styles.statHint}>Scheduled</Text>
+            <Text style={styles(theme).statHint}>Scheduled</Text>
           </View>
         </View>
       </SafeAreaView>
-      <View style={styles.searchWrap}>
-        <Search color={Colors.TextColour} size={18} />
+      <View style={styles(theme).searchWrap}>
+        <Search color={theme.TextColour} size={18} />
         <TextInput
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search by client, treatment, status..."
-          placeholderTextColor={Colors.TextColour}
-          style={styles.searchInput}
+          placeholderTextColor={theme.TextColour}
+          style={styles(theme).searchInput}
         />
       </View>
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterBar}
+        contentContainerStyle={styles(theme).filterBar}
       >
         <Pressable
           onPress={() => setActiveFilter("all")}
           style={[
-            styles.filterButton,
-            activeFilter === "all" && styles.filterButtonActive,
+            styles(theme).filterButton,
+            activeFilter === "all" && styles(theme).filterButtonActive,
           ]}
         >
           <Text
             style={[
-              styles.filterText,
-              activeFilter === "all" && styles.filterTextActive,
+              styles(theme).filterText,
+              activeFilter === "all" && styles(theme).filterTextActive,
             ]}
           >
             All {bookings.filter((booking) => booking.bookingState !== "past").length}
@@ -581,14 +582,14 @@ const AdminBooking = () => {
         <Pressable
           onPress={() => setActiveFilter("pending")}
           style={[
-            styles.filterButton,
-            activeFilter === "pending" && styles.filterButtonActive,
+            styles(theme).filterButton,
+            activeFilter === "pending" && styles(theme).filterButtonActive,
           ]}
         >
           <Text
             style={[
-              styles.filterText,
-              activeFilter === "pending" && styles.filterTextActive,
+              styles(theme).filterText,
+              activeFilter === "pending" && styles(theme).filterTextActive,
             ]}
           >
             Pending {pendingCount}
@@ -598,14 +599,14 @@ const AdminBooking = () => {
         <Pressable
           onPress={() => setActiveFilter("booked")}
           style={[
-            styles.filterButton,
-            activeFilter === "booked" && styles.filterButtonActive,
+            styles(theme).filterButton,
+            activeFilter === "booked" && styles(theme).filterButtonActive,
           ]}
         >
           <Text
             style={[
-              styles.filterText,
-              activeFilter === "booked" && styles.filterTextActive,
+              styles(theme).filterText,
+              activeFilter === "booked" && styles(theme).filterTextActive,
             ]}
           >
             Confirmed {bookedCount}
@@ -614,14 +615,14 @@ const AdminBooking = () => {
         <Pressable
           onPress={() => setActiveFilter("cancelled")}
           style={[
-            styles.filterButton,
-            activeFilter === "cancelled" && styles.filterButtonActive,
+            styles(theme).filterButton,
+            activeFilter === "cancelled" && styles(theme).filterButtonActive,
           ]}
         >
           <Text
             style={[
-              styles.filterText,
-              activeFilter === "cancelled" && styles.filterTextActive,
+              styles(theme).filterText,
+              activeFilter === "cancelled" && styles(theme).filterTextActive,
             ]}
           >
             Cancelled {cancelledCount}
@@ -630,14 +631,14 @@ const AdminBooking = () => {
         <Pressable
           onPress={() => setActiveFilter("past")}
           style={[
-            styles.filterButton,
-            activeFilter === "past" && styles.filterButtonActive,
+            styles(theme).filterButton,
+            activeFilter === "past" && styles(theme).filterButtonActive,
           ]}
         >
           <Text
             style={[
-              styles.filterText,
-              activeFilter === "past" && styles.filterTextActive,
+              styles(theme).filterText,
+              activeFilter === "past" && styles(theme).filterTextActive,
             ]}
           >
             Past {pastCount}
@@ -646,53 +647,53 @@ const AdminBooking = () => {
       </ScrollView>
 
       {filteredBookings.length === 0 ? (
-        <View style={styles.emptyStateCard}>
-          <Text style={styles.emptyStateText}>No matching bookings.</Text>
+        <View style={styles(theme).emptyStateCard}>
+          <Text style={styles(theme).emptyStateText}>No matching bookings.</Text>
         </View>
       ) : (
         filteredBookings.map((booking) => (
           <Pressable
             key={booking.id}
             style={[
-              styles.bookingCard,
-              booking.bookingState === "past" && styles.bookingCardPast,
+              styles(theme).bookingCard,
+              booking.bookingState === "past" && styles(theme).bookingCardPast,
             ]}
             onPress={() => openBooking(booking)}
           >
-            <View style={styles.bookingHeader}>
-              <View style={styles.dateBox}>
-                <Text style={styles.monthText}>
+            <View style={styles(theme).bookingHeader}>
+              <View style={styles(theme).dateBox}>
+                <Text style={styles(theme).monthText}>
                   {new Intl.DateTimeFormat("en-ZA", {
                     month: "short",
                   }).format(booking.bookingDate)}
                 </Text>
-                <Text style={styles.dayText}>
+                <Text style={styles(theme).dayText}>
                   {new Intl.DateTimeFormat("en-US", {
                     day: "2-digit",
                   }).format(booking.bookingDate)}
                 </Text>
               </View>
 
-              <View style={styles.customerBlock}>
-                <Text style={styles.customerName}>{booking.customerName}</Text>
-                <Text style={styles.bookingMeta}>
+              <View style={styles(theme).customerBlock}>
+                <Text style={styles(theme).customerName}>{booking.customerName}</Text>
+                <Text style={styles(theme).bookingMeta}>
                   {booking.lines.length} treatment
                   {booking.lines.length === 1 ? "" : "s"}
                 </Text>
               </View>
 
-              <View style={styles.statusTagWrap}>
+              <View style={styles(theme).statusTagWrap}>
                 <View
                   style={[
-                    styles.statusDot,
+                    styles(theme).statusDot,
                     getBookingStatus(booking.status) === BookingStatus.Pending
-                      ? styles.statusDotWarning
+                      ? styles(theme).statusDotWarning
                       : booking.bookingState === "past"
-                        ? styles.statusDotPast
-                      : styles.statusDotSuccess,
+                        ? styles(theme).statusDotPast
+                      : styles(theme).statusDotSuccess,
                   ]}
                 />
-                <Text style={styles.statusText}>
+                <Text style={styles(theme).statusText}>
                   {booking.bookingState === "past"
                     ? "Past"
                     : getBookingStatus(booking.status)}
@@ -700,39 +701,39 @@ const AdminBooking = () => {
               </View>
             </View>
 
-            <View style={styles.treatmentRow}>
-              <Text style={styles.labelText}>Treatment requested</Text>
+            <View style={styles(theme).treatmentRow}>
+              <Text style={styles(theme).labelText}>Treatment requested</Text>
             </View>
 
-            <View style={styles.lineList}>
+            <View style={styles(theme).lineList}>
               {booking.lines.length > 0 ? (
                 booking.lines.map((line, index) => (
-                  <Text key={`${booking.id}-${line.time}-${index}`} style={styles.bookingTitle}>
+                  <Text key={`${booking.id}-${line.time}-${index}`} style={styles(theme).bookingTitle}>
                     {line.treatmentName} • {line.time}
                   </Text>
                 ))
               ) : (
-                <Text style={styles.bookingTitle}>No treatment lines</Text>
+                <Text style={styles(theme).bookingTitle}>No treatment lines</Text>
               )}
             </View>
 
-            <View style={styles.metaRow}>
-              <Text style={styles.metaText}>
+            <View style={styles(theme).metaRow}>
+              <Text style={styles(theme).metaText}>
                 {booking.lines.map((line) => line.time).join(", ") ||
                   "No time assigned"}
               </Text>
             </View>
 
             {booking.notes ? (
-              <View style={styles.noteRow}>
-                <Text style={styles.noteText}>{booking.notes}</Text>
+              <View style={styles(theme).noteRow}>
+                <Text style={styles(theme).noteText}>{booking.notes}</Text>
               </View>
             ) : null}
 
-            <View style={styles.actionRow}>
-              <Pressable style={styles.primaryAction} onPress={() => openBooking(booking)}>
+            <View style={styles(theme).actionRow}>
+              <Pressable style={styles(theme).primaryAction} onPress={() => openBooking(booking)}>
                 <CheckCircle2 size={16} color="#07130d" />
-                <Text style={styles.primaryActionText}>
+                <Text style={styles(theme).primaryActionText}>
                   {getBookingStatus(booking.status) === BookingStatus.Pending &&
                   booking.bookingState !== "past"
                     ? "Confirm Booking"
@@ -740,8 +741,8 @@ const AdminBooking = () => {
                 </Text>
               </Pressable>
 
-              <Pressable style={styles.secondaryAction} onPress={() => openBooking(booking)}>
-                <Text style={styles.secondaryActionText}>
+              <Pressable style={styles(theme).secondaryAction} onPress={() => openBooking(booking)}>
+                <Text style={styles(theme).secondaryActionText}>
                   {booking.bookingState === "past" ? "View Details" : "Reschedule"}
                 </Text>
               </Pressable>
@@ -756,24 +757,24 @@ const AdminBooking = () => {
         animationType="slide"
         onRequestClose={closeBooking}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Booking details</Text>
+        <View style={styles(theme).modalBackdrop}>
+          <View style={styles(theme).modalCard}>
+            <Text style={styles(theme).modalTitle}>Booking details</Text>
             <ScrollView
-              style={styles.modalScroll}
-              contentContainerStyle={styles.modalScrollContent}
+              style={styles(theme).modalScroll}
+              contentContainerStyle={styles(theme).modalScrollContent}
               showsVerticalScrollIndicator={false}
             >
               {selectedBooking ? (
                 <>
-                <Text style={styles.modalValue}>{selectedBooking.customerName}</Text>
-                <Text style={styles.modalLabel}>
+                <Text style={styles(theme).modalValue}>{selectedBooking.customerName}</Text>
+                <Text style={styles(theme).modalLabel}>
                   {selectedBooking.bookingDate.toISOString().slice(0, 10)} •{" "}
                   {selectedBooking.status}
                 </Text>
                 {shouldShowCustomerHistory(selectedBooking) ? (
                   <>
-                    <Text style={styles.modalSectionTitle}>Customer bookings</Text>
+                    <Text style={styles(theme).modalSectionTitle}>Customer bookings</Text>
                     {bookings
                       .filter(
                         (booking) =>
@@ -782,7 +783,7 @@ const AdminBooking = () => {
                       .map((booking) => (
                         <Text
                           key={`customer-booking-${booking.id}`}
-                          style={styles.modalHistoryLine}
+                          style={styles(theme).modalHistoryLine}
                         >
                           {booking.bookingDate.toISOString().slice(0, 10)} •{" "}
                           {booking.status} •{" "}
@@ -793,12 +794,12 @@ const AdminBooking = () => {
                   </>
                 ) : null}
                 {selectedBooking.lines.map((line) => (
-                  <Text key={line.id} style={styles.modalLine}>
+                  <Text key={line.id} style={styles(theme).modalLine}>
                     {line.treatmentName} • {line.time}
                   </Text>
                 ))}
                 {selectedBooking.notes ? (
-                  <Text style={styles.modalNotes}>{selectedBooking.notes}</Text>
+                  <Text style={styles(theme).modalNotes}>{selectedBooking.notes}</Text>
                 ) : null}
 
                 {getBookingStatus(selectedBooking.status) === BookingStatus.Booked &&
@@ -807,7 +808,7 @@ const AdminBooking = () => {
                     <TextInput
                       value={formatDateKey(rescheduleDate)}
                       editable={false}
-                      style={[styles.modalInput, styles.modalInputDisabled]}
+                      style={styles(theme).modalInput}
                     />
                     <BookingCalendar
                       selectedDate={rescheduleDate}
@@ -815,12 +816,13 @@ const AdminBooking = () => {
                         setRescheduleDate(date);
                         setRescheduleTime("");
                       }}
+                      textColor={theme.modalText}
                     />
-                    <Text style={styles.modalLabel}>Available start slots</Text>
+                    <Text style={styles(theme).modalLabel}>Available start slots</Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.modalSlotRow}
+                      contentContainerStyle={styles(theme).modalSlotRow}
                     >
                       {getSlotOptionsForDate(rescheduleDate).map((slot) => {
                         const isStartSlot = availableRescheduleSlots.includes(slot);
@@ -831,15 +833,15 @@ const AdminBooking = () => {
                           disabled={!isStartSlot}
                           onPress={() => setRescheduleTime(slot)}
                           style={[
-                            styles.modalSlot,
-                            isSelectedSlot && styles.modalSlotSelected,
-                            !isStartSlot && styles.modalSlotDisabled,
+                            styles(theme).modalSlot,
+                            isSelectedSlot && styles(theme).modalSlotSelected,
+                            !isStartSlot && styles(theme).modalSlotDisabled,
                           ]}
                         >
                           <Text
                             style={[
-                              styles.modalSlotText,
-                              isSelectedSlot && styles.modalSlotTextSelected,
+                              styles(theme).modalSlotText,
+                              isSelectedSlot && styles(theme).modalSlotTextSelected,
                             ]}
                           >
                             {slot}
@@ -862,44 +864,44 @@ const AdminBooking = () => {
                           : "Select a start slot"
                       }
                       editable={false}
-                      style={[styles.modalInput, styles.modalInputDisabled]}
+                      style={styles(theme).modalInput}
                     />
                     <Pressable
-                      style={styles.modalPrimaryAction}
+                      style={styles(theme).modalPrimaryAction}
                       onPress={() => void rescheduleBooking()}
                       disabled={isSaving}
                     >
-                      <Text style={styles.modalPrimaryText}>
+                      <Text style={styles(theme).modalPrimaryText}>
                         {isSaving ? "Saving..." : "Reschedule booking"}
                       </Text>
                     </Pressable>
                   </>
                 ) : selectedBooking.bookingState === "past" ? (
-                  <Text style={styles.modalReadOnly}>
+                  <Text style={styles(theme).modalReadOnly}>
                     This booking is view-only because its scheduled day has passed.
                   </Text>
                 ) : getBookingStatus(selectedBooking.status) === BookingStatus.Booked ? (
-                  <Text style={styles.modalReadOnly}>
+                  <Text style={styles(theme).modalReadOnly}>
                     This booking can no longer be rescheduled because its scheduled day has passed.
                   </Text>
                 ) : getBookingStatus(selectedBooking.status) === BookingStatus.Pending ? (
                   <Pressable
-                    style={styles.modalPrimaryAction}
+                    style={styles(theme).modalPrimaryAction}
                     onPress={() => void confirmBooking()}
                     disabled={isSaving}
                   >
-                    <Text style={styles.modalPrimaryText}>
+                    <Text style={styles(theme).modalPrimaryText}>
                       {isSaving ? "Saving..." : "Confirm booking"}
                     </Text>
                   </Pressable>
                 ) : (
-                  <Text style={styles.modalReadOnly}>This booking is view-only.</Text>
+                  <Text style={styles(theme).modalReadOnly}>This booking is view-only.</Text>
                 )}
                 </>
               ) : null}
             </ScrollView>
-            <Pressable style={styles.modalCloseAction} onPress={closeBooking}>
-              <Text style={styles.modalCloseText}>Close</Text>
+            <Pressable style={styles(theme).modalCloseAction} onPress={closeBooking}>
+              <Text style={styles(theme).modalCloseText}>Close</Text>
             </Pressable>
           </View>
         </View>
@@ -910,10 +912,10 @@ const AdminBooking = () => {
 
 export default AdminBooking;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
   },
   contentContainer: {
     paddingHorizontal: 18,
@@ -940,7 +942,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontSize: 26,
     fontWeight: "800",
   },
@@ -951,7 +953,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   headerPillText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -965,27 +967,27 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 16,
     padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1.5,
+    borderColor: theme.adminBorder,
   },
   statLabel: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
     opacity: 0.8,
   },
   statValue: {
-    color: "#f4f4f4",
+    color: theme.TextColour,
     fontWeight: "800",
     fontSize: 30,
     marginTop: 10,
   },
   statHint: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 11,
     opacity: 0.8,
   },
   greenText: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
   },
   searchWrap: {
     flexDirection: "row",
@@ -996,9 +998,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 8,
     marginBottom: 18,
+    borderWidth: 1.5,
+    borderColor: theme.adminBorder,
   },
   searchInput: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 14,
   },
   filterBar: {
@@ -1014,25 +1018,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
   },
   filterButtonActive: {
     backgroundColor: "rgba(0,255,95,0.16)",
     borderWidth: 1,
-    borderColor: Colors.Primary900,
+    borderColor: theme.Primary900,
   },
   filterText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontWeight: "700",
     fontSize: 12,
   },
   filterTextActive: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
   },
   treatmentSection: {
     marginBottom: 20,
   },
   sectionLabel: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
     letterSpacing: 0.8,
     marginBottom: 8,
@@ -1041,9 +1047,9 @@ const styles = StyleSheet.create({
   searchInputField: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    color: "#f1f1f1",
+    borderWidth: 1.5,
+    borderColor: theme.adminBorder,
+    color: theme.TextColour,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 12,
@@ -1058,34 +1064,35 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: theme.adminBorder,
     marginRight: 10,
     justifyContent: "center",
   },
   treatmentCardSelected: {
     backgroundColor: "rgba(0,255,95,0.12)",
-    borderColor: Colors.Primary900,
+    borderColor: theme.Primary900,
   },
   treatmentName: {
-    color: "#f2f2f2",
+    color: theme.TextColour,
     fontWeight: "700",
     fontSize: 14,
     marginBottom: 6,
   },
   treatmentMeta: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 11,
   },
   bookingCard: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 18,
     padding: 16,
     marginBottom: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: 2,
+    borderColor: theme.adminBorder,
   },
   bookingCardPast: {
+    backgroundColor: theme.bookingCardBackground,
     borderColor: "rgba(196,154,90,0.75)",
   },
   bookingHeader: {
@@ -1101,14 +1108,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
   },
   monthText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 10,
     textTransform: "uppercase",
   },
   dayText: {
-    color: "#f4f4f4",
+    color: theme.bookingCardText,
     fontSize: 22,
     fontWeight: "800",
   },
@@ -1116,12 +1125,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   customerName: {
-    color: "#f4f4f4",
+    color: theme.bookingCardText,
     fontSize: 18,
     fontWeight: "700",
   },
   bookingMeta: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
     marginTop: 4,
   },
@@ -1140,7 +1149,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusDotSuccess: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
   },
   statusDotWarning: {
     backgroundColor: "#F1C75B",
@@ -1149,7 +1158,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#C49A5A",
   },
   statusText: {
-    color: "#f4f4f4",
+    color: theme.bookingCardText,
     fontSize: 10,
     fontWeight: "700",
   },
@@ -1164,14 +1173,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   labelText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 11,
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   pointsBadge: {
     backgroundColor: "rgba(255,255,255,0.06)",
-    color: Colors.Primary900,
+    color: theme.Primary900,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1179,7 +1188,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   bookingTitle: {
-    color: "#f7f7f7",
+    color: theme.bookingCardText,
     fontSize: 20,
     fontWeight: "800",
     marginBottom: 10,
@@ -1191,7 +1200,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   metaText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
   },
   noteRow: {
@@ -1199,9 +1208,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
   },
   noteText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -1215,7 +1226,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
     borderRadius: 14,
     paddingVertical: 14,
   },
@@ -1231,9 +1242,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
   },
   secondaryActionText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontWeight: "700",
     fontSize: 13,
   },
@@ -1248,7 +1261,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 380,
     maxHeight: "92%",
-    backgroundColor: "#10261A",
+    backgroundColor: theme.visitDetailsModalBackground,
     borderColor: "rgba(0,255,95,0.55)",
     borderWidth: 1,
     borderRadius: 20,
@@ -1256,7 +1269,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalTitle: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 20,
     fontWeight: "800",
   },
@@ -1267,40 +1280,36 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalValue: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 17,
     fontWeight: "700",
   },
   modalLabel: {
-    color: Colors.TextColour,
-    opacity: 0.75,
+    color: theme.modalText,
   },
   modalLine: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     paddingVertical: 3,
   },
   modalSectionTitle: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontWeight: "800",
     marginTop: 6,
   },
   modalHistoryLine: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 12,
   },
   modalNotes: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontStyle: "italic",
   },
   modalInput: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     borderWidth: 1,
-    borderColor: Colors.TextColour,
+    borderColor: theme.TextColour,
     borderRadius: 8,
     padding: 10,
-  },
-  modalInputDisabled: {
-    opacity: 0.75,
   },
   modalSlotRow: {
     gap: 8,
@@ -1315,38 +1324,37 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.06)",
   },
   modalSlotSelected: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
   },
   modalSlotText: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontWeight: "700",
   },
   modalSlotTextSelected: {
-    color: "#07130d",
+    color: theme.modalText,
   },
   modalSlotDisabled: {
     opacity: 0.35,
   },
   modalPrimaryAction: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
     padding: 13,
     borderRadius: 9,
     alignItems: "center",
   },
   modalPrimaryText: {
-    color: "#07130d",
+    color: theme.modalText,
     fontWeight: "800",
   },
   modalReadOnly: {
-    color: Colors.TextColour,
-    opacity: 0.7,
+    color: theme.modalText,
   },
   modalCloseAction: {
     padding: 12,
     alignItems: "center",
   },
   modalCloseText: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontWeight: "700",
   },
   emptyStateCard: {
@@ -1355,7 +1363,7 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   emptyStateText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 14,
   },
 });

@@ -1,12 +1,13 @@
 import { useCallback } from "react";
 import { Text, Linking, Alert, Pressable, StyleSheet } from "react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 interface LinkProps {
   url: string;
   children: string;
   colour: string;
 }
 const Link = ({ url, children, colour }: LinkProps) => {
+  const theme = useTheme();
   const handlePress = useCallback(async () => {
     // Checking if the link is supported for links with custom URL scheme.
     const supported = await Linking.openURL(url);
@@ -19,7 +20,7 @@ const Link = ({ url, children, colour }: LinkProps) => {
   return (
     <Pressable
       onPress={handlePress}
-      style={({ pressed }) => pressed && styles.presseditem}
+      style={({ pressed }) => pressed && styles(theme).presseditem}
     >
       <Text style={{ color: colour, textAlign: "right", padding: 5 }}>
         {children}
@@ -30,7 +31,7 @@ const Link = ({ url, children, colour }: LinkProps) => {
 
 export default Link;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   presseditem: {
     opacity: 0.5,
   },
