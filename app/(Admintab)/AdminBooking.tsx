@@ -50,6 +50,11 @@ const BOOKING_SLOT_OPTIONS = [
   "16:00",
 ];
 
+const getSlotOptionsForDate = (date: Date) =>
+  date.getDay() === 6
+    ? BOOKING_SLOT_OPTIONS.filter((slot) => slot <= "13:00")
+    : BOOKING_SLOT_OPTIONS;
+
 const formatDateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
     date.getDate(),
@@ -59,9 +64,10 @@ const getContiguousSlots = (
   startSlot: string,
   count: number,
   availableSlots: string[],
+  slotOptions = BOOKING_SLOT_OPTIONS,
 ) => {
-  const startIndex = BOOKING_SLOT_OPTIONS.indexOf(startSlot);
-  const slots = BOOKING_SLOT_OPTIONS.slice(startIndex, startIndex + count);
+  const startIndex = slotOptions.indexOf(startSlot);
+  const slots = slotOptions.slice(startIndex, startIndex + count);
   return startIndex >= 0 &&
     slots.length === count &&
     slots.every((slot) => availableSlots.includes(slot))
@@ -335,13 +341,15 @@ const AdminBooking = () => {
         )
         .flatMap((booking) => booking.lines.map((line) => line.time)),
     );
-    const availableSlots = BOOKING_SLOT_OPTIONS.filter(
+    const dateSlotOptions = getSlotOptionsForDate(rescheduleDate);
+    const availableSlots = dateSlotOptions.filter(
       (slot) => !bookedTimes.has(slot) && !isSlotElapsed(rescheduleDate, slot),
     );
     const requiredSlots = Math.max(selectedBooking.lines.length, 1);
 
-    return BOOKING_SLOT_OPTIONS.filter(
-      (slot) => getContiguousSlots(slot, requiredSlots, availableSlots).length > 0,
+    return dateSlotOptions.filter(
+      (slot) =>
+        getContiguousSlots(slot, requiredSlots, availableSlots, dateSlotOptions).length > 0,
     );
   }, [bookings, rescheduleDate, selectedBooking]);
 
@@ -352,9 +360,11 @@ const AdminBooking = () => {
             rescheduleTime,
             selectedBooking.lines.length,
             BOOKING_SLOT_OPTIONS,
+            getSlotOptionsForDate(nextDate),
+            getSlotOptionsForDate(rescheduleDate),
           )
         : [],
-    [rescheduleTime, selectedBooking],
+    [rescheduleTime, rescheduleDate, selectedBooking],
   );
 
   const closeBooking = () => {
@@ -439,6 +449,7 @@ const AdminBooking = () => {
       rescheduleTime,
       selectedBooking.lines.length,
       BOOKING_SLOT_OPTIONS,
+      getSlotOptionsForDate(nextDate),
     ).map((slot) => `${slot}:00`);
     if (requestedTimes.length !== selectedBooking.lines.length) {
       Alert.alert("Invalid time", "There are not enough consecutive time slots.");
@@ -811,7 +822,7 @@ const AdminBooking = () => {
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={styles.modalSlotRow}
                     >
-                      {BOOKING_SLOT_OPTIONS.map((slot) => {
+                      {getSlotOptionsForDate(rescheduleDate).map((slot) => {
                         const isStartSlot = availableRescheduleSlots.includes(slot);
                         const isSelectedSlot = selectedRescheduleSlots.includes(slot);
                         return (

@@ -41,6 +41,11 @@ const defaultSlotOptions = [
   "16:00",
 ];
 
+const getSlotOptionsForDate = (date: Date) =>
+  date.getDay() === 6
+    ? defaultSlotOptions.filter((slot) => slot <= "13:00")
+    : defaultSlotOptions;
+
 const isSunday = (date: Date) => date.getDay() === 0;
 
 const isToday = (date: Date) => {
@@ -74,11 +79,12 @@ const getContiguousSlots = (
   startSlot: string,
   count: number,
   availableSlots: string[],
+  slotOptions = defaultSlotOptions,
 ) => {
-  const startIndex = defaultSlotOptions.indexOf(startSlot);
+  const startIndex = slotOptions.indexOf(startSlot);
   if (startIndex < 0) return [];
 
-  const slots = defaultSlotOptions.slice(startIndex, startIndex + count);
+  const slots = slotOptions.slice(startIndex, startIndex + count);
   return slots.length === count &&
     slots.every((slot) => availableSlots.includes(slot))
     ? slots
@@ -148,16 +154,17 @@ const Booking = () => {
     [selectedTreatmentId, treatments],
   );
   const slotOptions = useMemo(() => {
-    const availableSlots = defaultSlotOptions.filter(
+    const dateSlotOptions = getSlotOptionsForDate(selectedDate);
+    const availableSlots = dateSlotOptions.filter(
       (slot) =>
         !bookedSlotTimes.includes(slot) &&
         !isSlotElapsed(selectedDate, slot, currentTime),
     );
     const requiredSlots = Math.max(selectedTreatmentId.length, 1);
 
-    return defaultSlotOptions.filter(
+    return dateSlotOptions.filter(
       (slot) =>
-        getContiguousSlots(slot, requiredSlots, availableSlots).length > 0,
+        getContiguousSlots(slot, requiredSlots, availableSlots, dateSlotOptions).length > 0,
     );
   }, [bookedSlotTimes, currentTime, selectedDate, selectedTreatmentId.length]);
 
@@ -365,7 +372,7 @@ const Booking = () => {
     const getAvailableSlots = async () => {
       try {
         if (isSunday(selectedDate)) {
-          setBookedSlotTimes(defaultSlotOptions);
+          setBookedSlotTimes(getSlotOptionsForDate(selectedDate));
           setSelectedSlot([]);
           return;
         }
@@ -1178,7 +1185,7 @@ const Booking = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.slotRow}
       >
-        {defaultSlotOptions.map((slot) => {
+        {getSlotOptionsForDate(selectedDate).map((slot) => {
           const hasTreatments = selectedTreatmentId.length > 0;
           const isAvailableStart = slotOptions.includes(slot);
           const active = selectedSlot.includes(slot);
@@ -1187,7 +1194,8 @@ const Booking = () => {
               key={slot}
               disabled={!hasTreatments || !isAvailableStart}
               onPress={() => {
-                const availableSlots = defaultSlotOptions.filter(
+                const dateSlotOptions = getSlotOptionsForDate(selectedDate);
+                const availableSlots = dateSlotOptions.filter(
                   (availableSlot) =>
                     !bookedSlotTimes.includes(availableSlot) &&
                     !isSlotElapsed(selectedDate, availableSlot),
@@ -1197,6 +1205,7 @@ const Booking = () => {
                     slot,
                     Math.max(selectedTreatmentId.length, 1),
                     availableSlots,
+                    dateSlotOptions,
                   ),
                 );
               }}
