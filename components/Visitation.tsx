@@ -7,8 +7,9 @@ import {
   Image,
   Button,
   Alert,
+  ScrollView,
 } from "react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 import { useEffect, useState, useMemo } from "react";
 import PrimaryButton from "./PrimaryButton";
 import PrimaryText from "./PrimaryText";
@@ -32,6 +33,24 @@ const Visitation = ({
   allowDelete = false,
   onVisitDeleted,
 }: VisitationProps) => {
+  const theme = useTheme();
+  const getVisitServices = (visit: any) =>
+    (visit?.customervisitlines || [])
+      .map((line: any) => line?.treatments?.Services)
+      .filter(Boolean);
+  const getVisitServiceNames = (visit: any) =>
+    getVisitServices(visit)
+      .map((service: any) => service.servicename)
+      .filter(Boolean);
+  const getVisitTotalCost = (visit: any) =>
+    getVisitServices(visit).reduce(
+      (total: number, service: any) => total + (Number(service.servicecost) || 0),
+      0,
+    );
+  const getVisitDuration = (visit: any) =>
+    getVisitServices(visit).filter(
+      (service: any) => service.servicecategory === "treatment",
+    ).length * 60;
   const [isModalActive, setisModalActive] = useState(false);
   const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [visitations, setvisitations] = useState<any[]>([]);
@@ -261,17 +280,17 @@ const Visitation = ({
   return (
     <View>
       {groupedVisits.map((group, groupIndex) => (
-        <View key={groupIndex} style={styles.groupContainer}>
-          <View style={styles.groupHeader}>
-            <Text style={styles.groupDateText}>
+        <View key={groupIndex} style={styles(theme).groupContainer}>
+          <View style={styles(theme).groupHeader}>
+            <Text style={styles(theme).groupDateText}>
               {new Date(group.date).toLocaleDateString("en-US", {
                 month: "long",
                 day: "numeric",
                 year: "numeric",
               })}
             </Text>
-            <View style={styles.groupPointsBadge}>
-              <Text style={styles.groupPointsText}>
+            <View style={styles(theme).groupPointsBadge}>
+              <Text style={styles(theme).groupPointsText}>
                 {group.points > 0 ? `+${group.points}` : group.points} PTS
               </Text>
             </View>
@@ -280,53 +299,57 @@ const Visitation = ({
           {group.visits.map((visit, index) => (
             <View key={index}>
               <Pressable
-                style={({ pressed }) => pressed && styles.presseditem}
+                style={({ pressed }) => pressed && styles(theme).presseditem}
                 onPress={() => {
                   setisModalActive(true);
                   setselectedvisit(visit);
                 }}
               >
-                <View style={styles.visitCard}>
+                <View style={styles(theme).visitCard}>
                   {/* 
                   Removed the date box from here as it's now in the group header.
                   Replaced with icon or just removed. 
                   The image shows an icon on the left (green icon).
                 */}
-                  <View style={styles.serviceIconContainer}>
-                    {visit.customervisitlines?.[0]?.treatments?.Services
-                      ?.servicecategory === "product" ? (
-                      <PartyPopper color={Colors.Primary900} size={24} />
+                  <View style={styles(theme).serviceIconContainer}>
+                    {getVisitServices(visit)[0]?.servicecategory === "product" ? (
+                      <PartyPopper color={theme.Primary900} size={24} />
                     ) : (
-                      <Star color={Colors.Primary900} size={24} />
+                      <Star color={theme.Primary900} size={24} />
                     )}
                   </View>
 
-                  <View style={styles.visitInfo}>
-                    <Text style={styles.visitService}>
-                      {visit.customervisitlines?.[0]?.treatments?.Services
-                        ?.servicename || "Unknown Service"}
+                  <View style={styles(theme).visitInfo}>
+                    <Text
+                      style={styles(theme).visitService}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {getVisitServiceNames(visit).join(", ") || "Unknown Service"}
                     </Text>
-                    <Text style={styles.visitStylist}>
-                      {visit.customervisitlines?.[0]?.treatments?.Services
-                        ?.servicecategory || "Service"}
+                    <Text style={styles(theme).visitStylist}>
+                      {getVisitServices(visit)
+                        .map((service: any) => service.servicecategory)
+                        .filter(Boolean)
+                        .join(", ") || "Service"}
                     </Text>
                   </View>
-                  <View style={styles.pointsColumn}>
-                    <Text style={styles.pointsValueText}>
+                  <View style={styles(theme).pointsColumn}>
+                    <Text style={styles(theme).pointsValueText}>
                       {getSignedVisitPoints(visit) > 0
                         ? `+${getSignedVisitPoints(visit)}`
                         : getSignedVisitPoints(visit)}
                     </Text>
-                    <Text style={styles.pointsLabelText}>POINTS</Text>
+                    <Text style={styles(theme).pointsLabelText}>POINTS</Text>
                   </View>
                 </View>
               </Pressable>
               {allowDelete && (
                 <Pressable
-                  style={styles.inlineDeleteButton}
+                  style={styles(theme).inlineDeleteButton}
                   onPress={() => handleDeleteVisit(visit)}
                 >
-                  <Text style={styles.inlineDeleteButtonText}>
+                  <Text style={styles(theme).inlineDeleteButtonText}>
                     {isDeleting ? "Deleting..." : "Delete Treatment/Product"}
                   </Text>
                 </Pressable>
@@ -343,15 +366,20 @@ const Visitation = ({
           animationType="slide"
           presentationStyle="pageSheet"
         >
-          <View style={styles.ModalContainer}>
+          <View style={styles(theme).ModalContainer}>
             <View></View>
-            <View style={styles.TreatmentCard}>
+            <ScrollView
+              style={styles(theme).modalScroll}
+              contentContainerStyle={styles(theme).modalScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+            <View style={styles(theme).TreatmentCard}>
               <View
                 style={{
                   padding: 1,
                   height: 5,
                   paddingHorizontal: 20,
-                  backgroundColor: Colors.TextColour,
+                  backgroundColor: theme.TextColour,
                   borderRadius: 20,
                   marginTop: 3,
                   marginBottom: 8,
@@ -360,108 +388,108 @@ const Visitation = ({
                 <Button title="" />
               </View>
               <Text
-                style={{ color: "white", fontSize: 32, fontWeight: "bold" }}
+                style={{ color: theme.TextColour, fontSize: 32, fontWeight: "bold" }}
               >
                 Visit Details
               </Text>
 
-              <View style={styles.IconCard}>
-                <View style={styles.TreatmentRow1}>
-                  <Image
-                    style={styles.logo}
-                    source={require("../assets/images/AltSkinzoneLogo.png")}
-                  />
-                  <View style={styles.treatmentTitleWrapper}>
-                    <Text style={styles.treatmentTitle}>
-                      {selectedvisit.customervisitlines?.[0]?.treatments
-                        ?.Services?.servicename || "Unknown"}
-                    </Text>
-                    <Text style={{ color: Colors.Primary900, fontSize: 12 }}>
-                      {selectedvisit.customervisitlines?.[0]?.treatments
-                        ?.Services?.servicecategory === "treatment"
-                        ? "Treatment"
-                        : "Product"}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.TreatmentRow2}>
-                  <View style={styles.halfinput}>
+              <View style={styles(theme).IconCard}>
+                {getVisitServices(selectedvisit).map((service: any, index: number) => {
+                  const isProduct = service.servicecategory === "product";
+                  const servicePoints = Number(service.servicepoints) || 0;
+                  return (
+                    <View key={`${service.servicename}-${index}`} style={styles(theme).serviceDetailRow}>
+                      <View style={styles(theme).serviceDetailIcon}>
+                        {isProduct ? (
+                          <PartyPopper color={theme.Primary900} size={20} />
+                        ) : (
+                          <Star color={theme.Primary900} size={20} />
+                        )}
+                      </View>
+                      <View style={styles(theme).serviceDetailInfo}>
+                        <Text style={styles(theme).serviceDetailName}>
+                          {service.servicename || "Unknown service"}
+                        </Text>
+                        <Text style={styles(theme).serviceDetailType}>
+                          {isProduct ? "Product" : "Treatment"}
+                        </Text>
+                      </View>
+                      <Text style={styles(theme).serviceDetailPoints}>
+                        +{servicePoints} pts
+                      </Text>
+                    </View>
+                  );
+                })}
+                <View style={styles(theme).TreatmentRow2}>
+                  <View style={styles(theme).halfinput}>
                     <PrimaryText>DATE</PrimaryText>
-                    <Text style={{ color: "white" }}>
+                    <Text style={{ color: theme.TextColour }}>
                       {" "}
                       {new Date(selectedvisit.visit_date).toLocaleDateString()}
                     </Text>
                   </View>
-                  <View style={styles.halfinput}>
+                  <View style={styles(theme).halfinput}>
                     <PrimaryText>COST</PrimaryText>
-                    <Text style={{ color: "white" }}>
+                    <Text style={{ color: theme.TextColour }}>
                       R
-                      {selectedvisit.customervisitlines?.[0]?.treatments
-                        ?.Services?.servicecost || 0}
+                      {getVisitTotalCost(selectedvisit).toFixed(2)}
                     </Text>
                   </View>
                 </View>
-                {selectedvisit.customervisitlines?.[0]?.treatments?.Services
-                  ?.servicecategory === "treatment" &&
-                  selectedvisit.customervisitlines?.[0]?.treatments
-                    ?.duration_minutes && (
-                    <View style={styles.fullinput}>
+                {getVisitDuration(selectedvisit) > 0 && (
+                    <View style={styles(theme).fullinput}>
                       <PrimaryText>DURATION</PrimaryText>
-                      <Text style={{ color: "white" }}>
-                        {
-                          selectedvisit.customervisitlines?.[0]?.treatments
-                            ?.duration_minutes
-                        }{" "}
-                        Minutes
+                      <Text style={{ color: theme.TextColour }}>
+                        {getVisitDuration(selectedvisit)} Minutes
                       </Text>
                     </View>
                   )}
               </View>
             </View>
-            <View style={styles.pointsCard}>
-              <View style={styles.pointsRow}>
-                <Text style={styles.pointsIcon}>
-                  <Star color={"white"} />
+            <View style={styles(theme).pointsCard}>
+              <View style={styles(theme).pointsRow}>
+                <Text style={styles(theme).pointsIcon}>
+                  <Star color={theme.visitationItemText} />
                 </Text>
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.pointsValue}>
+                  <Text style={styles(theme).pointsValue}>
                     {getSignedVisitPoints(selectedvisit) > 0
                       ? `+${getSignedVisitPoints(selectedvisit)}`
                       : getSignedVisitPoints(selectedvisit)}{" "}
                     Points
                   </Text>
-                  <Text style={styles.pointsSubtitle}>
+                  <Text style={styles(theme).pointsSubtitle}>
                     {selectedvisit?.Freetreatment
                       ? "Used on free claim"
                       : "Earned this visit"}
                   </Text>
                 </View>
-                <Text style={styles.pointsEmoji}>
-                  <PartyPopper color={"white"} />
+                <Text style={styles(theme).pointsEmoji}>
+                  <PartyPopper color={theme.visitationItemText} />
                 </Text>
               </View>
             </View>
-            <View style={styles.notesCard}>
-              <View style={styles.notesHeader}>
-                <Text style={styles.notesIcon}>
-                  <Notebook color={"white"} />
+            <View style={styles(theme).notesCard}>
+              <View style={styles(theme).notesHeader}>
+                <Text style={styles(theme).notesIcon}>
+                  <Notebook color={theme.visitationItemText} />
                 </Text>
-                <Text style={styles.notesHeaderText}>COMMENTS / NOTES</Text>
+                <Text style={styles(theme).notesHeaderText}>COMMENTS / NOTES</Text>
               </View>
               <Text
-                style={styles.notesCopy}
+                style={styles(theme).notesCopy}
               >{`"${selectedvisit.notes || "No notes available"}"`}</Text>
             </View>
-            <View style={styles.therapistcontainer}>
+            <View style={styles(theme).therapistcontainer}>
               <Image
-                style={styles.therapistLogo}
+                style={styles(theme).therapistLogo}
                 source={require("../assets/images/AltSkinzoneLogo.png")}
               />
-              <View style={styles.DetailsContainer}>
+              <View style={styles(theme).DetailsContainer}>
                 <PrimaryText>THERAPIST</PrimaryText>
                 <Text
                   style={{
-                    color: "white",
+                    color: theme.visitationItemText,
                     padding: 5,
                     fontWeight: "bold",
                     fontSize: 15,
@@ -472,6 +500,7 @@ const Visitation = ({
                 </Text>
               </View>
             </View>
+            </ScrollView>
             {allowDelete && (
               <PrimaryButton
                 text={isDeleting ? "Deleting..." : "Delete Record"}
@@ -490,7 +519,7 @@ const Visitation = ({
 };
 export default Visitation;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   groupContainer: {
     marginBottom: 20,
   },
@@ -501,26 +530,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   groupDateText: {
-    color: "#FFFFFF",
+    color: theme.TextColour,
     fontSize: 16,
     fontWeight: "bold",
   },
   groupPointsBadge: {
-    backgroundColor: Colors.SecondaryColour100, // Dark green background for badge
+    backgroundColor: theme.SecondaryColour100, // Dark green background for badge
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.Primary900,
+    borderColor: theme.Primary900,
   },
   groupPointsText: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontSize: 12,
     fontWeight: "bold",
   },
   visitCard: {
     flexDirection: "row",
-    backgroundColor: Colors.background100, // Dark card background
+    backgroundColor: theme.background100, // Dark card background
     borderRadius: 16,
     padding: 16,
     marginBottom: 10,
@@ -532,7 +561,7 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.SecondaryColour100,
+    backgroundColor: theme.SecondaryColour100,
     borderRadius: 12,
     marginRight: 16,
   },
@@ -542,24 +571,24 @@ const styles = StyleSheet.create({
   visitService: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#FFFFFF",
+    color: theme.TextColour,
     marginBottom: 4,
     flexShrink: 1,
   },
   visitStylist: {
     fontSize: 13,
-    color: Colors.TextColour,
+    color: theme.TextColour,
   },
   pointsColumn: {
     alignItems: "flex-end",
   },
   pointsValueText: {
-    color: "#FFFFFF",
+    color: theme.TextColour,
     fontSize: 16,
     fontWeight: "bold",
   },
   pointsLabelText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 10,
     textTransform: "uppercase",
   },
@@ -583,19 +612,25 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   ModalContainer: {
-    backgroundColor: "#0E1C14",
+    backgroundColor: theme.visitationModalBackground,
     flex: 1,
     paddingVertical: 20,
     paddingHorizontal: 20,
   },
+  modalScroll: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    paddingBottom: 12,
+    width: "100%",
+  },
   TreatmentCard: { alignItems: "center" },
   IconCard: {
     marginVertical: 15,
-    marginHorizontal: 12,
+    width: "100%",
     backgroundColor: "#222c26ff",
     borderRadius: 15,
-    padding: 10,
-    paddingHorizontal: 30,
+    padding: 14,
   },
   TreatmentRow1: {
     flexDirection: "row",
@@ -603,11 +638,54 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
   },
+  serviceDetailRow: {
+    alignItems: "center",
+    backgroundColor: theme.background100,
+    borderColor: theme.adminBorder,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: "row",
+    marginBottom: 8,
+    minHeight: 64,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    width: "100%",
+  },
+  serviceDetailIcon: {
+    alignItems: "center",
+    backgroundColor: theme.SecondaryColour100,
+    borderRadius: 10,
+    height: 36,
+    justifyContent: "center",
+    marginRight: 10,
+    width: 36,
+  },
+  serviceDetailInfo: {
+    flex: 1,
+  },
+  serviceDetailName: {
+    color: theme.TextColour,
+    fontSize: 14,
+    fontWeight: "700",
+    flexShrink: 1,
+  },
+  serviceDetailType: {
+    color: theme.TextColour,
+    fontSize: 11,
+    marginTop: 2,
+    opacity: 0.7,
+  },
+  serviceDetailPoints: {
+    color: theme.Primary900,
+    fontSize: 12,
+    fontWeight: "800",
+    marginLeft: 8,
+  },
   logo: {
     width: 60,
     height: 60,
     margin: 10,
-    borderColor: Colors.Primary900,
+    borderColor: theme.Primary900,
     borderWidth: 1,
     borderRadius: 15,
   },
@@ -615,17 +693,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     marginTop: 15,
+    width: "100%",
   },
   halfinput: {
     flex: 1,
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
   },
   fullinput: {
     marginVertical: 10,
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -634,7 +713,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   treatmentTitle: {
-    color: "white",
+    color: theme.visitationItemText,
     fontSize: 20,
     fontWeight: "bold",
     paddingVertical: 15,
@@ -655,7 +734,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
   },
   pointsValue: {
-    color: "white",
+    color: theme.visitationItemText,
     fontSize: 20,
     fontWeight: "bold",
   },
@@ -684,13 +763,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   notesHeaderText: {
-    color: "#8FA399",
+    color: theme.visitationItemText,
     fontSize: 12,
     letterSpacing: 1,
     marginLeft: 8,
   },
   notesCopy: {
-    color: "white",
+    color: theme.visitationItemText,
     fontSize: 14,
     lineHeight: 20,
     fontStyle: "italic",

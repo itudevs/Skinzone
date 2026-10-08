@@ -17,7 +17,7 @@ import {
 } from "lucide-react-native";
 import BookingCalendar from "@/components/BookingCalendar";
 import SearchBar from "@/components/SearchBar";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import { UserSession } from "@/components/utils/GetUsersession";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
@@ -111,6 +111,7 @@ const formatBookingDate = (date: Date) =>
   }).format(date);
 
 const Booking = () => {
+  const theme = useTheme();
   const loggedInUser = UserSession.getSession();
   const [bookedSlotTimes, setBookedSlotTimes] = useState<string[]>([]);
   const [clientType, setClientType] = useState<ClientType>("returning");
@@ -656,20 +657,20 @@ const Booking = () => {
   const renderReturningClientScreen = () => (
     <>
       <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.contentContainer}
+        style={styles(theme).screen}
+        contentContainerStyle={styles(theme).contentContainer}
         showsVerticalScrollIndicator={false}
       >
       <SafeAreaView>
-        <View style={styles.toggleRow}>
+        <View style={styles(theme).toggleRow}>
           <Pressable
             onPress={() => setClientType("first")}
             style={toggleButtonStyle("first")}
           >
             <Text
               style={[
-                styles.toggleText,
-                clientType === "first" && styles.toggleTextActive,
+                styles(theme).toggleText,
+                clientType === "first" && styles(theme).toggleTextActive,
               ]}
             >
               Book Visit
@@ -682,8 +683,8 @@ const Booking = () => {
           >
             <Text
               style={[
-                styles.toggleText,
-                clientType === "returning" && styles.toggleTextActive,
+                styles(theme).toggleText,
+                clientType === "returning" && styles(theme).toggleTextActive,
               ]}
             >
               Manage Bookings
@@ -698,19 +699,19 @@ const Booking = () => {
         onChangeText={setSearchQuery}
       />
 
-      <View style={styles.filterRow}>
+      <View style={styles(theme).filterRow}>
         <Pressable
           onPress={() => setActiveFilter("all")}
           style={[
-            styles.filterChip,
-            activeFilter === "all" && styles.filterChipActive,
+            styles(theme).filterChip,
+            activeFilter === "all" && styles(theme).filterChipActive,
           ]}
         >
           <Text
             style={
               activeFilter === "all"
-                ? styles.filterChipTextActive
-                : styles.filterChipText
+                ? styles(theme).filterChipTextActive
+                : styles(theme).filterChipText
             }
           >
             All ({bookings.length})
@@ -719,15 +720,15 @@ const Booking = () => {
         <Pressable
           onPress={() => setActiveFilter("active")}
           style={[
-            styles.filterChip,
-            activeFilter === "active" && styles.filterChipActive,
+            styles(theme).filterChip,
+            activeFilter === "active" && styles(theme).filterChipActive,
           ]}
         >
           <Text
             style={
               activeFilter === "active"
-                ? styles.filterChipTextActive
-                : styles.filterChipText
+                ? styles(theme).filterChipTextActive
+                : styles(theme).filterChipText
             }
           >
             Active ({filteredCurrentBookings.length})
@@ -736,15 +737,15 @@ const Booking = () => {
         <Pressable
           onPress={() => setActiveFilter("completed")}
           style={[
-            styles.filterChip,
-            activeFilter === "completed" && styles.filterChipActive,
+            styles(theme).filterChip,
+            activeFilter === "completed" && styles(theme).filterChipActive,
           ]}
         >
           <Text
             style={
               activeFilter === "completed"
-                ? styles.filterChipTextActive
-                : styles.filterChipText
+                ? styles(theme).filterChipTextActive
+                : styles(theme).filterChipText
             }
           >
             Completed ({filteredPastBookings.length})
@@ -752,13 +753,13 @@ const Booking = () => {
         </Pressable>
       </View>
 
-      <Text style={styles.sectionHeading}>
+      <Text style={styles(theme).sectionHeading}>
         Current Bookings{" "}
-        <Text style={styles.countBadge}>{filteredCurrentBookings.length}</Text>
+        <Text style={styles(theme).countBadge}>{filteredCurrentBookings.length}</Text>
       </Text>
 
       {filteredCurrentBookings.length === 0 ? (
-        <Text style={styles.emptyStateText}>No matching current bookings.</Text>
+        <Text style={styles(theme).emptyStateText}>No matching current bookings.</Text>
       ) : (
         filteredCurrentBookings.map((booking) => {
           const isPendingBooking =
@@ -767,26 +768,26 @@ const Booking = () => {
           return (
             <Pressable
               key={booking.id}
-              style={styles.bookingCard}
+              style={styles(theme).bookingCard}
               onPress={() => {
                 setSelectedBooking(booking);
                 setShowBookingDetails(true);
               }}
             >
-              <View style={styles.bookingHeaderRow}>
-                <View style={styles.bookingStatusWrap}>
+              <View style={styles(theme).bookingHeaderRow}>
+                <View style={styles(theme).bookingStatusWrap}>
                   <View
                     style={[
-                      styles.statusDot,
+                      styles(theme).statusDot,
                       isPendingBooking
-                        ? styles.statusDotWarning
-                        : styles.statusDotSuccess,
+                        ? styles(theme).statusDotWarning
+                        : styles(theme).statusDotSuccess,
                     ]}
                   />
                   <Text
                     style={[
-                      styles.bookingStatusText,
-                      isPendingBooking && styles.bookingStatusTextWarning,
+                      styles(theme).bookingStatusText,
+                      isPendingBooking && styles(theme).bookingStatusTextWarning,
                     ]}
                   >
                     {getBookingStatus(booking.status)}
@@ -794,19 +795,19 @@ const Booking = () => {
                 </View>
               </View>
 
-              <Text style={styles.bookingTitle}>{booking.treatmentName}</Text>
+              <Text style={styles(theme).bookingTitle}>{booking.treatmentName}</Text>
 
-              <View style={styles.bookingMetaRow}>
-                <Text style={styles.metaText}>
+              <View style={styles(theme).bookingMetaRow}>
+                <Text style={styles(theme).metaText}>
                   {formatBookingDate(booking.bookingDate)}
                 </Text>
-                <Text style={styles.metaText}>{booking.time}</Text>
+                <Text style={styles(theme).metaText}>{booking.time}</Text>
               </View>
 
               {isPendingBooking ? (
-                <View style={styles.pendingFooter}>
-                  <Pressable style={styles.primaryActionWide}>
-                    <Text style={styles.primaryActionWideText}>
+                <View style={styles(theme).pendingFooter}>
+                  <Pressable style={styles(theme).primaryActionWide}>
+                    <Text style={styles(theme).primaryActionWideText}>
                       Pay Booking Fee R300
                     </Text>
                   </Pressable>
@@ -833,32 +834,32 @@ const Booking = () => {
                         ],
                       );
                     }}
-                    style={styles.secondaryAction}
+                    style={styles(theme).secondaryAction}
                   >
-                    <Text style={styles.secondaryActionText}>Cancel</Text>
+                    <Text style={styles(theme).secondaryActionText}>Cancel</Text>
                   </Pressable>
                 </View>
               ) : (
-                <View style={styles.actionRow}>
+                <View style={styles(theme).actionRow}>
                   <Pressable
-                    style={styles.actionButton}
+                    style={styles(theme).actionButton}
                     onPress={() => {
                       setSelectedBooking(booking);
                       setShowBookingDetails(true);
                     }}
                   >
-                    <Text style={styles.actionButtonText}>
+                    <Text style={styles(theme).actionButtonText}>
                       Manage / Reschedule
                     </Text>
                   </Pressable>
                   <Pressable
-                    style={styles.iconButton}
+                    style={styles(theme).iconButton}
                     onPress={() => {
                       setSelectedBooking(booking);
                       setShowBookingDetails(true);
                     }}
                   >
-                    <Calendar color={Colors.TextColour} size={18} />
+                    <Calendar color={theme.TextColour} size={18} />
                   </Pressable>
                 </View>
               )}
@@ -867,66 +868,66 @@ const Booking = () => {
         })
       )}
 
-      <Text style={styles.sectionHeading}>
+      <Text style={styles(theme).sectionHeading}>
         Past Bookings{" "}
-        <Text style={styles.countBadge}>{filteredPastBookings.length}</Text>
+        <Text style={styles(theme).countBadge}>{filteredPastBookings.length}</Text>
       </Text>
 
       {filteredPastBookings.length === 0 ? (
-        <Text style={styles.emptyStateText}>No matching past bookings.</Text>
+        <Text style={styles(theme).emptyStateText}>No matching past bookings.</Text>
       ) : (
         filteredPastBookings.map((booking) => (
           <Pressable
             key={booking.id}
             style={[
-              styles.bookingCardPast,
-              booking.bookingState === "past" && styles.bookingCardPastDay,
+              styles(theme).bookingCardPast,
+              booking.bookingState === "past" && styles(theme).bookingCardPastDay,
             ]}
             onPress={() => {
               setSelectedBooking(booking);
               setShowBookingDetails(true);
             }}
           >
-            <View style={styles.bookingHeaderRow}>
+            <View style={styles(theme).bookingHeaderRow}>
               <Text
                 style={[
-                  styles.bookingStatusTextPast,
-                  booking.bookingState === "past" && styles.bookingStatusTextPastDay,
+                  styles(theme).bookingStatusTextPast,
+                  booking.bookingState === "past" && styles(theme).bookingStatusTextPastDay,
                 ]}
               >
                 {booking.bookingState === "past" ? "Past" : booking.status}
               </Text>
             </View>
 
-            <View style={styles.rewardRow}>
-              <Text style={styles.bookingTitle}>{booking.treatmentName}</Text>
+            <View style={styles(theme).rewardRow}>
+              <Text style={styles(theme).bookingTitle}>{booking.treatmentName}</Text>
             </View>
 
-            <View style={styles.bookingMetaRow}>
-              <Text style={styles.metaText}>
+            <View style={styles(theme).bookingMetaRow}>
+              <Text style={styles(theme).metaText}>
                 {formatBookingDate(booking.bookingDate)}
               </Text>
-              <Text style={styles.metaText}>{booking.time}</Text>
+              <Text style={styles(theme).metaText}>{booking.time}</Text>
             </View>
 
-            <View style={styles.actionRow}>
+            <View style={styles(theme).actionRow}>
               <Pressable
-                style={styles.actionButton}
+                style={styles(theme).actionButton}
                 onPress={() => {
                   setSelectedBooking(booking);
                   setShowBookingDetails(true);
                 }}
               >
-                <Text style={styles.actionButtonText}>Book Again</Text>
+                <Text style={styles(theme).actionButtonText}>Book Again</Text>
               </Pressable>
               <Pressable
-                style={styles.actionButton}
+                style={styles(theme).actionButton}
                 onPress={() => {
                   setSelectedBooking(booking);
                   setShowBookingDetails(true);
                 }}
               >
-                <Text style={styles.actionButtonText}>Summary</Text>
+                <Text style={styles(theme).actionButtonText}>Summary</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -935,9 +936,9 @@ const Booking = () => {
 
       <Pressable
         onPress={() => setClientType("first")}
-        style={styles.newBookingButton}
+        style={styles(theme).newBookingButton}
       >
-        <Text style={styles.newBookingText}>+ Book New Appointment</Text>
+        <Text style={styles(theme).newBookingText}>+ Book New Appointment</Text>
       </Pressable>
       </ScrollView>
       <Modal
@@ -946,32 +947,32 @@ const Booking = () => {
         animationType="fade"
         onRequestClose={() => setShowBookingDetails(false)}
       >
-        <View style={styles.bookingDetailsOverlay}>
-          <View style={styles.bookingDetailsModal}>
-            <Text style={styles.bookingDetailsTitle}>Booking Details</Text>
+        <View style={styles(theme).bookingDetailsOverlay}>
+          <View style={styles(theme).bookingDetailsModal}>
+            <Text style={styles(theme).bookingDetailsTitle}>Booking Details</Text>
             {selectedBooking ? (
               <>
-                <Text style={styles.bookingDetailsTreatment}>
+                <Text style={styles(theme).bookingDetailsTreatment}>
                   {selectedBooking.treatmentName}
                 </Text>
-                <Text style={styles.bookingDetailsLabel}>Status</Text>
-                <Text style={styles.bookingDetailsValue}>
+                <Text style={styles(theme).bookingDetailsLabel}>Status</Text>
+                <Text style={styles(theme).bookingDetailsValue}>
                   {selectedBooking.bookingState === "past"
                     ? "Past"
                     : getBookingStatus(selectedBooking.status)}
                 </Text>
-                <Text style={styles.bookingDetailsLabel}>Date</Text>
-                <Text style={styles.bookingDetailsValue}>
+                <Text style={styles(theme).bookingDetailsLabel}>Date</Text>
+                <Text style={styles(theme).bookingDetailsValue}>
                   {formatBookingDate(selectedBooking.bookingDate)}
                 </Text>
-                <Text style={styles.bookingDetailsLabel}>Time</Text>
-                <Text style={styles.bookingDetailsValue}>
+                <Text style={styles(theme).bookingDetailsLabel}>Time</Text>
+                <Text style={styles(theme).bookingDetailsValue}>
                   {selectedBooking.time || "Not assigned"}
                 </Text>
                 {selectedBooking.notes ? (
                   <>
-                    <Text style={styles.bookingDetailsLabel}>Notes</Text>
-                    <Text style={styles.bookingDetailsValue}>
+                    <Text style={styles(theme).bookingDetailsLabel}>Notes</Text>
+                    <Text style={styles(theme).bookingDetailsValue}>
                       {selectedBooking.notes}
                     </Text>
                   </>
@@ -980,7 +981,7 @@ const Booking = () => {
                   BookingStatus.Cancelled &&
                 selectedBooking.bookingState !== "past" ? (
                   <Pressable
-                    style={styles.cancelBookingButton}
+                    style={styles(theme).cancelBookingButton}
                     disabled={isCancelling}
                     onPress={() =>
                       Alert.alert(
@@ -997,7 +998,7 @@ const Booking = () => {
                       )
                     }
                   >
-                    <Text style={styles.cancelBookingButtonText}>
+                    <Text style={styles(theme).cancelBookingButtonText}>
                       {isCancelling ? "Cancelling..." : "Cancel Booking"}
                     </Text>
                   </Pressable>
@@ -1005,10 +1006,10 @@ const Booking = () => {
               </>
             ) : null}
             <Pressable
-              style={styles.bookingDetailsClose}
+              style={styles(theme).bookingDetailsClose}
               onPress={() => setShowBookingDetails(false)}
             >
-              <Text style={styles.bookingDetailsCloseText}>Close</Text>
+              <Text style={styles(theme).bookingDetailsCloseText}>Close</Text>
             </Pressable>
           </View>
         </View>
@@ -1018,17 +1019,17 @@ const Booking = () => {
 
   const renderFirstTimeClientScreen = () => (
     <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.contentContainer}
+      style={styles(theme).screen}
+      contentContainerStyle={styles(theme).contentContainer}
       showsVerticalScrollIndicator={false}
     >
       <SafeAreaView>
-        <View style={styles.toggleRow}>
+        <View style={styles(theme).toggleRow}>
           <Pressable onPress={bookClient} style={toggleButtonStyle("first")}>
             <Text
               style={[
-                styles.toggleText,
-                clientType === "first" && styles.toggleTextActive,
+                styles(theme).toggleText,
+                clientType === "first" && styles(theme).toggleTextActive,
               ]}
             >
               Book Visit
@@ -1041,8 +1042,8 @@ const Booking = () => {
           >
             <Text
               style={[
-                styles.toggleText,
-                clientType === "returning" && styles.toggleTextActive,
+                styles(theme).toggleText,
+                clientType === "returning" && styles(theme).toggleTextActive,
               ]}
             >
               Manage Bookings
@@ -1051,37 +1052,37 @@ const Booking = () => {
         </View>
       </SafeAreaView>
 
-      <View style={styles.consultationCard}>
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.checkCircle}>
-            <Check color={Colors.Primary900} size={14} />
+      <View style={styles(theme).consultationCard}>
+        <View style={styles(theme).cardHeaderRow}>
+          <View style={styles(theme).checkCircle}>
+            <Check color={theme.Primary900} size={14} />
           </View>
-          <Text style={styles.cardHeaderText}>CLINICAL DERMAL INTAKE</Text>
-          <View style={styles.cardAction}>
-            <Calendar color={Colors.Primary900} size={20} />
+          <Text style={styles(theme).cardHeaderText}>CLINICAL DERMAL INTAKE</Text>
+          <View style={styles(theme).cardAction}>
+            <Calendar color={theme.Primary900} size={20} />
           </View>
         </View>
 
-        <Text style={styles.feeTitle}>Mandatory Consultation Fee: R300</Text>
-        <Text style={styles.feeDescription}>
+        <Text style={styles(theme).feeTitle}>Mandatory Consultation Fee: R300</Text>
+        <Text style={styles(theme).feeDescription}>
           Includes full skin diagnostic scan, aesthetic regimen blueprint, and
           30-min clinical evaluation. Fully applied to treatments booked within
           14 days.
         </Text>
 
-        <View style={styles.divider} />
+        <View style={styles(theme).divider} />
 
         <View>
-          <View style={styles.infoRow}>
+          <View style={styles(theme).infoRow}>
             <Pressable
-              style={styles.infoIconWrap}
+              style={styles(theme).infoIconWrap}
               onPress={() => setShowFeeExplanation((isOpen) => !isOpen)}
               accessibilityRole="button"
               accessibilityLabel="Explain consultation and booking fees"
             >
-              <Text style={styles.infoIcon}>i</Text>
+              <Text style={styles(theme).infoIcon}>i</Text>
             </Pressable>
-            <Text style={styles.infoText}>
+            <Text style={styles(theme).infoText}>
               Why different fees? Consultation vs. Booking Fee
             </Text>
             <Pressable
@@ -1094,15 +1095,15 @@ const Booking = () => {
               }
             >
               <ChevronDown
-                color={Colors.TextColour}
+                color={theme.TextColour}
                 size={20}
-                style={showFeeExplanation ? styles.chevronOpen : undefined}
+                style={showFeeExplanation ? styles(theme).chevronOpen : undefined}
               />
             </Pressable>
           </View>
           {showFeeExplanation ? (
-            <View style={styles.feeExplanation}>
-              <Text style={styles.feeExplanationText}>
+            <View style={styles(theme).feeExplanation}>
+              <Text style={styles(theme).feeExplanationText}>
                 Consultation is part of the treatment process for returning
                 clients. The booking fee applies to first-time clients who have
                 never booked before.
@@ -1111,7 +1112,7 @@ const Booking = () => {
           ) : null}
         </View>
       </View>
-      <Text style={styles.sectionTitle}>Select Treatment</Text>
+      <Text style={styles(theme).sectionTitle}>Select Treatment</Text>
       <SearchBar
         Placeholder="Search treatments"
         size="fullWidthCompact"
@@ -1120,16 +1121,16 @@ const Booking = () => {
       />
 
       {treatments.length === 0 ? (
-        <Text style={styles.emptyStateText}>Loading treatments...</Text>
+        <Text style={styles(theme).emptyStateText}>Loading treatments...</Text>
       ) : filteredTreatments.length === 0 ? (
-        <Text style={styles.emptyStateText}>
+        <Text style={styles(theme).emptyStateText}>
           No treatments match your search.
         </Text>
       ) : (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.treatmentScroller}
+          contentContainerStyle={styles(theme).treatmentScroller}
         >
           {filteredTreatments.map((treatment) => {
             const isSelected =
@@ -1152,31 +1153,31 @@ const Booking = () => {
                   setSelectedSlot([]);
                 }}
                 style={[
-                  styles.treatmentCard,
-                  isSelected && styles.treatmentCardSelected,
+                  styles(theme).treatmentCard,
+                  isSelected && styles(theme).treatmentCardSelected,
                 ]}
               >
-                <Text style={styles.treatmentName}>{treatment.value}</Text>
-                <Text style={styles.treatmentMeta}>{priceLabel}</Text>
+                <Text style={styles(theme).treatmentName}>{treatment.value}</Text>
+                <Text style={styles(theme).treatmentMeta}>{priceLabel}</Text>
               </Pressable>
             );
           })}
         </ScrollView>
       )}
 
-      <Text style={styles.sectionTitle}>Select Booking Date</Text>
+      <Text style={styles(theme).sectionTitle}>Select Booking Date</Text>
       <BookingCalendar
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
       />
-      <View style={styles.slotHeaderRow}>
-        <Text style={styles.sectionTitle}>Available Slots</Text>
-        <Text style={styles.dateLabel}>{selectedDayLabel}</Text>
+      <View style={styles(theme).slotHeaderRow}>
+        <Text style={styles(theme).sectionTitle}>Available Slots</Text>
+        <Text style={styles(theme).dateLabel}>{selectedDayLabel}</Text>
       </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.slotRow}
+        contentContainerStyle={styles(theme).slotRow}
       >
         {defaultSlotOptions.map((slot) => {
           const hasTreatments = selectedTreatmentId.length > 0;
@@ -1201,17 +1202,17 @@ const Booking = () => {
                 );
               }}
               style={[
-                styles.slotCard,
-                active && styles.slotCardSelected,
-                (!hasTreatments || !isAvailableStart) && styles.slotCardDisabled,
+                styles(theme).slotCard,
+                active && styles(theme).slotCardSelected,
+                (!hasTreatments || !isAvailableStart) && styles(theme).slotCardDisabled,
               ]}
             >
               <Text
                 style={[
-                  styles.slotText,
-                  active && styles.slotTextSelected,
+                  styles(theme).slotText,
+                  active && styles(theme).slotTextSelected,
                   (!hasTreatments || !isAvailableStart) &&
-                    styles.slotTextDisabled,
+                    styles(theme).slotTextDisabled,
                 ]}
               >
                 {slot}
@@ -1220,19 +1221,19 @@ const Booking = () => {
           );
         })}
       </ScrollView>
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryRow}></View>
+      <View style={styles(theme).summaryCard}>
+        <View style={styles(theme).summaryRow}></View>
 
-        <View style={styles.summaryRowSecondary}>
-          <Text style={styles.summaryLabelMuted}>Treatment</Text>
-          <Text style={styles.summaryValueStrong}>
+        <View style={styles(theme).summaryRowSecondary}>
+          <Text style={styles(theme).summaryLabelMuted}>Treatment</Text>
+          <Text style={styles(theme).summaryValueStrong}>
             {selectedTreatmentNames.join(", ") || "Not selected"}
           </Text>
         </View>
 
-        <View style={styles.summaryRowSecondary}>
-          <Text style={styles.summaryLabelMuted}>Slot</Text>
-          <Text style={styles.summaryValueStrong}>
+        <View style={styles(theme).summaryRowSecondary}>
+          <Text style={styles(theme).summaryLabelMuted}>Slot</Text>
+          <Text style={styles(theme).summaryValueStrong}>
             {selectedDayLabel} •{" "}
             {selectedSlot.length > 0
               ? `${selectedSlot[0]} - ${selectedSlot[selectedSlot.length - 1]}`
@@ -1240,19 +1241,19 @@ const Booking = () => {
           </Text>
         </View>
 
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Due Today</Text>
-          <Text style={styles.totalValue}>R300.00</Text>
+        <View style={styles(theme).summaryRow}>
+          <Text style={styles(theme).summaryLabel}>Due Today</Text>
+          <Text style={styles(theme).totalValue}>R300.00</Text>
         </View>
 
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Consultation Deposit</Text>
-          <Text style={styles.totalValue}>R300.00</Text>
+        <View style={styles(theme).summaryRow}>
+          <Text style={styles(theme).summaryLabel}>Consultation Deposit</Text>
+          <Text style={styles(theme).totalValue}>R300.00</Text>
         </View>
       </View>
-      <Pressable onPress={bookClient} style={styles.ctaButton}>
-        <Text style={styles.ctaText}>Continue to Confirmation</Text>
-        <Text style={styles.ctaArrow}>→</Text>
+      <Pressable onPress={bookClient} style={styles(theme).ctaButton}>
+        <Text style={styles(theme).ctaText}>Continue to Confirmation</Text>
+        <Text style={styles(theme).ctaArrow}>→</Text>
       </Pressable>
     </ScrollView>
   );
@@ -1268,34 +1269,34 @@ const Booking = () => {
         animationType="fade"
         onRequestClose={() => setShowBookingConfirmation(false)}
       >
-        <View style={styles.confirmationOverlay}>
-          <View style={styles.confirmationModal}>
+        <View style={styles(theme).confirmationOverlay}>
+          <View style={styles(theme).confirmationModal}>
             <CheckCircle2
-              color={Colors.Primary900}
+              color={theme.Primary900}
               size={58}
               strokeWidth={2.5}
             />
-            <Text style={styles.confirmationTitle}>Booking Confirmed</Text>
-            <Text style={styles.confirmationMessage}>
+            <Text style={styles(theme).confirmationTitle}>Booking Confirmed</Text>
+            <Text style={styles(theme).confirmationMessage}>
               Your appointment has been successfully confirmed.
             </Text>
-            <View style={styles.confirmationDetails}>
-              <Text style={styles.confirmationDetailLabel}>Date</Text>
-              <Text style={styles.confirmationDetailValue}>
+            <View style={styles(theme).confirmationDetails}>
+              <Text style={styles(theme).confirmationDetailLabel}>Date</Text>
+              <Text style={styles(theme).confirmationDetailValue}>
                 {selectedDayLabel}
               </Text>
-              <Text style={styles.confirmationDetailLabel}>Time</Text>
-              <Text style={styles.confirmationDetailValue}>
+              <Text style={styles(theme).confirmationDetailLabel}>Time</Text>
+              <Text style={styles(theme).confirmationDetailValue}>
                 {selectedSlot.join(", ")}
               </Text>
             </View>
             <Pressable
-              style={styles.confirmationButton}
+              style={styles(theme).confirmationButton}
               onPress={() => {
                 setShowBookingConfirmation(false);
               }}
             >
-              <Text style={styles.confirmationButtonText}>Done</Text>
+              <Text style={styles(theme).confirmationButtonText}>Done</Text>
             </Pressable>
           </View>
         </View>
@@ -1306,10 +1307,10 @@ const Booking = () => {
 
 export default Booking;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#111315",
+    backgroundColor: theme.bookingBackground,
   },
   contentContainer: {
     paddingHorizontal: 18,
@@ -1332,7 +1333,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     flex: 1,
     textAlign: "center",
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 22,
     fontWeight: "700",
     letterSpacing: -0.8,
@@ -1347,12 +1348,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   pointsText: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontSize: 16,
     fontWeight: "700",
   },
   pointsTextSmall: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontSize: 9,
     fontWeight: "700",
   },
@@ -1364,18 +1365,20 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   toggleText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontWeight: "600",
     fontSize: 14,
   },
   toggleTextActive: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
   },
   consultationCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 18,
     padding: 18,
     marginBottom: 20,
+    borderWidth: 2,
+    borderColor: theme.adminBorder,
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -1393,7 +1396,7 @@ const styles = StyleSheet.create({
   },
   cardHeaderText: {
     flex: 1,
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontWeight: "700",
     letterSpacing: 0.6,
     fontSize: 14,
@@ -1414,7 +1417,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   feeDescription: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -1433,7 +1436,7 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: Colors.Primary900,
+    borderColor: theme.Primary900,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1447,23 +1450,23 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   feeExplanationText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 13,
     lineHeight: 19,
   },
   infoIcon: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontWeight: "700",
     fontSize: 14,
   },
   infoText: {
     flex: 1,
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 13,
     fontWeight: "600",
   },
   sectionTitle: {
-    color: "#F3F3F3",
+    color: theme.bookingCardText,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 12,
@@ -1476,12 +1479,12 @@ const styles = StyleSheet.create({
   treatmentCard: {
     width: 180,
     minHeight: 108,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 16,
     padding: 16,
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: theme.adminBorder,
     marginRight: 12,
   },
   treatmentCardSelected: {
@@ -1489,13 +1492,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,255,95,0.7)",
   },
   treatmentName: {
-    color: "#F5F5F5",
+    color: theme.bookingCardText,
     fontSize: 14,
     fontWeight: "700",
     marginBottom: 6,
   },
   treatmentMeta: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
   },
   slotHeaderRow: {
@@ -1505,7 +1508,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dateLabel: {
-    color: "#F2F2F2",
+    color: theme.bookingCardText,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -1516,11 +1519,13 @@ const styles = StyleSheet.create({
   },
   slotCard: {
     width: 104,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: theme.adminBorder,
   },
   slotCardSelected: {
     backgroundColor: "rgba(0,255,95,0.22)",
@@ -1529,7 +1534,7 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   slotText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -1537,7 +1542,7 @@ const styles = StyleSheet.create({
     color: "#1b1b1b",
   },
   slotTextDisabled: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
   },
   confirmationOverlay: {
     flex: 1,
@@ -1557,13 +1562,13 @@ const styles = StyleSheet.create({
     padding: 28,
   },
   confirmationTitle: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontSize: 22,
     fontWeight: "800",
     marginTop: 14,
   },
   confirmationMessage: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 14,
     lineHeight: 20,
     marginTop: 8,
@@ -1577,7 +1582,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   confirmationDetailLabel: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 12,
     marginBottom: 2,
     opacity: 0.75,
@@ -1591,7 +1596,7 @@ const styles = StyleSheet.create({
   confirmationButton: {
     alignSelf: "stretch",
     alignItems: "center",
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
     borderRadius: 12,
     marginTop: 6,
     paddingVertical: 14,
@@ -1618,25 +1623,25 @@ const styles = StyleSheet.create({
     padding: 28,
   },
   bookingDetailsTitle: {
-    color: Colors.Primary900,
+    color: theme.treatmentModalText,
     fontSize: 22,
     fontWeight: "800",
     marginBottom: 18,
   },
   bookingDetailsTreatment: {
-    color: "#F5FFF7",
+    color: theme.treatmentModalText,
     fontSize: 19,
     fontWeight: "800",
     marginBottom: 14,
   },
   bookingDetailsLabel: {
-    color: Colors.TextColour,
+    color: theme.treatmentModalText,
     fontSize: 12,
     marginTop: 8,
     opacity: 0.75,
   },
   bookingDetailsValue: {
-    color: "#F5FFF7",
+    color: theme.treatmentModalText,
     fontSize: 16,
     fontWeight: "700",
     marginTop: 2,
@@ -1649,7 +1654,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   cancelBookingButtonText: {
-    color: "#FFFFFF",
+    color: theme.treatmentModalText,
     fontSize: 15,
     fontWeight: "800",
   },
@@ -1658,15 +1663,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   bookingDetailsCloseText: {
-    color: Colors.TextColour,
+    color: theme.treatmentModalText,
     fontSize: 15,
     fontWeight: "700",
   },
   summaryCard: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 18,
     padding: 18,
     marginBottom: 18,
+    borderWidth: 2,
+    borderColor: theme.adminBorder,
   },
   summaryRow: {
     flexDirection: "row",
@@ -1681,31 +1688,31 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   summaryLabel: {
-    color: Colors.TextColour,
+    color: theme.bookingCardText,
     fontSize: 14,
     fontWeight: "600",
   },
   summaryLabelMuted: {
-    color: Colors.TextColour,
+    color: theme.bookingCardText,
     fontSize: 12,
   },
   summaryValue: {
-    color: "#F2F2F2",
+    color: theme.bookingCardText,
     fontSize: 14,
     fontWeight: "700",
   },
   summaryValueStrong: {
-    color: "#F2F2F2",
+    color: theme.bookingCardText,
     fontSize: 14,
     fontWeight: "700",
   },
   pointsEarned: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontSize: 14,
     fontWeight: "700",
   },
   totalValue: {
-    color: "#F2F2F2",
+    color: theme.bookingCardText,
     fontSize: 24,
     fontWeight: "800",
   },
@@ -1714,7 +1721,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
     borderRadius: 18,
     paddingVertical: 22,
     marginTop: 8,
@@ -1733,15 +1740,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 16,
     marginBottom: 18,
+    borderWidth: 1.5,
+    borderColor: theme.adminBorder,
   },
   searchText: {
     flex: 1,
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 14,
     opacity: 0.8,
   },
@@ -1756,13 +1765,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.bookingCardBackground,
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
   },
   filterChipActive: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
   },
   filterChipText: {
-    color: Colors.TextColour,
+    color: theme.bookingCardText,
     fontWeight: "700",
     fontSize: 13,
   },
@@ -1772,14 +1783,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   emptyStateText: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 14,
     opacity: 0.8,
   },
   sectionHeading: {
-    color: "#F3F3F3",
+    color: theme.bookingCardText,
     fontSize: 18,
     fontWeight: "800",
     marginBottom: 14,
@@ -1787,7 +1798,7 @@ const styles = StyleSheet.create({
   countBadge: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(255,255,255,0.08)",
-    color: Colors.Primary900,
+    color: theme.Primary900,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1795,20 +1806,24 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   bookingCard: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 18,
     padding: 16,
     marginBottom: 18,
+    borderWidth: 2,
+    borderColor: theme.adminBorder,
   },
   bookingCardPast: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 18,
     padding: 16,
     marginBottom: 18,
+    borderWidth: 2,
+    borderColor: theme.adminBorder,
   },
   bookingCardPastDay: {
     borderColor: "rgba(196,154,90,0.75)",
-    borderWidth: 1,
+    borderWidth: 2,
   },
   bookingHeaderRow: {
     flexDirection: "row",
@@ -1827,18 +1842,18 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   statusDotSuccess: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
   },
   statusDotWarning: {
     backgroundColor: "#F1C75B",
   },
   bookingStatusText: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontWeight: "700",
     fontSize: 12,
   },
   bookingStatusTextPast: {
-    color: Colors.TextColour,
+    color: theme.bookingCardText,
     fontWeight: "700",
     fontSize: 12,
   },
@@ -1849,12 +1864,12 @@ const styles = StyleSheet.create({
     color: "#F1C75B",
   },
   specialistText: {
-    color: "#F4F4F4",
+    color: theme.bookingCardText,
     fontWeight: "600",
     fontSize: 12,
   },
   bookingTitle: {
-    color: "#F3F3F3",
+    color: theme.bookingCardText,
     fontSize: 18,
     fontWeight: "800",
     marginBottom: 12,
@@ -1866,7 +1881,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   metaText: {
-    color: Colors.TextColour,
+    color: theme.bookingCardText,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -1876,21 +1891,25 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
   },
   iconButton: {
     width: 52,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
   },
   actionButtonText: {
-    color: Colors.TextColour,
+    color: theme.bookingCardText,
     fontWeight: "700",
     fontSize: 13,
   },
@@ -1898,7 +1917,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   primaryActionWide: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
     borderRadius: 16,
     paddingVertical: 18,
     alignItems: "center",
@@ -1910,14 +1929,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   secondaryAction: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: theme.bookingCardBackground,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: theme.adminBorder,
   },
   secondaryActionText: {
-    color: Colors.TextColour,
+    color: theme.bookingCardText,
     fontWeight: "700",
     fontSize: 13,
   },
@@ -1928,17 +1949,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rewardText: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontWeight: "700",
     fontSize: 12,
   },
   rewardLabel: {
-    color: Colors.TextColour,
+    color: theme.modalText,
     fontSize: 11,
     fontWeight: "600",
   },
   newBookingButton: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: "center",

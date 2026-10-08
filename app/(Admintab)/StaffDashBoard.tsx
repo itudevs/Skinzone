@@ -1,4 +1,4 @@
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import { View, Text, StyleSheet, FlatList, Alert } from "react-native";
 import SearchBar from "../../components/SearchBar";
 import PrimaryText from "@/components/PrimaryText";
@@ -12,6 +12,7 @@ interface Customer {
   Phone: string;
 }
 const StaffDashBoard = () => {
+  const theme = useTheme();
   const [users, setusers] = useState<any>();
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -76,31 +77,31 @@ const StaffDashBoard = () => {
     setDisplayedUsers([item]);
   };
   return (
-    <View style={{ backgroundColor: Colors.PrimaryBackground, flex: 1 }}>
-      <View style={styles.Main}>
-        <Text style={{ color: Colors.Primary900, fontWeight: "bold" }}>
+    <View style={{ backgroundColor: theme.PrimaryBackground, flex: 1 }}>
+      <View style={styles(theme).Main}>
+        <Text style={{ color: theme.Primary900, fontWeight: "bold" }}>
           STAFF PORTAL
         </Text>
         <Text
           style={{
-            color: "white",
+            color: theme.TextColour,
             fontWeight: "bold",
             paddingVertical: 30,
             fontSize: 25,
           }}
         >
           Customer List
-          <Text style={{ color: Colors.TextColour }}> / Lookup</Text>
+          <Text style={{ color: theme.TextColour }}> / Lookup</Text>
         </Text>
       </View>
-      <View style={styles.CustomerSearchCard}>
+      <View style={styles(theme).CustomerSearchCard}>
         <FlatList
           data={displayedUsers}
           ListHeaderComponent={
             <>
               <Text
                 style={{
-                  color: Colors.TextColour,
+                  color: theme.TextColour,
                   paddingTop: "10%",
                   paddingLeft: "10%",
                 }}
@@ -118,7 +119,7 @@ const StaffDashBoard = () => {
               <Text
                 style={{
                   fontWeight: "bold",
-                  color: Colors.TextColour,
+                  color: theme.TextColour,
                   marginLeft: "10%",
                 }}
               >
@@ -146,14 +147,14 @@ const StaffDashBoard = () => {
 
 export default StaffDashBoard;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Main: {
     alignItems: "flex-start",
     paddingHorizontal: 50,
     paddingTop: 70,
   },
   CustomerSearchCard: {
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
     flex: 1,
     borderRadius: 30,
   },
