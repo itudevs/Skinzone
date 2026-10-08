@@ -507,7 +507,6 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
                   maximumDate={new Date()}
                   minimumDate={new Date(1900, 0, 1)}
                   textColor={theme.TextColour}
-                  themeVariant="dark"
                   style={styles(theme).datePicker}
                 />
               </View>
