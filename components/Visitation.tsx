@@ -388,7 +388,7 @@ const Visitation = ({
                 <Button title="" />
               </View>
               <Text
-                style={{ color: theme.visitationItemText, fontSize: 32, fontWeight: "bold" }}
+                style={{ color: theme.TextColour, fontSize: 32, fontWeight: "bold" }}
               >
                 Visit Details
               </Text>
