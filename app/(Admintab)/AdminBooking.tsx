@@ -332,10 +332,6 @@ const AdminBooking = () => {
     setShowBookingModal(true);
   };
 
-  const shouldShowCustomerHistory = (booking: AdminBookingItem) =>
-    getBookingStatus(booking.status) === BookingStatus.Booked &&
-    booking.bookingState !== "past";
-
   const availableRescheduleSlots = useMemo(() => {
     if (!selectedBooking) return [];
 
@@ -794,27 +790,6 @@ const AdminBooking = () => {
                   {selectedBooking.bookingDate.toISOString().slice(0, 10)} •{" "}
                   {selectedBooking.status}
                 </Text>
-                {shouldShowCustomerHistory(selectedBooking) ? (
-                  <>
-                    <Text style={styles(theme).modalSectionTitle}>Customer bookings</Text>
-                    {bookings
-                      .filter(
-                        (booking) =>
-                          booking.customerId === selectedBooking.customerId,
-                      )
-                      .map((booking) => (
-                        <Text
-                          key={`customer-booking-${booking.id}`}
-                          style={styles(theme).modalHistoryLine}
-                        >
-                          {booking.bookingDate.toISOString().slice(0, 10)} •{" "}
-                          {booking.status} •{" "}
-                          {booking.lines.map((line) => line.treatmentName).join(", ") ||
-                            "No treatments"}
-                        </Text>
-                      ))}
-                  </>
-                ) : null}
                 {selectedBooking.lines.map((line) => (
                   <Text key={line.id} style={styles(theme).modalLine}>
                     {line.treatmentName} • {line.time}
@@ -1319,15 +1294,6 @@ const styles = (theme: Theme) => StyleSheet.create({
   modalLine: {
     color: theme.modalText,
     paddingVertical: 3,
-  },
-  modalSectionTitle: {
-    color: theme.modalText,
-    fontWeight: "800",
-    marginTop: 6,
-  },
-  modalHistoryLine: {
-    color: theme.modalText,
-    fontSize: 12,
   },
   modalNotes: {
     color: theme.modalText,

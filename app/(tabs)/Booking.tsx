@@ -75,6 +75,29 @@ const getInitialBookingDate = () => {
   return date;
 };
 
+// Keep the selected calendar day stable when serializing it for Supabase.
+// Local midnight becomes the previous UTC day in South Africa.
+const toBookingDateISOString = (date: Date) =>
+  new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0),
+  ).toISOString();
+
+const isCancelledBookingStatus = (status: string | number | null | undefined) => {
+  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+  return normalizedStatus === "3" || normalizedStatus.includes("cancel");
+};
+
+const getLocalDayBounds = (date: Date) => {
+  const startOfDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  );
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setDate(endOfDay.getDate() + 1);
+  return { startOfDay, endOfDay };
+};
+
 const getContiguousSlots = (
   startSlot: string,
   count: number,
@@ -183,6 +206,31 @@ const Booking = () => {
       treatment.value.toLowerCase().includes(query),
     );
   }, [treatments, treatmentSearch]);
+
+  const getBookedSlotsForDate = async (date: Date): Promise<string[]> => {
+    const { startOfDay, endOfDay } = getLocalDayBounds(date);
+    const { data: bookingData, error: bookingError } = await supabase
+      .from("bookings")
+      .select("bookingid,status")
+      .gte("bookingdate", startOfDay.toISOString())
+      .lt("bookingdate", endOfDay.toISOString());
+
+    if (bookingError) throw bookingError;
+
+    const activeBookingIds = (bookingData ?? [])
+      .filter((booking) => !isCancelledBookingStatus(booking.status))
+      .map((booking) => booking.bookingid);
+
+    if (activeBookingIds.length === 0) return [];
+
+    const { data: lineData, error: lineError } = await supabase
+      .from("booking_line")
+      .select("time")
+      .in("booking_id", activeBookingIds);
+
+    if (lineError) throw lineError;
+    return (lineData ?? []).map((line) => line.time.slice(0, 5));
+  };
 
   const selectedDayLabel = useMemo(
     () =>
@@ -388,40 +436,7 @@ const Booking = () => {
           return;
         }
 
-        const startOfDay = new Date(
-          selectedDate.getFullYear(),
-          selectedDate.getMonth(),
-          selectedDate.getDate(),
-        );
-        const endOfDay = new Date(startOfDay);
-        endOfDay.setDate(endOfDay.getDate() + 1);
-        const { data, error } = await supabase
-          .from("bookings")
-          .select("bookingid,status")
-          .gte("bookingdate", startOfDay.toISOString())
-          .lt("bookingdate", endOfDay.toISOString());
-        if (error) {
-          throw error;
-        }
-
-        const activeBookingIds = (data ?? [])
-          .filter((booking) => booking.status !== BookingStatus.Cancelled)
-          .map((booking) => booking.bookingid);
-        if (activeBookingIds.length === 0) {
-          setBookedSlotTimes([]);
-          return;
-        }
-
-        const { data: lineData, error: lineError } = await supabase
-          .from("booking_line")
-          .select("time")
-          .in("booking_id", activeBookingIds);
-        if (lineError) {
-          throw lineError;
-        }
-        setBookedSlotTimes(
-          (lineData ?? []).map((line) => line.time.slice(0, 5)),
-        );
+        setBookedSlotTimes(await getBookedSlotsForDate(selectedDate));
       } catch (availableSlotsError) {
         console.log("Could not load available slots:", availableSlotsError);
         Alert.alert(
@@ -443,11 +458,10 @@ const Booking = () => {
       endDate.setDate(endDate.getDate() + 1);
       const { data, error } = await supabase
         .from("bookings")
-        .select("bookingid")
+        .select("bookingid,status")
         .eq("customerid", userid)
         .gte("bookingdate", bookingDate.toISOString())
         .lt("bookingdate", endDate.toISOString())
-        .neq("status", BookingStatus.Cancelled)
         .limit(1);
 
       if (error) {
@@ -455,7 +469,7 @@ const Booking = () => {
         Alert.alert("Error", "Could not verify your existing bookings.");
         return null;
       }
-      return (data?.length ?? 0) > 0;
+      return (data ?? []).some((booking) => !isCancelledBookingStatus(booking.status));
     } catch (error) {
       console.log("Error", error);
       return null;
@@ -484,7 +498,7 @@ const Booking = () => {
       if (bookingError) throw bookingError;
 
       const activeBookingIds = (bookingData ?? [])
-        .filter((booking) => booking.status !== BookingStatus.Cancelled)
+        .filter((booking) => !isCancelledBookingStatus(booking.status))
         .filter((booking) => booking.bookingid !== excludedBookingId)
         .map((booking) => booking.bookingid);
       if (activeBookingIds.length === 0) return true;
@@ -581,7 +595,7 @@ const Booking = () => {
 
       const { error: bookingError } = await supabase
         .from("bookings")
-        .update({ bookingdate: rescheduleDate.toISOString() })
+        .update({ bookingdate: toBookingDateISOString(rescheduleDate) })
         .eq("bookingid", selectedBooking.id);
       if (bookingError) throw bookingError;
 
@@ -695,7 +709,7 @@ const Booking = () => {
               }
               const alreadyBooked = await BookedUser(
                 loggedInUser!.user.id,
-                selectedDate.toISOString(),
+                toBookingDateISOString(selectedDate),
               );
               if (alreadyBooked === null) {
                 return;
@@ -717,7 +731,7 @@ const Booking = () => {
               }
               const Booking: BookingInsert = {
                 customerid: loggedInUser!.user.id,
-                bookingdate: selectedDate.toISOString(),
+                bookingdate: toBookingDateISOString(selectedDate),
                 status: BookingStatus.Pending,
                 notes: selectedTreatmentNames.join(", ") || "Treatment Booking",
               };
@@ -754,6 +768,24 @@ const Booking = () => {
                 console.log("booking line insert error", lineError);
                 return;
               }
+
+              const { error: emailError } = await supabase.functions.invoke(
+                "confirmation_email",
+                {
+                  body: {
+                    bookingid: data.bookingid,
+                  },
+                },
+              );
+
+              if (emailError) {
+                console.error("Booking confirmation email failed:", emailError);
+                Alert.alert(
+                  "Booking confirmed",
+                  "Your booking was saved, but we could not send the confirmation email. Please contact SkinZone Naturel.",
+                );
+              }
+
               setShowBookingConfirmation(true);
             },
             style: "default",
@@ -1386,22 +1418,46 @@ const Booking = () => {
           return (
             <Pressable
               key={slot}
-              disabled={!hasTreatments || !isAvailableStart}
-              onPress={() => {
+              disabled={!hasTreatments}
+              onPress={async () => {
                 const dateSlotOptions = getSlotOptionsForDate(selectedDate);
+                let latestBookedSlotTimes: string[];
+                try {
+                  latestBookedSlotTimes =
+                    await getBookedSlotsForDate(selectedDate);
+                } catch (error) {
+                  console.error("Could not verify selected slot:", error);
+                  Alert.alert(
+                    "Time unavailable",
+                    "Could not verify this slot. Please try again.",
+                  );
+                  return;
+                }
+
+                setBookedSlotTimes(latestBookedSlotTimes);
                 const availableSlots = dateSlotOptions.filter(
                   (availableSlot) =>
-                    !bookedSlotTimes.includes(availableSlot) &&
+                    !latestBookedSlotTimes.includes(availableSlot) &&
                     !isSlotElapsed(selectedDate, availableSlot),
                 );
-                setSelectedSlot(
-                  getContiguousSlots(
-                    slot,
-                    Math.max(selectedTreatmentId.length, 1),
-                    availableSlots,
-                    dateSlotOptions,
-                  ),
+                const requiredSlots = Math.max(selectedTreatmentId.length, 1);
+                const contiguousSlots = getContiguousSlots(
+                  slot,
+                  requiredSlots,
+                  availableSlots,
+                  dateSlotOptions,
                 );
+
+                if (contiguousSlots.length !== requiredSlots) {
+                  setSelectedSlot([]);
+                  Alert.alert(
+                    "Time unavailable",
+                    `Please choose a time with ${requiredSlots} consecutive available slot${requiredSlots === 1 ? "" : "s"} for your selected treatment${requiredSlots === 1 ? "" : "s"}.`,
+                  );
+                  return;
+                }
+
+                setSelectedSlot(contiguousSlots);
               }}
               style={[
                 styles(theme).slotCard,
@@ -1480,7 +1536,12 @@ const Booking = () => {
             />
             <Text style={styles(theme).confirmationTitle}>Booking Confirmed</Text>
             <Text style={styles(theme).confirmationMessage}>
-              Your appointment has been successfully confirmed.
+              Your appointment has been successfully confirmed. Please check
+              your email for your booking confirmation and amount due.
+            </Text>
+            <Text style={styles(theme).confirmationDisclaimer}>
+              Your booking is not secured until the R300 consultation fee has
+              been received.
             </Text>
             <View style={styles(theme).confirmationDetails}>
               <Text style={styles(theme).confirmationDetailLabel}>Date</Text>
@@ -1494,11 +1555,22 @@ const Booking = () => {
             </View>
             <Pressable
               style={styles(theme).confirmationButton}
+              onPress={() =>
+                Alert.alert(
+                  "Payment",
+                  "Payment for the R300 consultation fee is not set up yet. Please contact SkinZone Naturel to arrange payment.",
+                )
+              }
+            >
+              <Text style={styles(theme).confirmationButtonText}>Pay R300</Text>
+            </Pressable>
+            <Pressable
+              style={styles(theme).confirmationSecondaryButton}
               onPress={() => {
                 setShowBookingConfirmation(false);
               }}
             >
-              <Text style={styles(theme).confirmationButtonText}>Done</Text>
+              <Text style={styles(theme).confirmationSecondaryButtonText}>Done</Text>
             </Pressable>
           </View>
         </View>
@@ -1776,6 +1848,13 @@ const styles = (theme: Theme) => StyleSheet.create({
     marginTop: 8,
     textAlign: "center",
   },
+  confirmationDisclaimer: {
+    color: "#FFD27D",
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 12,
+    textAlign: "center",
+  },
   confirmationDetails: {
     alignSelf: "stretch",
     backgroundColor: "rgba(0,255,95,0.1)",
@@ -1807,6 +1886,20 @@ const styles = (theme: Theme) => StyleSheet.create({
     color: "#0B0F0D",
     fontSize: 16,
     fontWeight: "800",
+  },
+  confirmationSecondaryButton: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    borderColor: "rgba(255,255,255,0.35)",
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+    paddingVertical: 13,
+  },
+  confirmationSecondaryButtonText: {
+    color: theme.modalText,
+    fontSize: 16,
+    fontWeight: "700",
   },
   bookingDetailsOverlay: {
     flex: 1,
