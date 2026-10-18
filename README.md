@@ -287,3 +287,69 @@ Users' personal information is **never shared with third parties** without expli
 
 **Last Updated**: March 8, 2026  
 **Project Status**: Active Development (Phase 1 → Phase 2 Transition)
+
+# PayFast payment setup
+
+Customer deposits are paid on PayFast and confirmed by the PayFast ITN
+webhook. The mobile app never receives the PayFast passphrase.
+
+Deploy both functions with JWT verification disabled because PayFast and the
+hosted payment form call them without a Supabase user session:
+
+```sh
+supabase functions deploy payfast-payment --no-verify-jwt
+supabase functions deploy payfast-itn --no-verify-jwt
+```
+
+Configure these Supabase function secrets before deployment:
+
+```sh
+supabase secrets set \
+  PAYFAST_MERCHANT_ID=... \
+  PAYFAST_MERCHANT_KEY=... \
+  PAYFAST_PASSPHRASE=... \
+  PAYFAST_SANDBOX=true \
+  PAYFAST_RETURN_URL=https://your-return-page.example \
+  PAYFAST_CANCEL_URL=https://your-cancel-page.example \
+  PAYFAST_NOTIFY_URL=https://yours.supabase.co/functions/v1/payfast-itn
+```
+
+For the PayFast default sandbox test account, use:
+
+```text
+PAYFAST_MERCHANT_ID=10000100
+PAYFAST_MERCHANT_KEY=46f0cd694581a
+PAYFAST_SANDBOX=true
+```
+
+Do not create a `PAYFAST_PASSPHRASE` secret for these default credentials. The
+default sandbox credentials do not use a passphrase. If you already created
+that secret with a placeholder value, delete it before testing. If you use your own
+sandbox or live account, set `PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY`, and
+`PAYFAST_PASSPHRASE` to the matching values from that same account. Never mix
+live credentials with `PAYFAST_SANDBOX=true` or sandbox credentials with
+`PAYFAST_SANDBOX=false`.
+
+The app uses
+`EXPO_PUBLIC_PAYFAST_PAYMENT_URL=https://yours.supabase.co/functions/v1/payfast-payment`
+when set, otherwise it derives that URL from `EXPO_PUBLIC_SUPABASE_URL`.
+
+Apply the `20261018_create_payments.sql` migration. After PayFast validates a
+completed R300 notification, the ITN function records the customer and payment
+date/time in `payments` and updates the matching booking status from `pending`
+to `booked` (the trigger also supports the legacy numeric values `1` and `2`).
+
+The app opens the hosted payment form in a native WebView. After installing the
+new `react-native-webview` dependency, rebuild the native app (a reload of an
+already-installed development build is not enough):
+
+```sh
+npx expo start -c
+```
+
+Redeploy both Edge Functions after changing their source:
+
+```sh
+npx supabase functions deploy payfast-payment --no-verify-jwt
+npx supabase functions deploy payfast-itn --no-verify-jwt
+```

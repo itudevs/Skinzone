@@ -20,6 +20,7 @@ import SearchBar from "@/components/SearchBar";
 import { Theme, useTheme } from "@/components/utils/Colours";
 import { UserSession } from "@/components/utils/GetUsersession";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
 import { supabase } from "@/lib/supabase";
 import type {
   BookingInsert,
@@ -29,6 +30,22 @@ import { GetTreatments } from "@/components/utils/GetServices";
 import type { DropDownItems } from "@/components/utils/utilinterfaces";
 import { BookingStatus } from "@/components/utils/utilinterfaces";
 type ClientType = "first" | "returning";
+const UNSURE_TREATMENT_ID = "__unsure__";
+const UNSURE_TREATMENT: DropDownItems = {
+  id: UNSURE_TREATMENT_ID,
+  value: "Unsure about treatment",
+  cost: null,
+  points: null,
+  category: "treatment",
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 
 const defaultSlotOptions = [
   "09:00",
@@ -154,6 +171,11 @@ const Booking = () => {
   >("all");
   const [bookings, setBookings] = useState<userBooking[]>([]);
   const [showBookingConfirmation, setShowBookingConfirmation] = useState(false);
+  const [lastCreatedBookingId, setLastCreatedBookingId] = useState<number | null>(
+    null,
+  );
+  const [payFastUrl, setPayFastUrl] = useState<string | null>(null);
+  const [payFastHtml, setPayFastHtml] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<userBooking | null>(
     null,
   );
@@ -342,7 +364,7 @@ const Booking = () => {
 
     GetTreatments().then((items) => {
       if (mounted) {
-        setTreatments(items);
+        setTreatments([UNSURE_TREATMENT, ...items]);
       }
     });
 
@@ -538,7 +560,7 @@ const Booking = () => {
     const [hours, minutes] = startTime.split(":").map(Number);
     const bookingStart = new Date(booking.bookingDate);
     bookingStart.setHours(hours, minutes, 0, 0);
-    if (bookingStart.getTime() - Date.now() <= 24 * 60 * 60 * 1000) {
+    if (bookingStart.getTime() - currentTime.getTime() <= 24 * 60 * 60 * 1000) {
       Alert.alert(
         "Cannot reschedule",
         "Bookings can only be rescheduled more than 24 hours before the scheduled start time.",
@@ -752,7 +774,10 @@ const Booking = () => {
               const bookingLines: BookingLineInsert[] = selectedTreatmentId.map(
                 (treatmentId, index) => ({
                   booking_id: data.bookingid,
-                  treatment_id: Number(treatmentId),
+                  treatment_id:
+                    treatmentId === UNSURE_TREATMENT_ID
+                      ? null
+                      : Number(treatmentId),
                   time: selectedSlot[index],
                 }),
               );
@@ -786,6 +811,7 @@ const Booking = () => {
                 );
               }
 
+              setLastCreatedBookingId(data.bookingid);
               setShowBookingConfirmation(true);
             },
             style: "default",
@@ -801,6 +827,102 @@ const Booking = () => {
       console.log(bookingError);
     }
   };
+  const openPayFastPayment = async (bookingId = lastCreatedBookingId) => {
+    if (!bookingId || !loggedInUser?.user.id) {
+      Alert.alert("Payment error", "The booking reference could not be found.");
+      return;
+    }
+
+    const paymentEndpoint =
+      process.env.EXPO_PUBLIC_PAYFAST_PAYMENT_URL ??
+      `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/payfast-payment`;
+
+    if (!paymentEndpoint.startsWith("http")) {
+      Alert.alert("Payment error", "PayFast is not configured for this app.");
+      return;
+    }
+
+    const url = new URL(paymentEndpoint);
+    url.searchParams.set("booking_id", String(bookingId));
+    url.searchParams.set("customer_id", loggedInUser.user.id);
+
+    try {
+      const paymentResponse = await fetch(url.toString());
+      const paymentPayload = await paymentResponse.json() as {
+        payfastUrl?: string;
+        fields?: Record<string, string>;
+        error?: string;
+      };
+
+      if (
+        !paymentResponse.ok ||
+        !paymentPayload.payfastUrl ||
+        !paymentPayload.fields
+      ) {
+        throw new Error(
+          `Payment form request failed (${paymentResponse.status}): ${
+            paymentPayload.error ?? "The PayFast payment form could not be created."
+          }`,
+        );
+      }
+
+      setPayFastUrl(url.toString());
+      const formFields = Object.entries(paymentPayload.fields)
+        .map(
+          ([name, value]) =>
+            `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
+        )
+        .join("");
+      setPayFastHtml(`<!doctype html>
+<html><body>
+<form id="payfast-form" method="post" action="${escapeHtml(paymentPayload.payfastUrl)}">
+${formFields}
+</form>
+<script>document.getElementById("payfast-form").submit();</script>
+</body></html>`);
+    } catch (error) {
+      console.error("Could not open PayFast:", error);
+      Alert.alert(
+        "Payment error",
+        error instanceof Error
+          ? error.message
+          : "Could not open the PayFast payment page.",
+      );
+    }
+  };
+  const renderPayFastModal = () => (
+    <Modal
+      visible={Boolean(payFastUrl && payFastHtml)}
+      animationType="slide"
+      onRequestClose={() => {
+        setPayFastUrl(null);
+        setPayFastHtml(null);
+      }}
+    >
+      <SafeAreaView style={styles(theme).paymentWebViewContainer}>
+        <View style={styles(theme).paymentWebViewHeader}>
+          <Text style={styles(theme).paymentWebViewTitle}>Pay booking fee</Text>
+          <Pressable
+            style={styles(theme).paymentWebViewClose}
+            onPress={() => {
+              setPayFastUrl(null);
+              setPayFastHtml(null);
+            }}
+          >
+            <Text style={styles(theme).paymentWebViewCloseText}>Close</Text>
+          </Pressable>
+        </View>
+        {payFastHtml ? (
+          <WebView
+            source={{ html: payFastHtml, baseUrl: payFastUrl ?? undefined }}
+            javaScriptEnabled
+            domStorageEnabled
+            originWhitelist={["*"]}
+          />
+        ) : null}
+      </SafeAreaView>
+    </Modal>
+  );
   const getBookingStatus = (status: string | number): BookingStatus => {
     const normalizedStatus = String(status).trim().toLowerCase();
 
@@ -968,7 +1090,10 @@ const Booking = () => {
 
               {isPendingBooking ? (
                 <View style={styles(theme).pendingFooter}>
-                  <Pressable style={styles(theme).primaryActionWide}>
+                  <Pressable
+                    style={styles(theme).primaryActionWide}
+                    onPress={() => void openPayFastPayment(booking.id)}
+                  >
                     <Text style={styles(theme).primaryActionWideText}>
                       Pay Booking Fee R300
                     </Text>
@@ -1246,6 +1371,7 @@ const Booking = () => {
           </View>
         </View>
       </Modal>
+      {renderPayFastModal()}
     </>
   );
 
@@ -1377,11 +1503,20 @@ const Booking = () => {
               <Pressable
                 key={treatment.id}
                 onPress={() => {
-                  setSelectedTreatmentId((prevIds) =>
-                    isSelected
-                      ? prevIds.filter((id) => id !== treatment.id)
-                      : [...prevIds, treatment.id],
-                  );
+                  setSelectedTreatmentId((prevIds) => {
+                    if (isSelected) {
+                      return prevIds.filter((id) => id !== treatment.id);
+                    }
+
+                    if (treatment.id === UNSURE_TREATMENT_ID) {
+                      return [UNSURE_TREATMENT_ID];
+                    }
+
+                    return [
+                      ...prevIds.filter((id) => id !== UNSURE_TREATMENT_ID),
+                      treatment.id,
+                    ];
+                  });
                   setSelectedSlot([]);
                 }}
                 style={[
@@ -1555,12 +1690,7 @@ const Booking = () => {
             </View>
             <Pressable
               style={styles(theme).confirmationButton}
-              onPress={() =>
-                Alert.alert(
-                  "Payment",
-                  "Payment for the R300 consultation fee is not set up yet. Please contact SkinZone Naturel to arrange payment.",
-                )
-              }
+              onPress={() => void openPayFastPayment()}
             >
               <Text style={styles(theme).confirmationButtonText}>Pay R300</Text>
             </Pressable>
@@ -1575,6 +1705,7 @@ const Booking = () => {
           </View>
         </View>
       </Modal>
+      {renderPayFastModal()}
     </>
   );
 };
@@ -1582,6 +1713,33 @@ const Booking = () => {
 export default Booking;
 
 const styles = (theme: Theme) => StyleSheet.create({
+  paymentWebViewContainer: {
+    flex: 1,
+    backgroundColor: theme.bookingBackground,
+    paddingTop: 12,
+  },
+  paymentWebViewHeader: {
+    minHeight: 56,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.bordercolor,
+  },
+  paymentWebViewTitle: {
+    color: theme.TextColour,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  paymentWebViewClose: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  paymentWebViewCloseText: {
+    color: theme.Primary900,
+    fontWeight: "600",
+  },
   screen: {
     flex: 1,
     backgroundColor: theme.bookingBackground,
