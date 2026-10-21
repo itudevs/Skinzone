@@ -309,9 +309,18 @@ supabase secrets set \
   PAYFAST_MERCHANT_KEY=... \
   PAYFAST_PASSPHRASE=... \
   PAYFAST_SANDBOX=true \
-  PAYFAST_RETURN_URL=https://your-return-page.example \
-  PAYFAST_CANCEL_URL=https://your-cancel-page.example \
+  PAYFAST_RETURN_URL=https://yours.supabase.co/functions/v1/payfast-return \
+  PAYFAST_CANCEL_URL=https://yours.supabase.co/functions/v1/payfast-cancel \
   PAYFAST_NOTIFY_URL=https://yours.supabase.co/functions/v1/payfast-itn
+```
+
+`payfast-return` and `payfast-cancel` are HTTPS bridges required by PayFast that
+send customers back to the installed app using its `za.co.skinzone` deep-link
+scheme. Deploy them before using those URLs:
+
+```sh
+supabase functions deploy payfast-return --no-verify-jwt
+supabase functions deploy payfast-cancel --no-verify-jwt
 ```
 
 For the PayFast default sandbox test account, use:

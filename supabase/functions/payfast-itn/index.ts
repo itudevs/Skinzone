@@ -94,45 +94,6 @@ function getOptionalPassphrase() {
     : value;
 }
 
-const payFastPaymentFieldOrder = [
-  "merchant_id",
-  "merchant_key",
-  "return_url",
-  "cancel_url",
-  "notify_url",
-  "notify_method",
-  "name_first",
-  "name_last",
-  "email_address",
-  "cell_number",
-  "m_payment_id",
-  "amount",
-  "item_name",
-  "item_description",
-  "custom_int1",
-  "custom_int2",
-  "custom_int3",
-  "custom_int4",
-  "custom_int5",
-  "custom_str1",
-  "custom_str2",
-  "custom_str3",
-  "custom_str4",
-  "custom_str5",
-  "email_confirmation",
-  "confirmation_address",
-  "currency",
-  "payment_method",
-  "subscription_type",
-  "billing_date",
-  "recurring_amount",
-  "frequency",
-  "cycles",
-  "subscription_notify_email",
-  "subscription_notify_webhook",
-  "subscription_notify_buyer",
-];
-
 const supabase = createClient(
   required("SUPABASE_URL"),
   required("SUPABASE_SERVICE_ROLE_KEY"),
@@ -144,24 +105,40 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const rawBody = await request.text();
-    const payment = new URLSearchParams(rawBody);
+    const formData = await request.formData();
+    const paymentEntries = Array.from(formData.entries()).filter(
+      ([, value]) => typeof value === "string",
+    ) as [string, string][];
+    const payment = new URLSearchParams(paymentEntries);
     const expectedSignature = payment.get("signature")?.toLowerCase();
     const passphrase = getOptionalPassphrase();
-    const signatureSource = payFastPaymentFieldOrder
-      .filter((name) => Boolean(payment.get(name)?.trim()))
-      .map((name) => `${name}=${payFastEncode(payment.get(name)!.trim())}`)
+    const signatureSource = paymentEntries
+      .filter(([name]) => name !== "signature")
+      .map(([name, value]) => `${name}=${payFastEncode(value.trim())}`)
       .join("&");
     const calculatedSignature = md5(
       passphrase
         ? `${signatureSource}&passphrase=${payFastEncode(passphrase)}`
         : signatureSource,
     );
+    console.log("PayFast ITN signature diagnostics:", {
+      passphraseConfigured: Boolean(passphrase),
+      fieldNames: paymentEntries
+        .filter(([name]) => name !== "signature")
+        .map(([name]) => name),
+      fieldCount: paymentEntries.filter(([name]) => name !== "signature").length,
+      signatureLength: expectedSignature?.length ?? 0,
+      signatureFormat: /^[a-f0-9]{32}$/.test(expectedSignature ?? ""),
+      calculatedSignature,
+      signatureMatches: expectedSignature === calculatedSignature,
+    });
     if (!expectedSignature || expectedSignature !== calculatedSignature) {
+      console.error("PayFast ITN rejected: signature mismatch");
       return new Response("Invalid PayFast signature", { status: 400 });
     }
 
-    const validationBody = `${rawBody}&cmd=_notify-validate`;
+    const validationParams = new URLSearchParams(paymentEntries);
+    validationParams.append("cmd", "_notify-validate");
     const sandbox =
       (Deno.env.get("PAYFAST_SANDBOX") ?? "true").trim().toLowerCase() ===
       "true";
@@ -171,21 +148,36 @@ Deno.serve(async (request) => {
     const validation = await fetch(validationUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: validationBody,
+      body: validationParams.toString(),
+    });
+    const validationResult = (await validation.text()).trim();
+    console.log("PayFast ITN validation diagnostics:", {
+      sandbox,
+      validationStatus: validation.status,
+      validationResult,
     });
 
-    if ((await validation.text()).trim() !== "VALID") {
+    if (validationResult !== "VALID") {
+      console.error("PayFast ITN rejected: notification validation failed");
       return new Response("Invalid PayFast notification", { status: 400 });
     }
 
     const bookingId = Number(payment.get("m_payment_id"));
     const amount = Number(payment.get("amount_gross"));
-    if (
-      !Number.isInteger(bookingId) ||
-      amount !== 300 ||
-      payment.get("payment_status") !== "COMPLETE" ||
-      payment.get("merchant_id") !== required("PAYFAST_MERCHANT_ID")
-    ) {
+    const paymentChecks = {
+      bookingIdIsInteger: Number.isInteger(bookingId),
+      amountIsExpected: amount === 300,
+      statusIsComplete: payment.get("payment_status") === "COMPLETE",
+      merchantMatches: payment.get("merchant_id") ===
+        required("PAYFAST_MERCHANT_ID"),
+    };
+    console.log("PayFast ITN payment diagnostics:", {
+      ...paymentChecks,
+      paymentStatus: payment.get("payment_status"),
+      amount,
+    });
+    if (!Object.values(paymentChecks).every(Boolean)) {
+      console.error("PayFast ITN rejected: payment details failed validation");
       return new Response("Payment was not complete or had an invalid amount", {
         status: 400,
       });

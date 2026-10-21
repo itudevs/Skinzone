@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   View,
   Alert,
   Modal,
+  ActivityIndicator,
   type ViewStyle,
 } from "react-native";
 import {
@@ -19,7 +20,10 @@ import BookingCalendar from "@/components/BookingCalendar";
 import SearchBar from "@/components/SearchBar";
 import { Theme, useTheme } from "@/components/utils/Colours";
 import { UserSession } from "@/components/utils/GetUsersession";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { supabase } from "@/lib/supabase";
 import type {
@@ -104,14 +108,12 @@ const isCancelledBookingStatus = (status: string | number | null | undefined) =>
   return normalizedStatus === "3" || normalizedStatus.includes("cancel");
 };
 
-const getLocalDayBounds = (date: Date) => {
+const getBookingDayBounds = (date: Date) => {
   const startOfDay = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
   );
   const endOfDay = new Date(startOfDay);
-  endOfDay.setDate(endOfDay.getDate() + 1);
+  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
   return { startOfDay, endOfDay };
 };
 
@@ -160,6 +162,7 @@ const formatBookingDate = (date: Date) =>
 
 const Booking = () => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const loggedInUser = UserSession.getSession();
   const [bookedSlotTimes, setBookedSlotTimes] = useState<string[]>([]);
   const [clientType, setClientType] = useState<ClientType>("returning");
@@ -176,6 +179,10 @@ const Booking = () => {
   );
   const [payFastUrl, setPayFastUrl] = useState<string | null>(null);
   const [payFastHtml, setPayFastHtml] = useState<string | null>(null);
+  const [isPreparingPayment, setIsPreparingPayment] = useState(false);
+  const [isPayFastLoading, setIsPayFastLoading] = useState(false);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<userBooking | null>(
     null,
   );
@@ -190,6 +197,7 @@ const Booking = () => {
   const [treatments, setTreatments] = useState<DropDownItems[]>([]);
   const [treatmentSearch, setTreatmentSearch] = useState("");
   const [selectedTreatmentId, setSelectedTreatmentId] = useState<string[]>([]);
+  const bookingSubmissionInProgress = useRef(false);
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60 * 1000);
     return () => clearInterval(timer);
@@ -230,7 +238,7 @@ const Booking = () => {
   }, [treatments, treatmentSearch]);
 
   const getBookedSlotsForDate = async (date: Date): Promise<string[]> => {
-    const { startOfDay, endOfDay } = getLocalDayBounds(date);
+    const { startOfDay, endOfDay } = getBookingDayBounds(date);
     const { data: bookingData, error: bookingError } = await supabase
       .from("bookings")
       .select("bookingid,status")
@@ -374,100 +382,120 @@ const Booking = () => {
   }, []);
   const userId = loggedInUser?.user.id;
 
-  useEffect(() => {
-    const getUserBookings = async () => {
-      if (!userId) {
-        setBookings([]);
+  const refreshUserBookings = useCallback(async () => {
+    if (!userId) {
+      setBookings([]);
+      return;
+    }
+
+    setIsLoadingBookings(true);
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("bookingid,bookingdate,status,notes")
+        .eq("customerid", userId);
+
+      if (error) {
+        console.log("Error", error);
         return;
       }
+      if (data) {
+        const bookingIds = data.map((booking) => booking.bookingid);
+        const { data: lineData, error: lineError } =
+          bookingIds.length > 0
+            ? await supabase
+                .from("booking_line")
+                .select("id,booking_id,time")
+                .in("booking_id", bookingIds)
+            : { data: [], error: null };
 
-      try {
-        const { data, error } = await supabase
-          .from("bookings")
-          .select("bookingid,bookingdate,status,notes")
-          .eq("customerid", userId);
-
-        if (error) {
-          console.log("Error", error);
+        if (lineError) {
+          console.log("Could not load booking times:", lineError);
           return;
         }
-        if (data) {
-          const bookingIds = data.map((booking) => booking.bookingid);
-          const { data: lineData, error: lineError } =
-            bookingIds.length > 0
-              ? await supabase
-                  .from("booking_line")
-                  .select("id,booking_id,time")
-                  .in("booking_id", bookingIds)
-              : { data: [], error: null };
 
-          if (lineError) {
-            console.log("Could not load booking times:", lineError);
-            return;
-          }
+        const linesByBooking = new Map<number, { id: number; time: string }[]>();
+        (lineData ?? []).forEach((line) => {
+          const lines = linesByBooking.get(line.booking_id) ?? [];
+          lines.push({ id: line.id, time: line.time.slice(0, 5) });
+          linesByBooking.set(line.booking_id, lines);
+        });
 
-          const linesByBooking = new Map<number, { id: number; time: string }[]>();
-          (lineData ?? []).forEach((line) => {
-            const lines = linesByBooking.get(line.booking_id) ?? [];
-            lines.push({ id: line.id, time: line.time.slice(0, 5) });
-            linesByBooking.set(line.booking_id, lines);
-          });
+        const formattedBooking: userBooking[] = data.map((booking) => {
+          const rawStatus = String(booking.status ?? "").trim();
 
-          const formattedBooking: userBooking[] = data.map((booking) => {
-            const rawStatus = String(booking.status ?? "").trim();
+          const notes = String(booking.notes ?? "").trim();
+          const bookingLines = (linesByBooking.get(booking.bookingid) ?? []).sort(
+            (left, right) => left.time.localeCompare(right.time),
+          );
+          const bookingTimes = bookingLines.map((line) => line.time);
+          const startTime = bookingTimes[0] ?? "";
+          const endTime = bookingTimes[bookingTimes.length - 1] ?? startTime;
+          const bookingDate = new Date(booking.bookingdate);
+          const bookingState = normalizeBookingState(rawStatus, bookingDate);
 
-            const notes = String(booking.notes ?? "").trim();
-            const bookingLines = (linesByBooking.get(booking.bookingid) ?? []).sort(
-              (left, right) => left.time.localeCompare(right.time),
-            );
-            const bookingTimes = bookingLines.map((line) => line.time);
-            const startTime = bookingTimes[0] ?? "";
-            const endTime = bookingTimes[bookingTimes.length - 1] ?? startTime;
-            const bookingDate = new Date(booking.bookingdate);
-            const bookingState = normalizeBookingState(rawStatus, bookingDate);
-
-            return {
-              bookingDate,
-              id: booking.bookingid,
-              status: rawStatus || "Pending",
-              time:
-                startTime && endTime && startTime !== endTime
-                  ? `${startTime} - ${endTime}`
-                  : startTime || "Time not assigned",
-              notes,
-              treatmentName: notes || "Treatment Booking",
-              slotCount: Math.max(bookingTimes.length, 1),
-              lines: bookingLines,
-              bookingState,
-            };
-          });
-          setBookings(formattedBooking);
-        }
-      } catch (bookingError) {
-        console.log(bookingError);
+          return {
+            bookingDate,
+            id: booking.bookingid,
+            status: rawStatus || "Pending",
+            time:
+              startTime && endTime && startTime !== endTime
+                ? `${startTime} - ${endTime}`
+                : startTime || "Time not assigned",
+            notes,
+            treatmentName: notes || "Treatment Booking",
+            slotCount: Math.max(bookingTimes.length, 1),
+            lines: bookingLines,
+            bookingState,
+          };
+        });
+        setBookings(formattedBooking);
       }
-    };
-    getUserBookings();
-  }, [userId, clientType]);
+    } catch (bookingError) {
+      console.log(bookingError);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
+    const refreshTimer = setTimeout(() => {
+      void refreshUserBookings();
+    }, 0);
+    return () => clearTimeout(refreshTimer);
+  }, [clientType, refreshUserBookings]);
+  useEffect(() => {
+    let active = true;
+
     const getAvailableSlots = async () => {
       try {
         if (isSunday(selectedDate)) {
-          setBookedSlotTimes(getSlotOptionsForDate(selectedDate));
-          setSelectedSlot([]);
+          if (active) {
+            setBookedSlotTimes(getSlotOptionsForDate(selectedDate));
+            setSelectedSlot([]);
+          }
           return;
         }
 
-        setBookedSlotTimes(await getBookedSlotsForDate(selectedDate));
+        const bookedSlots = await getBookedSlotsForDate(selectedDate);
+        if (active) {
+          setBookedSlotTimes(bookedSlots);
+        }
       } catch (availableSlotsError) {
         console.log("Could not load available slots:", availableSlotsError);
-        Alert.alert(
-          "Error",
-          "Could not load available slots. Please try again.",
-        );
+        if (active) {
+          Alert.alert(
+            "Error",
+            "Could not load available slots. Please try again.",
+          );
+        }
       }
     };
     getAvailableSlots();
+
+    return () => {
+      active = false;
+    };
   }, [showBookingConfirmation, selectedDate]);
 
   const BookedUser = async (
@@ -475,15 +503,13 @@ const Booking = () => {
     date: string,
   ): Promise<boolean | null> => {
     try {
-      const bookingDate = new Date(date);
-      const endDate = new Date(bookingDate);
-      endDate.setDate(endDate.getDate() + 1);
+      const { startOfDay, endOfDay } = getBookingDayBounds(new Date(date));
       const { data, error } = await supabase
         .from("bookings")
         .select("bookingid,status")
         .eq("customerid", userid)
-        .gte("bookingdate", bookingDate.toISOString())
-        .lt("bookingdate", endDate.toISOString())
+        .gte("bookingdate", startOfDay.toISOString())
+        .lt("bookingdate", endOfDay.toISOString())
         .limit(1);
 
       if (error) {
@@ -503,13 +529,7 @@ const Booking = () => {
     excludedBookingId?: number,
   ): Promise<boolean> => {
     try {
-      const startOfDay = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-      );
-      const endOfDay = new Date(startOfDay);
-      endOfDay.setDate(endOfDay.getDate() + 1);
+      const { startOfDay, endOfDay } = getBookingDayBounds(date);
 
       const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
@@ -709,8 +729,13 @@ const Booking = () => {
     }
   };
   const bookClient = async () => {
+    if (bookingSubmissionInProgress.current) return;
+    bookingSubmissionInProgress.current = true;
+    setIsSubmittingBooking(true);
     setClientType("first");
     if (!validateBooking()) {
+      bookingSubmissionInProgress.current = false;
+      setIsSubmittingBooking(false);
       return;
     }
     try {
@@ -727,6 +752,8 @@ const Booking = () => {
                   "One or more selected time slots has already passed.",
                 );
                 setSelectedSlot([]);
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
                 return;
               }
               const alreadyBooked = await BookedUser(
@@ -734,6 +761,8 @@ const Booking = () => {
                 toBookingDateISOString(selectedDate),
               );
               if (alreadyBooked === null) {
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
                 return;
               }
               if (alreadyBooked) {
@@ -741,6 +770,8 @@ const Booking = () => {
                   "Cannot Book",
                   "Please reschedule or cancel booking ",
                 );
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
                 return;
               }
               if (!(await areSlotsAvailable(selectedDate, selectedSlot))) {
@@ -749,6 +780,8 @@ const Booking = () => {
                   "One or more selected slots are no longer available.",
                 );
                 setSelectedSlot([]);
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
                 return;
               }
               const Booking: BookingInsert = {
@@ -768,6 +801,8 @@ const Booking = () => {
                   "Error",
                   error?.message ?? "Could not create booking",
                 );
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
                 return;
               }
 
@@ -791,6 +826,8 @@ const Booking = () => {
                   .eq("bookingid", data.bookingid);
                 Alert.alert("Booking Error", "Could not book all treatments");
                 console.log("booking line insert error", lineError);
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
                 return;
               }
 
@@ -812,18 +849,26 @@ const Booking = () => {
               }
 
               setLastCreatedBookingId(data.bookingid);
+              await refreshUserBookings();
               setShowBookingConfirmation(true);
+              bookingSubmissionInProgress.current = false;
+              setIsSubmittingBooking(false);
             },
             style: "default",
           },
           {
             text: "Cancel",
-            onPress: () => {},
+            onPress: () => {
+              bookingSubmissionInProgress.current = false;
+              setIsSubmittingBooking(false);
+            },
             style: "cancel",
           },
         ],
       );
     } catch (bookingError) {
+      bookingSubmissionInProgress.current = false;
+      setIsSubmittingBooking(false);
       console.log(bookingError);
     }
   };
@@ -833,11 +878,22 @@ const Booking = () => {
       return;
     }
 
+    const currentBooking = bookings.find((booking) => booking.id === bookingId);
+    if (
+      currentBooking &&
+      getBookingStatus(currentBooking.status) !== BookingStatus.Pending
+    ) {
+      Alert.alert("Payment unavailable", "This booking has already been paid.");
+      return;
+    }
+
+    setIsPreparingPayment(true);
     const paymentEndpoint =
       process.env.EXPO_PUBLIC_PAYFAST_PAYMENT_URL ??
       `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/payfast-payment`;
 
     if (!paymentEndpoint.startsWith("http")) {
+      setIsPreparingPayment(false);
       Alert.alert("Payment error", "PayFast is not configured for this app.");
       return;
     }
@@ -880,8 +936,11 @@ ${formFields}
 </form>
 <script>document.getElementById("payfast-form").submit();</script>
 </body></html>`);
+      setIsPreparingPayment(false);
+      setIsPayFastLoading(true);
     } catch (error) {
       console.error("Could not open PayFast:", error);
+      setIsPreparingPayment(false);
       Alert.alert(
         "Payment error",
         error instanceof Error
@@ -890,36 +949,112 @@ ${formFields}
       );
     }
   };
+  const payForNewBooking = async () => {
+    if (isPreparingPayment || isPayFastLoading) return;
+    setShowBookingConfirmation(false);
+    await openPayFastPayment(lastCreatedBookingId);
+  };
   const renderPayFastModal = () => (
     <Modal
-      visible={Boolean(payFastUrl && payFastHtml)}
+      visible={isPreparingPayment || Boolean(payFastUrl && payFastHtml)}
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={() => {
+        setIsPreparingPayment(false);
+        setIsPayFastLoading(false);
         setPayFastUrl(null);
         setPayFastHtml(null);
       }}
     >
-      <SafeAreaView style={styles(theme).paymentWebViewContainer}>
-        <View style={styles(theme).paymentWebViewHeader}>
-          <Text style={styles(theme).paymentWebViewTitle}>Pay booking fee</Text>
-          <Pressable
-            style={styles(theme).paymentWebViewClose}
-            onPress={() => {
-              setPayFastUrl(null);
-              setPayFastHtml(null);
-            }}
-          >
-            <Text style={styles(theme).paymentWebViewCloseText}>Close</Text>
-          </Pressable>
+      <SafeAreaView
+        style={[
+          styles(theme).paymentWebViewContainer,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+          },
+        ]}
+        edges={[]}
+      >
+        <View style={styles(theme).paymentModalContent}>
+          <View style={styles(theme).paymentWebViewHeader}>
+            <Text style={styles(theme).paymentWebViewTitle}>Pay booking fee</Text>
+            <Pressable
+              style={styles(theme).paymentWebViewClose}
+              onPress={() => {
+                setIsPreparingPayment(false);
+                setIsPayFastLoading(false);
+                setPayFastUrl(null);
+                setPayFastHtml(null);
+              }}
+            >
+              <Text style={styles(theme).paymentWebViewCloseText}>Close</Text>
+            </Pressable>
+          </View>
+          {payFastHtml ? (
+            <View style={styles(theme).paymentWebViewContent}>
+              <WebView
+                source={{ html: payFastHtml, baseUrl: payFastUrl ?? undefined }}
+                style={{ opacity: isPayFastLoading ? 0 : 1 }}
+                javaScriptEnabled
+                domStorageEnabled
+                originWhitelist={["*"]}
+                onNavigationStateChange={(navigationState) => {
+                  if (
+                    navigationState.url.includes("/functions/v1/payfast-cancel") ||
+                    navigationState.url.includes("/functions/v1/payfast-return") ||
+                    navigationState.url.startsWith("za.co.skinzone://payment/cancelled") ||
+                    navigationState.url.startsWith("za.co.skinzone://payment/complete")
+                  ) {
+                    setIsPayFastLoading(false);
+                    setIsPreparingPayment(false);
+                    setPayFastUrl(null);
+                    setPayFastHtml(null);
+                    setShowBookingConfirmation(false);
+                    void refreshUserBookings();
+                  }
+                }}
+                // The initial loading state is set before the WebView mounts.
+                // Do not restart the overlay for PayFast's internal navigation.
+                onLoadStart={() => undefined}
+                onLoadEnd={() => setIsPayFastLoading(false)}
+                onShouldStartLoadWithRequest={(request) => {
+                  if (
+                    request.url.includes("/functions/v1/payfast-cancel") ||
+                    request.url.includes("/functions/v1/payfast-return") ||
+                    request.url.startsWith("za.co.skinzone://payment/cancelled") ||
+                    request.url.startsWith("za.co.skinzone://payment/complete")
+                  ) {
+                    setIsPayFastLoading(false);
+                    setIsPreparingPayment(false);
+                    setPayFastUrl(null);
+                    setPayFastHtml(null);
+                    setShowBookingConfirmation(false);
+                    void refreshUserBookings();
+                    return false;
+                  }
+                  return true;
+                }}
+              />
+              {isPayFastLoading ? (
+                <View style={styles(theme).paymentLoadingOverlay}>
+                  <ActivityIndicator size="large" color={theme.Primary900} />
+                  <Text style={styles(theme).paymentLoadingText}>
+                    Loading secure payment...
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          {isPreparingPayment ? (
+            <View style={styles(theme).paymentLoadingOverlay}>
+              <ActivityIndicator size="large" color={theme.Primary900} />
+              <Text style={styles(theme).paymentLoadingText}>
+                Preparing secure payment...
+              </Text>
+            </View>
+          ) : null}
         </View>
-        {payFastHtml ? (
-          <WebView
-            source={{ html: payFastHtml, baseUrl: payFastUrl ?? undefined }}
-            javaScriptEnabled
-            domStorageEnabled
-            originWhitelist={["*"]}
-          />
-        ) : null}
       </SafeAreaView>
     </Modal>
   );
@@ -1042,7 +1177,14 @@ ${formFields}
         <Text style={styles(theme).countBadge}>{filteredCurrentBookings.length}</Text>
       </Text>
 
-      {filteredCurrentBookings.length === 0 ? (
+      {isLoadingBookings ? (
+        <View style={styles(theme).bookingListLoading}>
+          <ActivityIndicator size="small" color={theme.Primary900} />
+          <Text style={styles(theme).paymentLoadingText}>
+            Refreshing bookings...
+          </Text>
+        </View>
+      ) : filteredCurrentBookings.length === 0 ? (
         <Text style={styles(theme).emptyStateText}>No matching current bookings.</Text>
       ) : (
         filteredCurrentBookings.map((booking) => {
@@ -1553,8 +1695,15 @@ ${formFields}
           return (
             <Pressable
               key={slot}
-              disabled={!hasTreatments}
+              disabled={false}
               onPress={async () => {
+                if (!hasTreatments) {
+                  Alert.alert(
+                    "Select a treatment",
+                    "Please select a treatment before choosing a time slot.",
+                  );
+                  return;
+                }
                 const dateSlotOptions = getSlotOptionsForDate(selectedDate);
                 let latestBookedSlotTimes: string[];
                 try {
@@ -1644,9 +1793,20 @@ ${formFields}
           <Text style={styles(theme).totalValue}>R300.00</Text>
         </View>
       </View>
-      <Pressable onPress={bookClient} style={styles(theme).ctaButton}>
-        <Text style={styles(theme).ctaText}>Continue to Confirmation</Text>
-        <Text style={styles(theme).ctaArrow}>→</Text>
+      <Pressable
+        onPress={bookClient}
+        disabled={isSubmittingBooking}
+        style={styles(theme).ctaButton}
+      >
+        {isSubmittingBooking ? (
+          <>
+            <ActivityIndicator size="small" color={theme.Primary900} />
+            <Text style={styles(theme).ctaText}>Loading...</Text>
+          </>
+        ) : (
+          <Text style={styles(theme).ctaText}>Continue to Confirmation</Text>
+        )}
+        {!isSubmittingBooking ? <Text style={styles(theme).ctaArrow}>→</Text> : null}
       </Pressable>
     </ScrollView>
   );
@@ -1690,9 +1850,14 @@ ${formFields}
             </View>
             <Pressable
               style={styles(theme).confirmationButton}
-              onPress={() => void openPayFastPayment()}
+              onPress={() => void payForNewBooking()}
+              disabled={isPreparingPayment || isPayFastLoading}
             >
-              <Text style={styles(theme).confirmationButtonText}>Pay R300</Text>
+              {isPreparingPayment ? (
+                <ActivityIndicator size="small" color={theme.Primary900} />
+              ) : (
+                <Text style={styles(theme).confirmationButtonText}>Pay R300</Text>
+              )}
             </Pressable>
             <Pressable
               style={styles(theme).confirmationSecondaryButton}
@@ -1716,7 +1881,38 @@ const styles = (theme: Theme) => StyleSheet.create({
   paymentWebViewContainer: {
     flex: 1,
     backgroundColor: theme.bookingBackground,
-    paddingTop: 12,
+  },
+  paymentModalContent: {
+    flex: 1,
+    position: "relative",
+  },
+  paymentWebViewContent: {
+    flex: 1,
+    position: "relative",
+  },
+  paymentLoadingOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.bookingBackground,
+    zIndex: 10,
+    elevation: 10,
+  },
+  paymentLoadingText: {
+    color: theme.TextColour,
+    marginTop: 12,
+    textAlign: "center",
+  },
+  bookingListLoading: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    paddingVertical: 24,
   },
   paymentWebViewHeader: {
     minHeight: 56,
@@ -1842,7 +2038,7 @@ const styles = (theme: Theme) => StyleSheet.create({
     justifyContent: "center",
   },
   feeTitle: {
-    color: "#F2F2F2",
+    color: theme.TextColour,
     fontWeight: "700",
     fontSize: 22,
     lineHeight: 28,

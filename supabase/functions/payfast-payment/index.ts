@@ -197,6 +197,15 @@ Deno.serve(async (request) => {
     const merchantId = required("PAYFAST_MERCHANT_ID");
     const merchantKey = required("PAYFAST_MERCHANT_KEY");
     const passphrase = getOptionalPassphrase();
+    const { data: customer, error: customerError } =
+      await supabase.auth.admin.getUserById(customerId);
+    if (customerError) {
+      throw new Error(`Could not load customer details: ${customerError.message}`);
+    }
+    const customerEmail = customer.user?.email?.trim();
+    if (!customerEmail) {
+      return response("A valid account email is required for payment", 400);
+    }
 
     const fields: Record<string, string> = {
       merchant_id: merchantId,
@@ -204,19 +213,30 @@ Deno.serve(async (request) => {
       return_url: returnUrl,
       cancel_url: cancelUrl,
       notify_url: notifyUrl,
+      email_address: customerEmail,
       m_payment_id: bookingId,
       amount: "300.00",
       item_name: "SkinZone consultation deposit",
     };
     const signatureSource = payFastPaymentFieldOrder
       .filter((name) => Boolean(fields[name]?.trim()))
-      .map((name) => `${name}=${payFastEncode(fields[name] ?? "")}`)
+      .map(
+        (name) =>
+          `${name}=${payFastEncode((fields[name] ?? "").trim())}`,
+      )
       .join("&");
     fields.signature = md5(
       passphrase
         ? `${signatureSource}&passphrase=${payFastEncode(passphrase.trim())}`
         : signatureSource,
     );
+    console.log("PayFast signature diagnostics:", {
+      sandbox,
+      passphraseConfigured: Boolean(passphrase),
+      fieldNames: Object.keys(fields),
+      signatureLength: fields.signature.length,
+      signatureFormat: /^[a-f0-9]{32}$/.test(fields.signature),
+    });
 
     return new Response(
       JSON.stringify({
