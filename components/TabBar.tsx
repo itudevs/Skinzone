@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Tabs } from "expo-router";
 import { Theme, useTheme } from "./utils/Colours";
 import {
   Home,
@@ -10,9 +11,17 @@ import {
   Calendar,
 } from "lucide-react-native";
 
-const TabBar = (props: any) => {
+type TabBarProps = Parameters<
+  NonNullable<React.ComponentProps<typeof Tabs>["tabBar"]>
+>[0];
+
+const TabBar = ({
+  state,
+  descriptors,
+  emitter,
+  navigateToTab,
+}: TabBarProps) => {
   const theme = useTheme();
-  const { state, navigation, descriptors } = props;
 
   const icons: Record<
     string,
@@ -39,23 +48,25 @@ const TabBar = (props: any) => {
             : options.title !== undefined
               ? options.title
               : route.name;
+        const displayLabel =
+            typeof label === "string" ? label : route.name;
 
         const isFocused = state.index === index;
 
         const onPress = () => {
-          const event = navigation.emit({
+          const event = emitter.emit({
             type: "tabPress",
             target: route.key,
             canPreventDefault: true,
           });
 
           if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
+            navigateToTab(route.key);
           }
         };
 
         const onLongPress = () => {
-          navigation.emit({
+          emitter.emit({
             type: "tabLongPress",
             target: route.key,
           });
@@ -84,7 +95,7 @@ const TabBar = (props: any) => {
                 marginTop: 4,
               }}
             >
-              {label}
+              {displayLabel}
             </Text>
           </Pressable>
         );

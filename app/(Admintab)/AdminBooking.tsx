@@ -30,7 +30,7 @@ interface AdminBookingLine {
 
 interface AdminBookingItem {
   id: number;
-  customerId: number;
+  customerId: string;
   customerName: string;
   customerPhone?: string;
   status: string;
@@ -619,13 +619,15 @@ const AdminBooking = () => {
           onPress={() => setActiveFilter("cancelled")}
           style={[
             styles(theme).filterButton,
-            activeFilter === "cancelled" && styles(theme).filterButtonActive,
+            activeFilter === "cancelled" &&
+              styles(theme).filterButtonCancelledActive,
           ]}
         >
           <Text
             style={[
               styles(theme).filterText,
-              activeFilter === "cancelled" && styles(theme).filterTextActive,
+              activeFilter === "cancelled" &&
+                styles(theme).filterTextCancelledActive,
             ]}
           >
             Cancelled {cancelledCount}
@@ -649,6 +651,21 @@ const AdminBooking = () => {
         </Pressable>
       </ScrollView>
 
+      {activeFilter === "cancelled" ? (
+        <View style={styles(theme).cancelledSectionHeader}>
+          <View style={styles(theme).cancelledSectionIndicator} />
+          <View style={styles(theme).cancelledSectionCopy}>
+            <Text style={styles(theme).cancelledSectionTitle}>
+              Cancelled bookings
+            </Text>
+            <Text style={styles(theme).cancelledSectionSubtitle}>
+              {cancelledCount} booking{cancelledCount === 1 ? "" : "s"} excluded
+              from the active schedule
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       {filteredBookings.length === 0 ? (
         <View style={styles(theme).emptyStateCard}>
           <Text style={styles(theme).emptyStateText}>No matching bookings.</Text>
@@ -660,6 +677,8 @@ const AdminBooking = () => {
             style={[
               styles(theme).bookingCard,
               booking.bookingState === "past" && styles(theme).bookingCardPast,
+              booking.bookingState === "cancelled" &&
+                styles(theme).bookingCardCancelled,
             ]}
             onPress={() => openBooking(booking)}
           >
@@ -691,6 +710,8 @@ const AdminBooking = () => {
                     styles(theme).statusDot,
                     getBookingStatus(booking.status) === BookingStatus.Pending
                       ? styles(theme).statusDotWarning
+                      : booking.bookingState === "cancelled"
+                        ? styles(theme).statusDotCancelled
                       : booking.bookingState === "past"
                         ? styles(theme).statusDotPast
                       : styles(theme).statusDotSuccess,
@@ -734,9 +755,27 @@ const AdminBooking = () => {
             ) : null}
 
             <View style={styles(theme).actionRow}>
-              <Pressable style={styles(theme).primaryAction} onPress={() => openBooking(booking)}>
-                <CheckCircle2 size={16} color="#07130d" />
-                <Text style={styles(theme).primaryActionText}>
+              <Pressable
+                style={[
+                  styles(theme).primaryAction,
+                  booking.bookingState === "cancelled" &&
+                    styles(theme).primaryActionCancelled,
+                ]}
+                onPress={() => openBooking(booking)}
+              >
+                <CheckCircle2
+                  size={16}
+                  color={
+                    booking.bookingState === "cancelled" ? "#7F1D1D" : "#07130d"
+                  }
+                />
+                <Text
+                  style={[
+                    styles(theme).primaryActionText,
+                    booking.bookingState === "cancelled" &&
+                      styles(theme).primaryActionCancelledText,
+                  ]}
+                >
                   {getBookingStatus(booking.status) === BookingStatus.Pending &&
                   booking.bookingState !== "past"
                     ? "Confirm Booking"
@@ -746,7 +785,10 @@ const AdminBooking = () => {
 
               <Pressable style={styles(theme).secondaryAction} onPress={() => openBooking(booking)}>
                 <Text style={styles(theme).secondaryActionText}>
-                  {booking.bookingState === "past" ? "View Details" : "Reschedule"}
+                  {booking.bookingState === "past" ||
+                  booking.bookingState === "cancelled"
+                    ? "View Details"
+                    : "Reschedule"}
                 </Text>
               </Pressable>
             </View>
@@ -1023,6 +1065,11 @@ const styles = (theme: Theme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.Primary900,
   },
+  filterButtonCancelledActive: {
+    backgroundColor: "rgba(153,27,27,0.14)",
+    borderWidth: 1,
+    borderColor: "#B91C1C",
+  },
   filterText: {
     color: theme.TextColour,
     fontWeight: "700",
@@ -1030,6 +1077,40 @@ const styles = (theme: Theme) => StyleSheet.create({
   },
   filterTextActive: {
     color: theme.Primary900,
+  },
+  filterTextCancelledActive: {
+    color: "#991B1B",
+  },
+  cancelledSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(153,27,27,0.1)",
+    borderColor: "rgba(185,28,28,0.65)",
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 16,
+    padding: 14,
+  },
+  cancelledSectionIndicator: {
+    backgroundColor: "#B91C1C",
+    borderRadius: 4,
+    height: 34,
+    marginRight: 12,
+    width: 7,
+  },
+  cancelledSectionCopy: {
+    flex: 1,
+  },
+  cancelledSectionTitle: {
+    color: "#991B1B",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  cancelledSectionSubtitle: {
+    color: theme.TextColour,
+    fontSize: 12,
+    marginTop: 3,
+    opacity: 0.8,
   },
   treatmentSection: {
     marginBottom: 20,
@@ -1092,6 +1173,10 @@ const styles = (theme: Theme) => StyleSheet.create({
     backgroundColor: theme.bookingCardBackground,
     borderColor: "rgba(196,154,90,0.75)",
   },
+  bookingCardCancelled: {
+    backgroundColor: "rgba(127,29,29,0.12)",
+    borderColor: "rgba(248,113,113,0.7)",
+  },
   bookingHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1150,6 +1235,9 @@ const styles = (theme: Theme) => StyleSheet.create({
   },
   statusDotWarning: {
     backgroundColor: "#F1C75B",
+  },
+  statusDotCancelled: {
+    backgroundColor: "#B91C1C",
   },
   statusDotPast: {
     backgroundColor: "#C49A5A",
@@ -1227,10 +1315,16 @@ const styles = (theme: Theme) => StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
   },
+  primaryActionCancelled: {
+    backgroundColor: "#FECACA",
+  },
   primaryActionText: {
     color: "#08130d",
     fontWeight: "800",
     fontSize: 13,
+  },
+  primaryActionCancelledText: {
+    color: "#7F1D1D",
   },
   secondaryAction: {
     flex: 1,

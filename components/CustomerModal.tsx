@@ -658,7 +658,7 @@ const styles = (theme: Theme) => StyleSheet.create({
     paddingBottom: 16,
   },
   HeaderTitle: {
-    color: "#FFFFFF",
+    color: "#000000",
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 1,

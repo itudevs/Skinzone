@@ -1,4 +1,4 @@
-import React, { useCallback, useState, memo } from "react";
+import { useCallback, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import {
@@ -18,22 +18,26 @@ interface EditModalprops {
   Signout: () => void;
   userId?: string;
 }
+
+interface ProfileData {
+  name: string;
+  surname: string;
+  email: string;
+  phone: string;
+  dob: Date;
+}
+
+const DEFAULT_DOB = new Date("1900-01-01");
+
+const parseDob = (value: string | Date | null | undefined) => {
+  if (value instanceof Date) return value;
+  if (!value) return DEFAULT_DOB;
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? DEFAULT_DOB : parsed;
+};
+
 const EditModal = ({ Signout, userId }: EditModalprops) => {
   const theme = useTheme();
-  interface ProfileData {
-    name: string;
-    surname: string;
-    email: string;
-    phone: string;
-    dob: Date;
-  }
-  const defaultDob = new Date("1900-01-01");
-  const parseDob = (value: string | Date | null | undefined) => {
-    if (value instanceof Date) return value;
-    if (!value) return defaultDob;
-    const parsed = new Date(value);
-    return isNaN(parsed.getTime()) ? defaultDob : parsed;
-  };
   // Your user data
   const [profile, setProfile] = useState<ProfileData>({
     name: "-",
@@ -69,7 +73,7 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
             dob: parseDob(userData.dob),
           });
         }
-      } catch (error) {
+      } catch {
         Alert.alert("Error", "An unexpected error occurred.");
         router.navigate("/Login");
       }
@@ -94,22 +98,26 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
     const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
     return phoneRegex.test(phone);
   };
-  const updateField = async (FieldtoUpdate: string, newField: string) => {
-    if (FieldtoUpdate === "dob") {
+  const updateField = async (
+    field: keyof ProfileData | "",
+    newField: string,
+  ) => {
+    if (field === "dob") {
       Alert.alert(
         "Date of Birth Locked",
         "Contact admin to change date of birth with relevant ID document.",
       );
       return;
     }
+    if (field === "" || !userId) return;
 
-    if (FieldtoUpdate === "email") {
+    if (field === "email") {
       if (!validateEmail(newField)) {
         Alert.alert("Error", "Enter a valid email address");
         return;
       }
     }
-    if (FieldtoUpdate === "phone") {
+    if (field === "phone") {
       if (!validatePhone(newField)) {
         Alert.alert(
           "Error",
@@ -118,14 +126,20 @@ const EditModal = ({ Signout, userId }: EditModalprops) => {
         return;
       }
     }
-    const { data, error } = await supabase
+
+    const editableField = field as Exclude<keyof ProfileData, "dob">;
+    const updates: Partial<
+      Record<"name" | "surname" | "email" | "phone", string>
+    > = {};
+    updates[editableField] = newField;
+    const { error } = await supabase
       .from("User")
-      .update({ [FieldtoUpdate]: newField }) // Only include the field you want to change
+      .update(updates)
       .eq("id", userId)
-      .select(); // Returns the updated row so you can verify the change
+      .select();
 
     if (error) {
-      // Update failed, handle error silently or add user-facing alert if needed
+      Alert.alert("Error", "Could not update your profile.");
     }
   };
 

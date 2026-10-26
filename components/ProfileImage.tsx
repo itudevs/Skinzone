@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Pressable, StyleSheet, View, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { Theme, useTheme } from "./utils/Colours";
@@ -18,18 +18,10 @@ const ProfileImage = ({
   uploading = false,
 }: Profileprops) => {
   const theme = useTheme();
-  const [imgurl, setimgurl] = useState(imageUrl || DEFAULT_IMAGE);
-
-  useEffect(() => {
-    if (imageUrl) {
-      setimgurl(imageUrl);
-    } else {
-      setimgurl(DEFAULT_IMAGE);
-    }
-  }, [imageUrl]);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
   const handleLoadError = () => {
-    setimgurl(DEFAULT_IMAGE);
+    setImageLoadFailed(true);
   };
 
   const handlePress = () => {
@@ -51,8 +43,9 @@ const ProfileImage = ({
           </View>
         ) : (
           <Image
+            key={imageUrl ?? "default"}
             style={styles(theme).ImgContainer}
-            source={{ uri: imgurl }}
+            source={{ uri: imageLoadFailed ? DEFAULT_IMAGE : imageUrl || DEFAULT_IMAGE }}
             contentFit="cover"
             transition={200}
             placeholder={DEFAULT_IMAGE}

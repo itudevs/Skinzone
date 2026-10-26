@@ -142,7 +142,7 @@ interface userBooking {
   treatmentName: string;
   slotCount: number;
   lines: { id: number; time: string }[];
-  bookingState: "active" | "completed" | "past";
+  bookingState: "active" | "completed" | "cancelled" | "past";
 }
 
 const isDateBeforeToday = (date: Date) => {
@@ -170,7 +170,7 @@ const Booking = () => {
   const [selectedDate, setSelectedDate] = useState(getInitialBookingDate);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<
-    "all" | "active" | "completed"
+    "all" | "active" | "completed" | "cancelled"
   >("all");
   const [bookings, setBookings] = useState<userBooking[]>([]);
   const [showBookingConfirmation, setShowBookingConfirmation] = useState(false);
@@ -285,12 +285,14 @@ const Booking = () => {
   const normalizeBookingState = (
     status: string,
     bookingDate: Date,
-  ): "active" | "completed" | "past" => {
+  ): "active" | "completed" | "cancelled" | "past" => {
     const normalizedStatus = status.trim().toLowerCase();
 
+    if (isCancelledBookingStatus(normalizedStatus)) {
+      return "cancelled";
+    }
+
     if (
-      !normalizedStatus.includes("cancel") &&
-      normalizedStatus !== "3" &&
       bookingDate.setHours(0, 0, 0, 0) <
         new Date(new Date().setHours(0, 0, 0, 0)).getTime()
     ) {
@@ -342,6 +344,29 @@ const Booking = () => {
       ].some((value) => matchesSearch(value))
     );
   });
+  const filteredCancelledBookings = bookings.filter((booking) => {
+    return (
+      (activeFilter === "all" || activeFilter === "cancelled") &&
+      booking.bookingState === "cancelled" &&
+      [
+        booking.id.toString(),
+        booking.bookingDate.toString(),
+        booking.status,
+        booking.treatmentName,
+        booking.notes,
+      ].some((value) => matchesSearch(value))
+    );
+  });
+  const activeBookingCount = bookings.filter(
+    (booking) => booking.bookingState === "active",
+  ).length;
+  const completedBookingCount = bookings.filter(
+    (booking) =>
+      booking.bookingState === "completed" || booking.bookingState === "past",
+  ).length;
+  const cancelledBookingCount = bookings.filter(
+    (booking) => booking.bookingState === "cancelled",
+  ).length;
   const validateBooking = () => {
     if (!loggedInUser?.user.id) {
       Alert.alert("Error", "Please sign in before booking");
@@ -1118,7 +1143,11 @@ ${formFields}
         onChangeText={setSearchQuery}
       />
 
-      <View style={styles(theme).filterRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles(theme).filterRow}
+      >
         <Pressable
           onPress={() => setActiveFilter("all")}
           style={[
@@ -1150,7 +1179,7 @@ ${formFields}
                 : styles(theme).filterChipText
             }
           >
-            Active ({filteredCurrentBookings.length})
+            Active ({activeBookingCount})
           </Text>
         </Pressable>
         <Pressable
@@ -1167,26 +1196,44 @@ ${formFields}
                 : styles(theme).filterChipText
             }
           >
-            Completed ({filteredPastBookings.length})
+            Completed ({completedBookingCount})
           </Text>
         </Pressable>
-      </View>
+        <Pressable
+          onPress={() => setActiveFilter("cancelled")}
+          style={[
+            styles(theme).filterChip,
+            activeFilter === "cancelled" &&
+              styles(theme).filterChipCancelledActive,
+          ]}
+        >
+          <Text
+            style={
+              activeFilter === "cancelled"
+                ? styles(theme).filterChipTextCancelledActive
+                : styles(theme).filterChipText
+            }
+          >
+            Cancelled ({cancelledBookingCount})
+          </Text>
+        </Pressable>
+      </ScrollView>
 
-      <Text style={styles(theme).sectionHeading}>
+      {activeFilter !== "cancelled" ? <Text style={styles(theme).sectionHeading}>
         Current Bookings{" "}
         <Text style={styles(theme).countBadge}>{filteredCurrentBookings.length}</Text>
-      </Text>
+      </Text> : null}
 
-      {isLoadingBookings ? (
+      {activeFilter !== "cancelled" && isLoadingBookings ? (
         <View style={styles(theme).bookingListLoading}>
           <ActivityIndicator size="small" color={theme.Primary900} />
           <Text style={styles(theme).paymentLoadingText}>
             Refreshing bookings...
           </Text>
         </View>
-      ) : filteredCurrentBookings.length === 0 ? (
+      ) : activeFilter !== "cancelled" && filteredCurrentBookings.length === 0 ? (
         <Text style={styles(theme).emptyStateText}>No matching current bookings.</Text>
-      ) : (
+      ) : activeFilter !== "cancelled" ? (
         filteredCurrentBookings.map((booking) => {
           const isPendingBooking =
             getBookingStatus(booking.status) === BookingStatus.Pending;
@@ -1293,16 +1340,16 @@ ${formFields}
             </Pressable>
           );
         })
-      )}
+      ) : null}
 
-      <Text style={styles(theme).sectionHeading}>
+      {activeFilter !== "cancelled" ? <Text style={styles(theme).sectionHeading}>
         Past Bookings{" "}
         <Text style={styles(theme).countBadge}>{filteredPastBookings.length}</Text>
-      </Text>
+      </Text> : null}
 
-      {filteredPastBookings.length === 0 ? (
+      {activeFilter !== "cancelled" && filteredPastBookings.length === 0 ? (
         <Text style={styles(theme).emptyStateText}>No matching past bookings.</Text>
-      ) : (
+      ) : activeFilter !== "cancelled" ? (
         filteredPastBookings.map((booking) => (
           <Pressable
             key={booking.id}
@@ -1359,7 +1406,64 @@ ${formFields}
             </View>
           </Pressable>
         ))
-      )}
+      ) : null}
+
+      {activeFilter === "all" || activeFilter === "cancelled" ? (
+        <>
+          <View style={styles(theme).cancelledSectionHeader}>
+            <View style={styles(theme).cancelledSectionIndicator} />
+            <View style={styles(theme).cancelledSectionCopy}>
+              <Text style={styles(theme).cancelledSectionTitle}>
+                Cancelled Bookings
+              </Text>
+              <Text style={styles(theme).cancelledSectionSubtitle}>
+                {filteredCancelledBookings.length} booking
+                {filteredCancelledBookings.length === 1 ? "" : "s"} not included
+                in the active schedule
+              </Text>
+            </View>
+          </View>
+          {filteredCancelledBookings.length === 0 ? (
+            <Text style={styles(theme).emptyStateText}>
+              No matching cancelled bookings.
+            </Text>
+          ) : (
+            filteredCancelledBookings.map((booking) => (
+              <Pressable
+                key={booking.id}
+                style={[styles(theme).bookingCardPast, styles(theme).bookingCardCancelled]}
+                onPress={() => {
+                  setSelectedBooking(booking);
+                  setShowBookingDetails(true);
+                }}
+              >
+                <View style={styles(theme).bookingHeaderRow}>
+                  <View style={styles(theme).bookingStatusWrap}>
+                    <View style={[styles(theme).statusDot, styles(theme).statusDotCancelled]} />
+                    <Text style={[styles(theme).bookingStatusTextPast, styles(theme).bookingStatusTextCancelled]}>
+                      Cancelled
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles(theme).bookingTitle}>{booking.treatmentName}</Text>
+                <View style={styles(theme).bookingMetaRow}>
+                  <Text style={styles(theme).metaText}>{formatBookingDate(booking.bookingDate)}</Text>
+                  <Text style={styles(theme).metaText}>{booking.time}</Text>
+                </View>
+                <Pressable
+                  style={[styles(theme).actionButton, styles(theme).cancelledSummaryButton]}
+                  onPress={() => {
+                    setSelectedBooking(booking);
+                    setShowBookingDetails(true);
+                  }}
+                >
+                  <Text style={styles(theme).cancelledSummaryButtonText}>View Summary</Text>
+                </Pressable>
+              </Pressable>
+            ))
+          )}
+        </>
+      ) : null}
 
       <Pressable
         onPress={() => setClientType("first")}
@@ -1384,7 +1488,9 @@ ${formFields}
                 </Text>
                 <Text style={styles(theme).bookingDetailsLabel}>Status</Text>
                 <Text style={styles(theme).bookingDetailsValue}>
-                  {selectedBooking.bookingState === "past"
+                  {selectedBooking.bookingState === "cancelled"
+                    ? "Cancelled"
+                    : selectedBooking.bookingState === "past"
                     ? "Past"
                     : getBookingStatus(selectedBooking.status)}
                 </Text>
@@ -2443,9 +2549,11 @@ const styles = (theme: Theme) => StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     marginBottom: 18,
+    paddingRight: 4,
   },
   filterChip: {
-    flex: 1,
+    minWidth: 104,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 14,
     alignItems: "center",
@@ -2457,6 +2565,10 @@ const styles = (theme: Theme) => StyleSheet.create({
   filterChipActive: {
     backgroundColor: theme.Primary900,
   },
+  filterChipCancelledActive: {
+    backgroundColor: "rgba(153,27,27,0.14)",
+    borderColor: "#B91C1C",
+  },
   filterChipText: {
     color: theme.bookingCardText,
     fontWeight: "700",
@@ -2464,6 +2576,11 @@ const styles = (theme: Theme) => StyleSheet.create({
   },
   filterChipTextActive: {
     color: "#0B0F0D",
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  filterChipTextCancelledActive: {
+    color: "#991B1B",
     fontWeight: "800",
     fontSize: 13,
   },
@@ -2510,6 +2627,41 @@ const styles = (theme: Theme) => StyleSheet.create({
     borderColor: "rgba(196,154,90,0.75)",
     borderWidth: 2,
   },
+  bookingCardCancelled: {
+    backgroundColor: "rgba(127,29,29,0.12)",
+    borderColor: "rgba(248,113,113,0.7)",
+  },
+  cancelledSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(153,27,27,0.1)",
+    borderColor: "rgba(185,28,28,0.65)",
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 16,
+    padding: 14,
+  },
+  cancelledSectionIndicator: {
+    backgroundColor: "#B91C1C",
+    borderRadius: 4,
+    height: 34,
+    marginRight: 12,
+    width: 7,
+  },
+  cancelledSectionCopy: {
+    flex: 1,
+  },
+  cancelledSectionTitle: {
+    color: "#991B1B",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  cancelledSectionSubtitle: {
+    color: theme.TextColour,
+    fontSize: 12,
+    marginTop: 3,
+    opacity: 0.8,
+  },
   bookingHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -2532,6 +2684,9 @@ const styles = (theme: Theme) => StyleSheet.create({
   statusDotWarning: {
     backgroundColor: "#F1C75B",
   },
+  statusDotCancelled: {
+    backgroundColor: "#B91C1C",
+  },
   bookingStatusText: {
     color: theme.Primary900,
     fontWeight: "700",
@@ -2547,6 +2702,9 @@ const styles = (theme: Theme) => StyleSheet.create({
   },
   bookingStatusTextWarning: {
     color: "#F1C75B",
+  },
+  bookingStatusTextCancelled: {
+    color: "#991B1B",
   },
   specialistText: {
     color: theme.bookingCardText,
@@ -2625,6 +2783,15 @@ const styles = (theme: Theme) => StyleSheet.create({
   secondaryActionText: {
     color: theme.bookingCardText,
     fontWeight: "700",
+    fontSize: 13,
+  },
+  cancelledSummaryButton: {
+    backgroundColor: "rgba(153,27,27,0.1)",
+    borderColor: "rgba(185,28,28,0.65)",
+  },
+  cancelledSummaryButtonText: {
+    color: "#991B1B",
+    fontWeight: "800",
     fontSize: 13,
   },
   rewardRow: {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   TextInput,
   StyleSheet,
@@ -17,19 +17,11 @@ interface DatePickerProps {
 
 const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
   const theme = useTheme();
-  const [date, setDate] = useState<Date | undefined>(value);
   const [show, setShow] = useState(false);
 
-  useEffect(() => {
-    setDate(value);
-  }, [value]);
-
-  const onChange = (event: any, selectedDate?: Date) => {
-    setTimeout(() => {
-      setShow(false);
-    }, 5000);
+  const onChange = (_event: any, selectedDate?: Date) => {
+    setShow(false);
     if (selectedDate) {
-      setDate(selectedDate);
       onDateChange?.(selectedDate);
     }
   };
@@ -48,14 +40,14 @@ const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
           style={styles(theme).main}
           placeholder={placeholder}
           placeholderTextColor={theme.placeholder}
-          value={date ? formatDate(date) : ""}
+          value={value ? formatDate(value) : ""}
           editable={false}
           pointerEvents="none"
         />
       </TouchableOpacity>
       {show && (
         <DateTimePicker
-          value={date || new Date()}
+          value={value || new Date()}
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={onChange}

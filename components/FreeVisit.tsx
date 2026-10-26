@@ -75,12 +75,30 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
       setTreatmentSearch("");
     }
   };
+
+  const resetForm = () => {
+    setselectedtreatmentid("");
+    setSelectedStaffId(customerid);
+    setamountpaid("0.00");
+    setnotes("");
+    setclicked(false);
+    setTreatmentSearch("");
+    setSelectedTreatmentName("Select Free Treatment");
+  };
+
+  const openModal = () => {
+    setSelectedStaffId(customerid);
+    setisModalActive(true);
+  };
+
+  const closeModal = () => {
+    resetForm();
+    setisModalActive(false);
+  };
+
   useEffect(() => {
     if (!isModalActive) return;
     let mounted = true;
-
-    // Free visit on customer side always uses customer as the staff value.
-    setSelectedStaffId(customerid);
 
     // Fetch treatments
     GetTreatments().then((y) => {
@@ -261,7 +279,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
 
       Alert.alert("Success", "Free treatment claimed successfully!");
       setclicked(false);
-      setisModalActive(false);
+      closeModal();
       setIsClaimed(true);
 
       // Call the callback to refresh parent component
@@ -274,24 +292,11 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
     }
   };
 
-  useEffect(() => {
-    if (!isModalActive) {
-      // Reset form when modal is closed
-      setselectedtreatmentid("");
-      setSelectedStaffId(customerid);
-      setamountpaid("0.00");
-      setnotes("");
-      setclicked(false);
-      setTreatmentSearch("");
-      setSelectedTreatmentName("Select Free Treatment");
-    }
-  }, [isModalActive, customerid]);
-
   return (
     <View>
       <Pressable
         style={({ pressed }) => pressed && styles(theme).presseditem}
-        onPress={() => setisModalActive(true)}
+        onPress={openModal}
       >
         <View style={styles(theme).visitCard}>
           <View style={styles(theme).visitDate}>
@@ -316,7 +321,7 @@ const FreeVisit = ({ points, customerid, onClaimSuccess }: FreeVisitProps) => {
           <View style={styles(theme).Main}>
             <Pressable
               style={styles(theme).closeButton}
-              onPress={() => setisModalActive(false)}
+              onPress={closeModal}
             >
               <X color={theme.treatmentModalText} size={24} />
             </Pressable>

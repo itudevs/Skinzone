@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Text, View, StyleSheet, Pressable } from "react-native";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { Theme, useTheme } from "./utils/Colours";
@@ -23,16 +23,9 @@ const DropDownInput = ({
 }: DropDownValues) => {
   const theme = useTheme();
   const [expanded, setexpanded] = useState(false);
-  const [selectedValue, setselectedValue] = useState(value);
   const Caret = expanded ? ChevronUp : ChevronDown;
 
-  // Sync internal state with prop value when it changes
-  useEffect(() => {
-    setselectedValue(value);
-  }, [value]);
-
   const handlepressitem = (item: DropDownItems) => {
-    setselectedValue(item.value);
     onSelect(item.id, item.value);
     setexpanded(false);
   };
@@ -52,7 +45,7 @@ const DropDownInput = ({
       >
         <View style={styles(theme).dropdown}>
           <Text style={styles(theme).text} numberOfLines={1} ellipsizeMode="tail">
-            {selectedValue}
+            {value}
           </Text>
           <View style={styles(theme).careticon}>
             <Caret size={15} color={theme.TextColour} />

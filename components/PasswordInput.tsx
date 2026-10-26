@@ -4,7 +4,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-  Text,
 } from "react-native";
 import { Lock, Eye, EyeOff } from "lucide-react-native";
 import { Theme, useTheme } from "./utils/Colours";

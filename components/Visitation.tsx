@@ -55,6 +55,7 @@ const Visitation = ({
   const [selectedvisit, setselectedvisit] = useState<any | null>(null);
   const [visitations, setvisitations] = useState<any[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const displayedVisitations = visitsData ?? visitations;
 
   const getRawVisitPoints = useMemo(
     () => (visit: any) =>
@@ -218,15 +219,7 @@ const Visitation = ({
   };
 
   useEffect(() => {
-    if (visitsData) {
-      setvisitations(visitsData);
-      return;
-    }
-
-    if (!id) {
-      setvisitations([]);
-      return;
-    }
+    if (visitsData || !id) return;
 
     const fetchvisitation = async () => {
       const data = await Getvisitations(id, limit);
@@ -241,7 +234,7 @@ const Visitation = ({
       [key: string]: { date: string; points: number; visits: any[] };
     } = {};
 
-    visitations.forEach((visit) => {
+    displayedVisitations.forEach((visit) => {
       // Use date string as key to group by day
       const dateKey = new Date(visit.visit_date).toDateString();
 
@@ -275,7 +268,7 @@ const Visitation = ({
     return Object.values(groups).sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-  }, [visitations, getSignedVisitPoints]);
+  }, [displayedVisitations, getSignedVisitPoints]);
 
   return (
     <View>

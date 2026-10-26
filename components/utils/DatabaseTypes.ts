@@ -1,4 +1,4 @@
-import { Database, Tables, Enums } from "@/database.types"
+import { Database, Tables } from "@/database.types"
 export type { Database }
 export let customervisits: Tables<'customervisits'>
 export let customervisitsline: Tables<'customervisitlines'>
