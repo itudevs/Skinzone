@@ -103,8 +103,12 @@ const toBookingDateISOString = (date: Date) =>
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0),
   ).toISOString();
 
-const isCancelledBookingStatus = (status: string | number | null | undefined) => {
-  const normalizedStatus = String(status ?? "").trim().toLowerCase();
+const isCancelledBookingStatus = (
+  status: string | number | null | undefined,
+) => {
+  const normalizedStatus = String(status ?? "")
+    .trim()
+    .toLowerCase();
   return normalizedStatus === "3" || normalizedStatus.includes("cancel");
 };
 
@@ -174,9 +178,9 @@ const Booking = () => {
   >("all");
   const [bookings, setBookings] = useState<userBooking[]>([]);
   const [showBookingConfirmation, setShowBookingConfirmation] = useState(false);
-  const [lastCreatedBookingId, setLastCreatedBookingId] = useState<number | null>(
-    null,
-  );
+  const [lastCreatedBookingId, setLastCreatedBookingId] = useState<
+    number | null
+  >(null);
   const [payFastUrl, setPayFastUrl] = useState<string | null>(null);
   const [payFastHtml, setPayFastHtml] = useState<string | null>(null);
   const [isPreparingPayment, setIsPreparingPayment] = useState(false);
@@ -206,9 +210,10 @@ const Booking = () => {
   const selectedTreatmentNames = useMemo(
     () =>
       selectedTreatmentId
-        .map((id: string) =>
-          treatments.find((treatment: DropDownItems) => treatment.id === id)
-            ?.value,
+        .map(
+          (id: string) =>
+            treatments.find((treatment: DropDownItems) => treatment.id === id)
+              ?.value,
         )
         .filter((name): name is string => Boolean(name)),
     [selectedTreatmentId, treatments],
@@ -224,7 +229,8 @@ const Booking = () => {
 
     return dateSlotOptions.filter(
       (slot) =>
-        getContiguousSlots(slot, requiredSlots, availableSlots, dateSlotOptions).length > 0,
+        getContiguousSlots(slot, requiredSlots, availableSlots, dateSlotOptions)
+          .length > 0,
     );
   }, [bookedSlotTimes, currentTime, selectedDate, selectedTreatmentId.length]);
 
@@ -259,7 +265,7 @@ const Booking = () => {
       .in("booking_id", activeBookingIds);
 
     if (lineError) throw lineError;
-    return (lineData ?? []).map((line) => line.time.slice(0, 5));
+    return (lineData ?? []).map((line) => String(line.time ?? "").slice(0, 5));
   };
 
   const selectedDayLabel = useMemo(
@@ -294,7 +300,7 @@ const Booking = () => {
 
     if (
       bookingDate.setHours(0, 0, 0, 0) <
-        new Date(new Date().setHours(0, 0, 0, 0)).getTime()
+      new Date(new Date().setHours(0, 0, 0, 0)).getTime()
     ) {
       return "past";
     }
@@ -381,7 +387,10 @@ const Booking = () => {
       return false;
     }
     if (selectedSlot.some((slot) => isSlotElapsed(selectedDate, slot))) {
-      Alert.alert("Error", "One or more selected time slots has already passed.");
+      Alert.alert(
+        "Error",
+        "One or more selected time slots has already passed.",
+      );
       setSelectedSlot([]);
       return false;
     }
@@ -439,10 +448,16 @@ const Booking = () => {
           return;
         }
 
-        const linesByBooking = new Map<number, { id: number; time: string }[]>();
+        const linesByBooking = new Map<
+          number,
+          { id: number; time: string }[]
+        >();
         (lineData ?? []).forEach((line) => {
           const lines = linesByBooking.get(line.booking_id) ?? [];
-          lines.push({ id: line.id, time: line.time.slice(0, 5) });
+          lines.push({
+            id: line.id,
+            time: String(line.time ?? "").slice(0, 5),
+          });
           linesByBooking.set(line.booking_id, lines);
         });
 
@@ -450,9 +465,9 @@ const Booking = () => {
           const rawStatus = String(booking.status ?? "").trim();
 
           const notes = String(booking.notes ?? "").trim();
-          const bookingLines = (linesByBooking.get(booking.bookingid) ?? []).sort(
-            (left, right) => left.time.localeCompare(right.time),
-          );
+          const bookingLines = (
+            linesByBooking.get(booking.bookingid) ?? []
+          ).sort((left, right) => left.time.localeCompare(right.time));
           const bookingTimes = bookingLines.map((line) => line.time);
           const startTime = bookingTimes[0] ?? "";
           const endTime = bookingTimes[bookingTimes.length - 1] ?? startTime;
@@ -542,7 +557,9 @@ const Booking = () => {
         Alert.alert("Error", "Could not verify your existing bookings.");
         return null;
       }
-      return (data ?? []).some((booking) => !isCancelledBookingStatus(booking.status));
+      return (data ?? []).some(
+        (booking) => !isCancelledBookingStatus(booking.status),
+      );
     } catch (error) {
       console.log("Error", error);
       return null;
@@ -578,7 +595,7 @@ const Booking = () => {
       if (lineError) throw lineError;
 
       const bookedTimes = new Set(
-        (lineData ?? []).map((line) => line.time.slice(0, 5)),
+        (lineData ?? []).map((line) => String(line.time ?? "").slice(0, 5)),
       );
       return requestedSlots.every((slot) => !bookedTimes.has(slot));
     } catch (error) {
@@ -624,8 +641,7 @@ const Booking = () => {
 
     const targetSlotOptions = getSlotOptionsForDate(rescheduleDate);
     const availableSlots = targetSlotOptions.filter(
-      (slot) =>
-        !isSlotElapsed(rescheduleDate, slot, currentTime),
+      (slot) => !isSlotElapsed(rescheduleDate, slot, currentTime),
     );
     const requestedSlots = getContiguousSlots(
       rescheduleTime,
@@ -649,8 +665,17 @@ const Booking = () => {
       return;
     }
 
-    if (!(await areSlotsAvailable(rescheduleDate, requestedSlots, selectedBooking.id))) {
-      Alert.alert("Time unavailable", "One or more selected slots is no longer available.");
+    if (
+      !(await areSlotsAvailable(
+        rescheduleDate,
+        requestedSlots,
+        selectedBooking.id,
+      ))
+    ) {
+      Alert.alert(
+        "Time unavailable",
+        "One or more selected slots is no longer available.",
+      );
       return;
     }
 
@@ -693,10 +718,16 @@ const Booking = () => {
       );
       setSelectedBooking(updatedBooking);
       setShowRescheduleModal(false);
-      Alert.alert("Booking rescheduled", "Your booking was successfully rescheduled.");
+      Alert.alert(
+        "Booking rescheduled",
+        "Your booking was successfully rescheduled.",
+      );
     } catch (error) {
       console.log("Could not reschedule booking:", error);
-      Alert.alert("Error", "The booking could not be rescheduled. Please try again.");
+      Alert.alert(
+        "Error",
+        "The booking could not be rescheduled. Please try again.",
+      );
     } finally {
       setIsRescheduling(false);
     }
@@ -737,7 +768,9 @@ const Booking = () => {
       }
       setBookings((current) =>
         current.map((booking) =>
-          booking.id === id ? { ...booking, status: BookingStatus.Cancelled } : booking,
+          booking.id === id
+            ? { ...booking, status: BookingStatus.Cancelled }
+            : booking,
         ),
       );
       setSelectedBooking((current) =>
@@ -771,7 +804,9 @@ const Booking = () => {
           {
             text: "Confirm",
             onPress: async () => {
-              if (selectedSlot.some((slot) => isSlotElapsed(selectedDate, slot))) {
+              if (
+                selectedSlot.some((slot) => isSlotElapsed(selectedDate, slot))
+              ) {
                 Alert.alert(
                   "Cannot Book",
                   "One or more selected time slots has already passed.",
@@ -913,9 +948,7 @@ const Booking = () => {
     }
 
     setIsPreparingPayment(true);
-    const paymentEndpoint =
-      process.env.EXPO_PUBLIC_PAYFAST_PAYMENT_URL ??
-      `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/payfast-payment`;
+    const paymentEndpoint = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/payfast-payment`;
 
     if (!paymentEndpoint.startsWith("http")) {
       setIsPreparingPayment(false);
@@ -929,7 +962,7 @@ const Booking = () => {
 
     try {
       const paymentResponse = await fetch(url.toString());
-      const paymentPayload = await paymentResponse.json() as {
+      const paymentPayload = (await paymentResponse.json()) as {
         payfastUrl?: string;
         fields?: Record<string, string>;
         error?: string;
@@ -942,7 +975,8 @@ const Booking = () => {
       ) {
         throw new Error(
           `Payment form request failed (${paymentResponse.status}): ${
-            paymentPayload.error ?? "The PayFast payment form could not be created."
+            paymentPayload.error ??
+            "The PayFast payment form could not be created."
           }`,
         );
       }
@@ -1003,7 +1037,9 @@ ${formFields}
       >
         <View style={styles(theme).paymentModalContent}>
           <View style={styles(theme).paymentWebViewHeader}>
-            <Text style={styles(theme).paymentWebViewTitle}>Pay booking fee</Text>
+            <Text style={styles(theme).paymentWebViewTitle}>
+              Pay booking fee
+            </Text>
             <Pressable
               style={styles(theme).paymentWebViewClose}
               onPress={() => {
@@ -1026,10 +1062,18 @@ ${formFields}
                 originWhitelist={["*"]}
                 onNavigationStateChange={(navigationState) => {
                   if (
-                    navigationState.url.includes("/functions/v1/payfast-cancel") ||
-                    navigationState.url.includes("/functions/v1/payfast-return") ||
-                    navigationState.url.startsWith("za.co.skinzone://payment/cancelled") ||
-                    navigationState.url.startsWith("za.co.skinzone://payment/complete")
+                    navigationState.url.includes(
+                      "/functions/v1/payfast-cancel",
+                    ) ||
+                    navigationState.url.includes(
+                      "/functions/v1/payfast-return",
+                    ) ||
+                    navigationState.url.startsWith(
+                      "za.co.skinzone://payment/cancelled",
+                    ) ||
+                    navigationState.url.startsWith(
+                      "za.co.skinzone://payment/complete",
+                    )
                   ) {
                     setIsPayFastLoading(false);
                     setIsPreparingPayment(false);
@@ -1041,13 +1085,15 @@ ${formFields}
                 }}
                 // The initial loading state is set before the WebView mounts.
                 // Do not restart the overlay for PayFast's internal navigation.
-                onLoadStart={() => undefined}
+                onLoadStart={() => {}}
                 onLoadEnd={() => setIsPayFastLoading(false)}
                 onShouldStartLoadWithRequest={(request) => {
                   if (
                     request.url.includes("/functions/v1/payfast-cancel") ||
                     request.url.includes("/functions/v1/payfast-return") ||
-                    request.url.startsWith("za.co.skinzone://payment/cancelled") ||
+                    request.url.startsWith(
+                      "za.co.skinzone://payment/cancelled",
+                    ) ||
                     request.url.startsWith("za.co.skinzone://payment/complete")
                   ) {
                     setIsPayFastLoading(false);
@@ -1105,170 +1151,299 @@ ${formFields}
         contentContainerStyle={styles(theme).contentContainer}
         showsVerticalScrollIndicator={false}
       >
-      <SafeAreaView>
-        <View style={styles(theme).toggleRow}>
+        <SafeAreaView>
+          <View style={styles(theme).toggleRow}>
+            <Pressable
+              onPress={() => setClientType("first")}
+              style={toggleButtonStyle("first")}
+            >
+              <Text
+                style={[
+                  styles(theme).toggleText,
+                  clientType === "first" && styles(theme).toggleTextActive,
+                ]}
+              >
+                Book Visit
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setClientType("returning")}
+              style={toggleButtonStyle("returning")}
+            >
+              <Text
+                style={[
+                  styles(theme).toggleText,
+                  clientType === "returning" && styles(theme).toggleTextActive,
+                ]}
+              >
+                Manage Bookings
+              </Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+        <SearchBar
+          Placeholder="Search by treatment"
+          size="fullWidthCompact"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles(theme).filterRow}
+        >
           <Pressable
-            onPress={() => setClientType("first")}
-            style={toggleButtonStyle("first")}
+            onPress={() => setActiveFilter("all")}
+            style={[
+              styles(theme).filterChip,
+              activeFilter === "all" && styles(theme).filterChipActive,
+            ]}
           >
             <Text
-              style={[
-                styles(theme).toggleText,
-                clientType === "first" && styles(theme).toggleTextActive,
-              ]}
+              style={
+                activeFilter === "all"
+                  ? styles(theme).filterChipTextActive
+                  : styles(theme).filterChipText
+              }
             >
-              Book Visit
+              All ({bookings.length})
             </Text>
           </Pressable>
-
           <Pressable
-            onPress={() => setClientType("returning")}
-            style={toggleButtonStyle("returning")}
+            onPress={() => setActiveFilter("active")}
+            style={[
+              styles(theme).filterChip,
+              activeFilter === "active" && styles(theme).filterChipActive,
+            ]}
           >
             <Text
-              style={[
-                styles(theme).toggleText,
-                clientType === "returning" && styles(theme).toggleTextActive,
-              ]}
+              style={
+                activeFilter === "active"
+                  ? styles(theme).filterChipTextActive
+                  : styles(theme).filterChipText
+              }
             >
-              Manage Bookings
+              Active ({activeBookingCount})
             </Text>
           </Pressable>
-        </View>
-      </SafeAreaView>
-      <SearchBar
-        Placeholder="Search by treatment"
-        size="fullWidthCompact"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles(theme).filterRow}
-      >
-        <Pressable
-          onPress={() => setActiveFilter("all")}
-          style={[
-            styles(theme).filterChip,
-            activeFilter === "all" && styles(theme).filterChipActive,
-          ]}
-        >
-          <Text
-            style={
-              activeFilter === "all"
-                ? styles(theme).filterChipTextActive
-                : styles(theme).filterChipText
-            }
+          <Pressable
+            onPress={() => setActiveFilter("completed")}
+            style={[
+              styles(theme).filterChip,
+              activeFilter === "completed" && styles(theme).filterChipActive,
+            ]}
           >
-            All ({bookings.length})
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveFilter("active")}
-          style={[
-            styles(theme).filterChip,
-            activeFilter === "active" && styles(theme).filterChipActive,
-          ]}
-        >
-          <Text
-            style={
-              activeFilter === "active"
-                ? styles(theme).filterChipTextActive
-                : styles(theme).filterChipText
-            }
+            <Text
+              style={
+                activeFilter === "completed"
+                  ? styles(theme).filterChipTextActive
+                  : styles(theme).filterChipText
+              }
+            >
+              Completed ({completedBookingCount})
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveFilter("cancelled")}
+            style={[
+              styles(theme).filterChip,
+              activeFilter === "cancelled" &&
+                styles(theme).filterChipCancelledActive,
+            ]}
           >
-            Active ({activeBookingCount})
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveFilter("completed")}
-          style={[
-            styles(theme).filterChip,
-            activeFilter === "completed" && styles(theme).filterChipActive,
-          ]}
-        >
-          <Text
-            style={
-              activeFilter === "completed"
-                ? styles(theme).filterChipTextActive
-                : styles(theme).filterChipText
-            }
-          >
-            Completed ({completedBookingCount})
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveFilter("cancelled")}
-          style={[
-            styles(theme).filterChip,
-            activeFilter === "cancelled" &&
-              styles(theme).filterChipCancelledActive,
-          ]}
-        >
-          <Text
-            style={
-              activeFilter === "cancelled"
-                ? styles(theme).filterChipTextCancelledActive
-                : styles(theme).filterChipText
-            }
-          >
-            Cancelled ({cancelledBookingCount})
-          </Text>
-        </Pressable>
-      </ScrollView>
+            <Text
+              style={
+                activeFilter === "cancelled"
+                  ? styles(theme).filterChipTextCancelledActive
+                  : styles(theme).filterChipText
+              }
+            >
+              Cancelled ({cancelledBookingCount})
+            </Text>
+          </Pressable>
+        </ScrollView>
 
-      {activeFilter !== "cancelled" ? <Text style={styles(theme).sectionHeading}>
-        Current Bookings{" "}
-        <Text style={styles(theme).countBadge}>{filteredCurrentBookings.length}</Text>
-      </Text> : null}
-
-      {activeFilter !== "cancelled" && isLoadingBookings ? (
-        <View style={styles(theme).bookingListLoading}>
-          <ActivityIndicator size="small" color={theme.Primary900} />
-          <Text style={styles(theme).paymentLoadingText}>
-            Refreshing bookings...
+        {activeFilter !== "cancelled" ? (
+          <Text style={styles(theme).sectionHeading}>
+            Current Bookings{" "}
+            <Text style={styles(theme).countBadge}>
+              {filteredCurrentBookings.length}
+            </Text>
           </Text>
-        </View>
-      ) : activeFilter !== "cancelled" && filteredCurrentBookings.length === 0 ? (
-        <Text style={styles(theme).emptyStateText}>No matching current bookings.</Text>
-      ) : activeFilter !== "cancelled" ? (
-        filteredCurrentBookings.map((booking) => {
-          const isPendingBooking =
-            getBookingStatus(booking.status) === BookingStatus.Pending;
+        ) : null}
 
-          return (
+        {activeFilter !== "cancelled" && isLoadingBookings ? (
+          <View style={styles(theme).bookingListLoading}>
+            <ActivityIndicator size="small" color={theme.Primary900} />
+            <Text style={styles(theme).paymentLoadingText}>
+              Refreshing bookings...
+            </Text>
+          </View>
+        ) : activeFilter !== "cancelled" &&
+          filteredCurrentBookings.length === 0 ? (
+          <Text style={styles(theme).emptyStateText}>
+            No matching current bookings.
+          </Text>
+        ) : activeFilter !== "cancelled" ? (
+          filteredCurrentBookings.map((booking) => {
+            const isPendingBooking =
+              getBookingStatus(booking.status) === BookingStatus.Pending;
+
+            return (
+              <Pressable
+                key={booking.id}
+                style={styles(theme).bookingCard}
+                onPress={() => {
+                  setSelectedBooking(booking);
+                  setShowBookingDetails(true);
+                }}
+              >
+                <View style={styles(theme).bookingHeaderRow}>
+                  <View style={styles(theme).bookingStatusWrap}>
+                    <View
+                      style={[
+                        styles(theme).statusDot,
+                        isPendingBooking
+                          ? styles(theme).statusDotWarning
+                          : styles(theme).statusDotSuccess,
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles(theme).bookingStatusText,
+                        isPendingBooking &&
+                          styles(theme).bookingStatusTextWarning,
+                      ]}
+                    >
+                      {getBookingStatus(booking.status)}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles(theme).bookingTitle}>
+                  {booking.treatmentName}
+                </Text>
+
+                <View style={styles(theme).bookingMetaRow}>
+                  <Text style={styles(theme).metaText}>
+                    {formatBookingDate(booking.bookingDate)}
+                  </Text>
+                  <Text style={styles(theme).metaText}>{booking.time}</Text>
+                </View>
+
+                {isPendingBooking ? (
+                  <View style={styles(theme).pendingFooter}>
+                    <Pressable
+                      style={styles(theme).primaryActionWide}
+                      onPress={() => void openPayFastPayment(booking.id)}
+                    >
+                      <Text style={styles(theme).primaryActionWideText}>
+                        Pay Booking Fee R300
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        Alert.alert(
+                          "Cancel Booking",
+                          `Are you sure you wish to cancel the booking on ${formatBookingDate(
+                            booking.bookingDate,
+                          )}?`,
+                          [
+                            {
+                              text: "Confirm",
+                              onPress: () => {
+                                CancelBooking(booking.id);
+                              },
+                              style: "destructive",
+                            },
+                            {
+                              text: "Cancel",
+                              onPress: () => {},
+                              style: "cancel",
+                            },
+                          ],
+                        );
+                      }}
+                      style={styles(theme).secondaryAction}
+                    >
+                      <Text style={styles(theme).secondaryActionText}>
+                        Cancel
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles(theme).actionRow}>
+                    <Pressable
+                      style={styles(theme).actionButton}
+                      onPress={() => {
+                        openRescheduleModal(booking);
+                      }}
+                    >
+                      <Text style={styles(theme).actionButtonText}>
+                        Manage / Reschedule
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles(theme).iconButton}
+                      onPress={() => {
+                        openRescheduleModal(booking);
+                      }}
+                    >
+                      <Calendar color={theme.TextColour} size={18} />
+                    </Pressable>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })
+        ) : null}
+
+        {activeFilter !== "cancelled" ? (
+          <Text style={styles(theme).sectionHeading}>
+            Past Bookings{" "}
+            <Text style={styles(theme).countBadge}>
+              {filteredPastBookings.length}
+            </Text>
+          </Text>
+        ) : null}
+
+        {activeFilter !== "cancelled" && filteredPastBookings.length === 0 ? (
+          <Text style={styles(theme).emptyStateText}>
+            No matching past bookings.
+          </Text>
+        ) : activeFilter !== "cancelled" ? (
+          filteredPastBookings.map((booking) => (
             <Pressable
               key={booking.id}
-              style={styles(theme).bookingCard}
+              style={[
+                styles(theme).bookingCardPast,
+                booking.bookingState === "past" &&
+                  styles(theme).bookingCardPastDay,
+              ]}
               onPress={() => {
                 setSelectedBooking(booking);
                 setShowBookingDetails(true);
               }}
             >
               <View style={styles(theme).bookingHeaderRow}>
-                <View style={styles(theme).bookingStatusWrap}>
-                  <View
-                    style={[
-                      styles(theme).statusDot,
-                      isPendingBooking
-                        ? styles(theme).statusDotWarning
-                        : styles(theme).statusDotSuccess,
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles(theme).bookingStatusText,
-                      isPendingBooking && styles(theme).bookingStatusTextWarning,
-                    ]}
-                  >
-                    {getBookingStatus(booking.status)}
-                  </Text>
-                </View>
+                <Text
+                  style={[
+                    styles(theme).bookingStatusTextPast,
+                    booking.bookingState === "past" &&
+                      styles(theme).bookingStatusTextPastDay,
+                  ]}
+                >
+                  {booking.bookingState === "past" ? "Past" : booking.status}
+                </Text>
               </View>
 
-              <Text style={styles(theme).bookingTitle}>{booking.treatmentName}</Text>
+              <View style={styles(theme).rewardRow}>
+                <Text style={styles(theme).bookingTitle}>
+                  {booking.treatmentName}
+                </Text>
+              </View>
 
               <View style={styles(theme).bookingMetaRow}>
                 <Text style={styles(theme).metaText}>
@@ -1277,200 +1452,117 @@ ${formFields}
                 <Text style={styles(theme).metaText}>{booking.time}</Text>
               </View>
 
-              {isPendingBooking ? (
-                <View style={styles(theme).pendingFooter}>
-                  <Pressable
-                    style={styles(theme).primaryActionWide}
-                    onPress={() => void openPayFastPayment(booking.id)}
-                  >
-                    <Text style={styles(theme).primaryActionWideText}>
-                      Pay Booking Fee R300
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      Alert.alert(
-                        "Cancel Booking",
-                        `Are you sure you wish to cancel the booking on ${formatBookingDate(
-                          booking.bookingDate,
-                        )}?`,
-                        [
-                          {
-                            text: "Confirm",
-                            onPress: () => {
-                              CancelBooking(booking.id);
-                            },
-                            style: "destructive",
-                          },
-                          {
-                            text: "Cancel",
-                            onPress: () => {},
-                            style: "cancel",
-                          },
-                        ],
-                      );
-                    }}
-                    style={styles(theme).secondaryAction}
-                  >
-                    <Text style={styles(theme).secondaryActionText}>Cancel</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles(theme).actionRow}>
-                  <Pressable
-                    style={styles(theme).actionButton}
-                    onPress={() => {
-                      openRescheduleModal(booking);
-                    }}
-                  >
-                    <Text style={styles(theme).actionButtonText}>
-                      Manage / Reschedule
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles(theme).iconButton}
-                    onPress={() => {
-                      openRescheduleModal(booking);
-                    }}
-                  >
-                    <Calendar color={theme.TextColour} size={18} />
-                  </Pressable>
-                </View>
-              )}
-            </Pressable>
-          );
-        })
-      ) : null}
-
-      {activeFilter !== "cancelled" ? <Text style={styles(theme).sectionHeading}>
-        Past Bookings{" "}
-        <Text style={styles(theme).countBadge}>{filteredPastBookings.length}</Text>
-      </Text> : null}
-
-      {activeFilter !== "cancelled" && filteredPastBookings.length === 0 ? (
-        <Text style={styles(theme).emptyStateText}>No matching past bookings.</Text>
-      ) : activeFilter !== "cancelled" ? (
-        filteredPastBookings.map((booking) => (
-          <Pressable
-            key={booking.id}
-            style={[
-              styles(theme).bookingCardPast,
-              booking.bookingState === "past" && styles(theme).bookingCardPastDay,
-            ]}
-            onPress={() => {
-              setSelectedBooking(booking);
-              setShowBookingDetails(true);
-            }}
-          >
-            <View style={styles(theme).bookingHeaderRow}>
-              <Text
-                style={[
-                  styles(theme).bookingStatusTextPast,
-                  booking.bookingState === "past" && styles(theme).bookingStatusTextPastDay,
-                ]}
-              >
-                {booking.bookingState === "past" ? "Past" : booking.status}
-              </Text>
-            </View>
-
-            <View style={styles(theme).rewardRow}>
-              <Text style={styles(theme).bookingTitle}>{booking.treatmentName}</Text>
-            </View>
-
-            <View style={styles(theme).bookingMetaRow}>
-              <Text style={styles(theme).metaText}>
-                {formatBookingDate(booking.bookingDate)}
-              </Text>
-              <Text style={styles(theme).metaText}>{booking.time}</Text>
-            </View>
-
-            <View style={styles(theme).actionRow}>
-              <Pressable
-                style={styles(theme).actionButton}
-                onPress={() => {
-                  setSelectedBooking(booking);
-                  setShowBookingDetails(true);
-                }}
-              >
-                <Text style={styles(theme).actionButtonText}>Book Again</Text>
-              </Pressable>
-              <Pressable
-                style={styles(theme).actionButton}
-                onPress={() => {
-                  setSelectedBooking(booking);
-                  setShowBookingDetails(true);
-                }}
-              >
-                <Text style={styles(theme).actionButtonText}>Summary</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        ))
-      ) : null}
-
-      {activeFilter === "all" || activeFilter === "cancelled" ? (
-        <>
-          <View style={styles(theme).cancelledSectionHeader}>
-            <View style={styles(theme).cancelledSectionIndicator} />
-            <View style={styles(theme).cancelledSectionCopy}>
-              <Text style={styles(theme).cancelledSectionTitle}>
-                Cancelled Bookings
-              </Text>
-              <Text style={styles(theme).cancelledSectionSubtitle}>
-                {filteredCancelledBookings.length} booking
-                {filteredCancelledBookings.length === 1 ? "" : "s"} not included
-                in the active schedule
-              </Text>
-            </View>
-          </View>
-          {filteredCancelledBookings.length === 0 ? (
-            <Text style={styles(theme).emptyStateText}>
-              No matching cancelled bookings.
-            </Text>
-          ) : (
-            filteredCancelledBookings.map((booking) => (
-              <Pressable
-                key={booking.id}
-                style={[styles(theme).bookingCardPast, styles(theme).bookingCardCancelled]}
-                onPress={() => {
-                  setSelectedBooking(booking);
-                  setShowBookingDetails(true);
-                }}
-              >
-                <View style={styles(theme).bookingHeaderRow}>
-                  <View style={styles(theme).bookingStatusWrap}>
-                    <View style={[styles(theme).statusDot, styles(theme).statusDotCancelled]} />
-                    <Text style={[styles(theme).bookingStatusTextPast, styles(theme).bookingStatusTextCancelled]}>
-                      Cancelled
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles(theme).bookingTitle}>{booking.treatmentName}</Text>
-                <View style={styles(theme).bookingMetaRow}>
-                  <Text style={styles(theme).metaText}>{formatBookingDate(booking.bookingDate)}</Text>
-                  <Text style={styles(theme).metaText}>{booking.time}</Text>
-                </View>
+              <View style={styles(theme).actionRow}>
                 <Pressable
-                  style={[styles(theme).actionButton, styles(theme).cancelledSummaryButton]}
+                  style={styles(theme).actionButton}
                   onPress={() => {
                     setSelectedBooking(booking);
                     setShowBookingDetails(true);
                   }}
                 >
-                  <Text style={styles(theme).cancelledSummaryButtonText}>View Summary</Text>
+                  <Text style={styles(theme).actionButtonText}>Book Again</Text>
                 </Pressable>
-              </Pressable>
-            ))
-          )}
-        </>
-      ) : null}
+                <Pressable
+                  style={styles(theme).actionButton}
+                  onPress={() => {
+                    setSelectedBooking(booking);
+                    setShowBookingDetails(true);
+                  }}
+                >
+                  <Text style={styles(theme).actionButtonText}>Summary</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          ))
+        ) : null}
 
-      <Pressable
-        onPress={() => setClientType("first")}
-        style={styles(theme).newBookingButton}
-      >
-        <Text style={styles(theme).newBookingText}>+ Book New Appointment</Text>
-      </Pressable>
+        {activeFilter === "all" || activeFilter === "cancelled" ? (
+          <>
+            <View style={styles(theme).cancelledSectionHeader}>
+              <View style={styles(theme).cancelledSectionIndicator} />
+              <View style={styles(theme).cancelledSectionCopy}>
+                <Text style={styles(theme).cancelledSectionTitle}>
+                  Cancelled Bookings
+                </Text>
+                <Text style={styles(theme).cancelledSectionSubtitle}>
+                  {filteredCancelledBookings.length} booking
+                  {filteredCancelledBookings.length === 1 ? "" : "s"} not
+                  included in the active schedule
+                </Text>
+              </View>
+            </View>
+            {filteredCancelledBookings.length === 0 ? (
+              <Text style={styles(theme).emptyStateText}>
+                No matching cancelled bookings.
+              </Text>
+            ) : (
+              filteredCancelledBookings.map((booking) => (
+                <Pressable
+                  key={booking.id}
+                  style={[
+                    styles(theme).bookingCardPast,
+                    styles(theme).bookingCardCancelled,
+                  ]}
+                  onPress={() => {
+                    setSelectedBooking(booking);
+                    setShowBookingDetails(true);
+                  }}
+                >
+                  <View style={styles(theme).bookingHeaderRow}>
+                    <View style={styles(theme).bookingStatusWrap}>
+                      <View
+                        style={[
+                          styles(theme).statusDot,
+                          styles(theme).statusDotCancelled,
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles(theme).bookingStatusTextPast,
+                          styles(theme).bookingStatusTextCancelled,
+                        ]}
+                      >
+                        Cancelled
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles(theme).bookingTitle}>
+                    {booking.treatmentName}
+                  </Text>
+                  <View style={styles(theme).bookingMetaRow}>
+                    <Text style={styles(theme).metaText}>
+                      {formatBookingDate(booking.bookingDate)}
+                    </Text>
+                    <Text style={styles(theme).metaText}>{booking.time}</Text>
+                  </View>
+                  <Pressable
+                    style={[
+                      styles(theme).actionButton,
+                      styles(theme).cancelledSummaryButton,
+                    ]}
+                    onPress={() => {
+                      setSelectedBooking(booking);
+                      setShowBookingDetails(true);
+                    }}
+                  >
+                    <Text style={styles(theme).cancelledSummaryButtonText}>
+                      View Summary
+                    </Text>
+                  </Pressable>
+                </Pressable>
+              ))
+            )}
+          </>
+        ) : null}
+
+        <Pressable
+          onPress={() => setClientType("first")}
+          style={styles(theme).newBookingButton}
+        >
+          <Text style={styles(theme).newBookingText}>
+            + Book New Appointment
+          </Text>
+        </Pressable>
       </ScrollView>
       <Modal
         visible={showBookingDetails}
@@ -1480,7 +1572,9 @@ ${formFields}
       >
         <View style={styles(theme).bookingDetailsOverlay}>
           <View style={styles(theme).bookingDetailsModal}>
-            <Text style={styles(theme).bookingDetailsTitle}>Booking Details</Text>
+            <Text style={styles(theme).bookingDetailsTitle}>
+              Booking Details
+            </Text>
             {selectedBooking ? (
               <>
                 <Text style={styles(theme).bookingDetailsTreatment}>
@@ -1491,8 +1585,8 @@ ${formFields}
                   {selectedBooking.bookingState === "cancelled"
                     ? "Cancelled"
                     : selectedBooking.bookingState === "past"
-                    ? "Past"
-                    : getBookingStatus(selectedBooking.status)}
+                      ? "Past"
+                      : getBookingStatus(selectedBooking.status)}
                 </Text>
                 <Text style={styles(theme).bookingDetailsLabel}>Date</Text>
                 <Text style={styles(theme).bookingDetailsValue}>
@@ -1525,7 +1619,8 @@ ${formFields}
                           {
                             text: "Cancel Booking",
                             style: "destructive",
-                            onPress: () => void CancelBooking(selectedBooking.id),
+                            onPress: () =>
+                              void CancelBooking(selectedBooking.id),
                           },
                         ],
                       )
@@ -1556,7 +1651,9 @@ ${formFields}
         <View style={styles(theme).bookingDetailsOverlay}>
           <View style={styles(theme).rescheduleModal}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles(theme).bookingDetailsTitle}>Reschedule Booking</Text>
+              <Text style={styles(theme).bookingDetailsTitle}>
+                Reschedule Booking
+              </Text>
               {selectedBooking ? (
                 <Text style={styles(theme).bookingDetailsTreatment}>
                   {selectedBooking.treatmentName}
@@ -1571,7 +1668,9 @@ ${formFields}
                 }}
                 textColor={theme.treatmentModalText}
               />
-              <Text style={styles(theme).bookingDetailsLabel}>Available time</Text>
+              <Text style={styles(theme).bookingDetailsLabel}>
+                Available time
+              </Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1591,7 +1690,8 @@ ${formFields}
                       <Text
                         style={[
                           styles(theme).rescheduleSlotText,
-                          isSelected && styles(theme).rescheduleSlotTextSelected,
+                          isSelected &&
+                            styles(theme).rescheduleSlotTextSelected,
                         ]}
                       >
                         {slot}
@@ -1663,13 +1763,17 @@ ${formFields}
           <View style={styles(theme).checkCircle}>
             <Check color={theme.Primary900} size={14} />
           </View>
-          <Text style={styles(theme).cardHeaderText}>CLINICAL DERMAL INTAKE</Text>
+          <Text style={styles(theme).cardHeaderText}>
+            CLINICAL DERMAL INTAKE
+          </Text>
           <View style={styles(theme).cardAction}>
             <Calendar color={theme.Primary900} size={20} />
           </View>
         </View>
 
-        <Text style={styles(theme).feeTitle}>Mandatory Consultation Fee: R300</Text>
+        <Text style={styles(theme).feeTitle}>
+          Mandatory Consultation Fee: R300
+        </Text>
         <Text style={styles(theme).feeDescription}>
           Includes full skin diagnostic scan, aesthetic regimen blueprint, and
           30-min clinical evaluation. Fully applied to treatments booked within
@@ -1703,7 +1807,9 @@ ${formFields}
               <ChevronDown
                 color={theme.TextColour}
                 size={20}
-                style={showFeeExplanation ? styles(theme).chevronOpen : undefined}
+                style={
+                  showFeeExplanation ? styles(theme).chevronOpen : undefined
+                }
               />
             </Pressable>
           </View>
@@ -1772,7 +1878,9 @@ ${formFields}
                   isSelected && styles(theme).treatmentCardSelected,
                 ]}
               >
-                <Text style={styles(theme).treatmentName}>{treatment.value}</Text>
+                <Text style={styles(theme).treatmentName}>
+                  {treatment.value}
+                </Text>
                 <Text style={styles(theme).treatmentMeta}>{priceLabel}</Text>
               </Pressable>
             );
@@ -1852,7 +1960,8 @@ ${formFields}
               style={[
                 styles(theme).slotCard,
                 active && styles(theme).slotCardSelected,
-                (!hasTreatments || !isAvailableStart) && styles(theme).slotCardDisabled,
+                (!hasTreatments || !isAvailableStart) &&
+                  styles(theme).slotCardDisabled,
               ]}
             >
               <Text
@@ -1912,7 +2021,9 @@ ${formFields}
         ) : (
           <Text style={styles(theme).ctaText}>Continue to Confirmation</Text>
         )}
-        {!isSubmittingBooking ? <Text style={styles(theme).ctaArrow}>→</Text> : null}
+        {!isSubmittingBooking ? (
+          <Text style={styles(theme).ctaArrow}>→</Text>
+        ) : null}
       </Pressable>
     </ScrollView>
   );
@@ -1935,7 +2046,9 @@ ${formFields}
               size={58}
               strokeWidth={2.5}
             />
-            <Text style={styles(theme).confirmationTitle}>Booking Confirmed</Text>
+            <Text style={styles(theme).confirmationTitle}>
+              Booking Confirmed
+            </Text>
             <Text style={styles(theme).confirmationMessage}>
               Your appointment has been successfully confirmed. Please check
               your email for your booking confirmation and amount due.
@@ -1962,7 +2075,9 @@ ${formFields}
               {isPreparingPayment ? (
                 <ActivityIndicator size="small" color={theme.Primary900} />
               ) : (
-                <Text style={styles(theme).confirmationButtonText}>Pay R300</Text>
+                <Text style={styles(theme).confirmationButtonText}>
+                  Pay R300
+                </Text>
               )}
             </Pressable>
             <Pressable
@@ -1971,7 +2086,9 @@ ${formFields}
                 setShowBookingConfirmation(false);
               }}
             >
-              <Text style={styles(theme).confirmationSecondaryButtonText}>Done</Text>
+              <Text style={styles(theme).confirmationSecondaryButtonText}>
+                Done
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -1983,845 +2100,846 @@ ${formFields}
 
 export default Booking;
 
-const styles = (theme: Theme) => StyleSheet.create({
-  paymentWebViewContainer: {
-    flex: 1,
-    backgroundColor: theme.bookingBackground,
-  },
-  paymentModalContent: {
-    flex: 1,
-    position: "relative",
-  },
-  paymentWebViewContent: {
-    flex: 1,
-    position: "relative",
-  },
-  paymentLoadingOverlay: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.bookingBackground,
-    zIndex: 10,
-    elevation: 10,
-  },
-  paymentLoadingText: {
-    color: theme.TextColour,
-    marginTop: 12,
-    textAlign: "center",
-  },
-  bookingListLoading: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "center",
-    paddingVertical: 24,
-  },
-  paymentWebViewHeader: {
-    minHeight: 56,
-    paddingHorizontal: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.bordercolor,
-  },
-  paymentWebViewTitle: {
-    color: theme.TextColour,
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  paymentWebViewClose: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  paymentWebViewCloseText: {
-    color: theme.Primary900,
-    fontWeight: "600",
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: theme.bookingBackground,
-  },
-  contentContainer: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 120,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 18,
-  },
-  closeButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageTitle: {
-    flex: 1,
-    textAlign: "center",
-    color: theme.TextColour,
-    fontSize: 22,
-    fontWeight: "700",
-    letterSpacing: -0.8,
-  },
-  pointsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 4,
-  },
-  pointsText: {
-    color: theme.Primary900,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  pointsTextSmall: {
-    color: theme.Primary900,
-    fontSize: 9,
-    fontWeight: "700",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 18,
-  },
-  toggleText: {
-    color: theme.TextColour,
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  toggleTextActive: {
-    color: theme.Primary900,
-  },
-  consultationCard: {
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: theme.adminBorder,
-  },
-  cardHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0,255,95,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  cardHeaderText: {
-    flex: 1,
-    color: theme.TextColour,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    fontSize: 14,
-  },
-  cardAction: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "rgba(0,255,95,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  feeTitle: {
-    color: theme.TextColour,
-    fontWeight: "700",
-    fontSize: 22,
-    lineHeight: 28,
-    marginBottom: 8,
-  },
-  feeDescription: {
-    color: theme.TextColour,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.12)",
-    marginVertical: 16,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  infoIconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: theme.Primary900,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chevronOpen: {
-    transform: [{ rotate: "180deg" }],
-  },
-  feeExplanation: {
-    backgroundColor: "rgba(0,255,95,0.08)",
-    borderRadius: 12,
-    marginTop: 12,
-    padding: 12,
-  },
-  feeExplanationText: {
-    color: theme.TextColour,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  infoIcon: {
-    color: theme.Primary900,
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  infoText: {
-    flex: 1,
-    color: theme.TextColour,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  sectionTitle: {
-    color: theme.bookingCardText,
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  treatmentScroller: {
-    paddingRight: 6,
-    paddingBottom: 4,
-    gap: 12,
-  },
-  treatmentCard: {
-    width: 180,
-    minHeight: 108,
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 16,
-    padding: 16,
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: theme.adminBorder,
-    marginRight: 12,
-  },
-  treatmentCardSelected: {
-    backgroundColor: "rgba(0,255,95,0.14)",
-    borderColor: "rgba(0,255,95,0.7)",
-  },
-  treatmentName: {
-    color: theme.bookingCardText,
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  treatmentMeta: {
-    color: theme.TextColour,
-    fontSize: 12,
-  },
-  slotHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  dateLabel: {
-    color: theme.bookingCardText,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  slotRow: {
-    flexDirection: "row",
-    marginBottom: 22,
-    gap: 8,
-  },
-  slotCard: {
-    width: 104,
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: theme.adminBorder,
-  },
-  slotCardSelected: {
-    backgroundColor: "rgba(0,255,95,0.22)",
-  },
-  slotCardDisabled: {
-    opacity: 0.35,
-  },
-  slotText: {
-    color: theme.TextColour,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  slotTextSelected: {
-    color: "#1b1b1b",
-  },
-  slotTextDisabled: {
-    color: theme.TextColour,
-  },
-  confirmationOverlay: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: "rgba(0,0,0,0.78)",
-  },
-  confirmationModal: {
-    width: "100%",
-    maxWidth: 380,
-    alignItems: "center",
-    backgroundColor: "#10261A",
-    borderColor: "rgba(0,255,95,0.55)",
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 28,
-  },
-  confirmationTitle: {
-    color: theme.Primary900,
-    fontSize: 22,
-    fontWeight: "800",
-    marginTop: 14,
-  },
-  confirmationMessage: {
-    color: theme.modalText,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
-    textAlign: "center",
-  },
-  confirmationDisclaimer: {
-    color: "#FFD27D",
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 12,
-    textAlign: "center",
-  },
-  confirmationDetails: {
-    alignSelf: "stretch",
-    backgroundColor: "rgba(0,255,95,0.1)",
-    borderRadius: 12,
-    marginTop: 20,
-    padding: 14,
-  },
-  confirmationDetailLabel: {
-    color: theme.modalText,
-    fontSize: 12,
-    marginBottom: 2,
-    opacity: 0.75,
-  },
-  confirmationDetailValue: {
-    color: "#F5FFF7",
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 10,
-  },
-  confirmationButton: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    backgroundColor: theme.Primary900,
-    borderRadius: 12,
-    marginTop: 6,
-    paddingVertical: 14,
-  },
-  confirmationButtonText: {
-    color: "#0B0F0D",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  confirmationSecondaryButton: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    borderColor: "rgba(255,255,255,0.35)",
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 10,
-    paddingVertical: 13,
-  },
-  confirmationSecondaryButtonText: {
-    color: theme.modalText,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  bookingDetailsOverlay: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: "rgba(0,0,0,0.78)",
-  },
-  bookingDetailsModal: {
-    width: "100%",
-    maxWidth: 380,
-    backgroundColor: "#10261A",
-    borderColor: "rgba(0,255,95,0.55)",
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 28,
-  },
-  rescheduleModal: {
-    width: "100%",
-    maxWidth: 420,
-    maxHeight: "92%",
-    backgroundColor: theme.treatmentModalBackground,
-    borderColor: "rgba(0,255,95,0.55)",
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 22,
-  },
-  rescheduleSlotRow: {
-    gap: 10,
-    paddingVertical: 10,
-  },
-  rescheduleSlot: {
-    minWidth: 82,
-    alignItems: "center",
-    backgroundColor: theme.treatmentModalItemBackground,
-    borderColor: theme.adminBorder,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  rescheduleSlotSelected: {
-    backgroundColor: theme.Primary900,
-    borderColor: theme.Primary900,
-  },
-  rescheduleSlotText: {
-    color: theme.treatmentModalText,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  rescheduleSlotTextSelected: {
-    color: "#0B0F0D",
-  },
-  bookingDetailsTitle: {
-    color: theme.treatmentModalText,
-    fontSize: 22,
-    fontWeight: "800",
-    marginBottom: 18,
-  },
-  bookingDetailsTreatment: {
-    color: theme.treatmentModalText,
-    fontSize: 19,
-    fontWeight: "800",
-    marginBottom: 14,
-  },
-  bookingDetailsLabel: {
-    color: theme.treatmentModalText,
-    fontSize: 12,
-    marginTop: 8,
-    opacity: 0.75,
-  },
-  bookingDetailsValue: {
-    color: theme.treatmentModalText,
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 2,
-  },
-  cancelBookingButton: {
-    alignItems: "center",
-    backgroundColor: "#B94A48",
-    borderRadius: 12,
-    marginTop: 22,
-    paddingVertical: 14,
-  },
-  cancelBookingButtonText: {
-    color: theme.treatmentModalText,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  bookingDetailsClose: {
-    alignItems: "center",
-    paddingVertical: 14,
-  },
-  bookingDetailsCloseText: {
-    color: theme.treatmentModalText,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  summaryCard: {
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 18,
-    borderWidth: 2,
-    borderColor: theme.adminBorder,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  summaryRowSecondary: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  summaryLabel: {
-    color: theme.bookingCardText,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  summaryLabelMuted: {
-    color: theme.bookingCardText,
-    fontSize: 12,
-  },
-  summaryValue: {
-    color: theme.bookingCardText,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  summaryValueStrong: {
-    color: theme.bookingCardText,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  pointsEarned: {
-    color: theme.Primary900,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  totalValue: {
-    color: theme.bookingCardText,
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  ctaButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: theme.Primary900,
-    borderRadius: 18,
-    paddingVertical: 22,
-    marginTop: 8,
-  },
-  ctaText: {
-    color: "#0B0F0D",
-    fontWeight: "800",
-    fontSize: 18,
-  },
-  ctaArrow: {
-    color: "#0B0F0D",
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    marginBottom: 18,
-    borderWidth: 1.5,
-    borderColor: theme.adminBorder,
-  },
-  searchText: {
-    flex: 1,
-    color: theme.modalText,
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  filterRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 18,
-    paddingRight: 4,
-  },
-  filterChip: {
-    minWidth: 104,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.bookingCardBackground,
-    borderWidth: 1,
-    borderColor: theme.adminBorder,
-  },
-  filterChipActive: {
-    backgroundColor: theme.Primary900,
-  },
-  filterChipCancelledActive: {
-    backgroundColor: "rgba(153,27,27,0.14)",
-    borderColor: "#B91C1C",
-  },
-  filterChipText: {
-    color: theme.bookingCardText,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  filterChipTextActive: {
-    color: "#0B0F0D",
-    fontWeight: "800",
-    fontSize: 13,
-  },
-  filterChipTextCancelledActive: {
-    color: "#991B1B",
-    fontWeight: "800",
-    fontSize: 13,
-  },
-  emptyStateText: {
-    color: theme.modalText,
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 14,
-    opacity: 0.8,
-  },
-  sectionHeading: {
-    color: theme.bookingCardText,
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 14,
-  },
-  countBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    color: theme.Primary900,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  bookingCard: {
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 18,
-    borderWidth: 2,
-    borderColor: theme.adminBorder,
-  },
-  bookingCardPast: {
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 18,
-    borderWidth: 2,
-    borderColor: theme.adminBorder,
-  },
-  bookingCardPastDay: {
-    borderColor: "rgba(196,154,90,0.75)",
-    borderWidth: 2,
-  },
-  bookingCardCancelled: {
-    backgroundColor: "rgba(127,29,29,0.12)",
-    borderColor: "rgba(248,113,113,0.7)",
-  },
-  cancelledSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(153,27,27,0.1)",
-    borderColor: "rgba(185,28,28,0.65)",
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 16,
-    padding: 14,
-  },
-  cancelledSectionIndicator: {
-    backgroundColor: "#B91C1C",
-    borderRadius: 4,
-    height: 34,
-    marginRight: 12,
-    width: 7,
-  },
-  cancelledSectionCopy: {
-    flex: 1,
-  },
-  cancelledSectionTitle: {
-    color: "#991B1B",
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  cancelledSectionSubtitle: {
-    color: theme.TextColour,
-    fontSize: 12,
-    marginTop: 3,
-    opacity: 0.8,
-  },
-  bookingHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  bookingStatusWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  statusDotSuccess: {
-    backgroundColor: theme.Primary900,
-  },
-  statusDotWarning: {
-    backgroundColor: "#F1C75B",
-  },
-  statusDotCancelled: {
-    backgroundColor: "#B91C1C",
-  },
-  bookingStatusText: {
-    color: theme.Primary900,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  bookingStatusTextPast: {
-    color: theme.bookingCardText,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  bookingStatusTextPastDay: {
-    color: "#C49A5A",
-  },
-  bookingStatusTextWarning: {
-    color: "#F1C75B",
-  },
-  bookingStatusTextCancelled: {
-    color: "#991B1B",
-  },
-  specialistText: {
-    color: theme.bookingCardText,
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  bookingTitle: {
-    color: theme.bookingCardText,
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 12,
-  },
-  bookingMetaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  metaText: {
-    color: theme.bookingCardText,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: theme.adminBorder,
-  },
-  iconButton: {
-    width: 52,
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: theme.adminBorder,
-  },
-  actionButtonText: {
-    color: theme.bookingCardText,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  pendingFooter: {
-    gap: 10,
-  },
-  primaryActionWide: {
-    backgroundColor: theme.Primary900,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryActionWideText: {
-    color: "#0B0F0D",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  secondaryAction: {
-    backgroundColor: theme.bookingCardBackground,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: theme.adminBorder,
-  },
-  secondaryActionText: {
-    color: theme.bookingCardText,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  cancelledSummaryButton: {
-    backgroundColor: "rgba(153,27,27,0.1)",
-    borderColor: "rgba(185,28,28,0.65)",
-  },
-  cancelledSummaryButtonText: {
-    color: "#991B1B",
-    fontWeight: "800",
-    fontSize: 13,
-  },
-  rewardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  rewardText: {
-    color: theme.Primary900,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  rewardLabel: {
-    color: theme.modalText,
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  newBookingButton: {
-    backgroundColor: theme.Primary900,
-    borderRadius: 18,
-    paddingVertical: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    marginBottom: 30,
-  },
-  newBookingText: {
-    color: "#0B0F0D",
-    fontWeight: "900",
-    fontSize: 16,
-  },
-});
+const styles = (theme: Theme) =>
+  StyleSheet.create({
+    paymentWebViewContainer: {
+      flex: 1,
+      backgroundColor: theme.bookingBackground,
+    },
+    paymentModalContent: {
+      flex: 1,
+      position: "relative",
+    },
+    paymentWebViewContent: {
+      flex: 1,
+      position: "relative",
+    },
+    paymentLoadingOverlay: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.bookingBackground,
+      zIndex: 10,
+      elevation: 10,
+    },
+    paymentLoadingText: {
+      color: theme.TextColour,
+      marginTop: 12,
+      textAlign: "center",
+    },
+    bookingListLoading: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      paddingVertical: 24,
+    },
+    paymentWebViewHeader: {
+      minHeight: 56,
+      paddingHorizontal: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.bordercolor,
+    },
+    paymentWebViewTitle: {
+      color: theme.TextColour,
+      fontSize: 18,
+      fontWeight: "600",
+    },
+    paymentWebViewClose: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    paymentWebViewCloseText: {
+      color: theme.Primary900,
+      fontWeight: "600",
+    },
+    screen: {
+      flex: 1,
+      backgroundColor: theme.bookingBackground,
+    },
+    contentContainer: {
+      paddingHorizontal: 18,
+      paddingTop: 18,
+      paddingBottom: 120,
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 18,
+    },
+    closeButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pageTitle: {
+      flex: 1,
+      textAlign: "center",
+      color: theme.TextColour,
+      fontSize: 22,
+      fontWeight: "700",
+      letterSpacing: -0.8,
+    },
+    pointsBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(255,255,255,0.06)",
+      borderRadius: 18,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      gap: 4,
+    },
+    pointsText: {
+      color: theme.Primary900,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    pointsTextSmall: {
+      color: theme.Primary900,
+      fontSize: 9,
+      fontWeight: "700",
+    },
+    toggleRow: {
+      flexDirection: "row",
+      backgroundColor: "rgba(255,255,255,0.08)",
+      borderRadius: 14,
+      padding: 4,
+      marginBottom: 18,
+    },
+    toggleText: {
+      color: theme.TextColour,
+      fontWeight: "600",
+      fontSize: 14,
+    },
+    toggleTextActive: {
+      color: theme.Primary900,
+    },
+    consultationCard: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 20,
+      borderWidth: 2,
+      borderColor: theme.adminBorder,
+    },
+    cardHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    checkCircle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "rgba(0,255,95,0.12)",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 10,
+    },
+    cardHeaderText: {
+      flex: 1,
+      color: theme.TextColour,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      fontSize: 14,
+    },
+    cardAction: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: "rgba(0,255,95,0.08)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    feeTitle: {
+      color: theme.TextColour,
+      fontWeight: "700",
+      fontSize: 22,
+      lineHeight: 28,
+      marginBottom: 8,
+    },
+    feeDescription: {
+      color: theme.TextColour,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    divider: {
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(255,255,255,0.12)",
+      marginVertical: 16,
+    },
+    infoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    infoIconWrap: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: theme.Primary900,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chevronOpen: {
+      transform: [{ rotate: "180deg" }],
+    },
+    feeExplanation: {
+      backgroundColor: "rgba(0,255,95,0.08)",
+      borderRadius: 12,
+      marginTop: 12,
+      padding: 12,
+    },
+    feeExplanationText: {
+      color: theme.TextColour,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    infoIcon: {
+      color: theme.Primary900,
+      fontWeight: "700",
+      fontSize: 14,
+    },
+    infoText: {
+      flex: 1,
+      color: theme.TextColour,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    sectionTitle: {
+      color: theme.bookingCardText,
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 12,
+    },
+    treatmentScroller: {
+      paddingRight: 6,
+      paddingBottom: 4,
+      gap: 12,
+    },
+    treatmentCard: {
+      width: 180,
+      minHeight: 108,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 16,
+      padding: 16,
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: theme.adminBorder,
+      marginRight: 12,
+    },
+    treatmentCardSelected: {
+      backgroundColor: "rgba(0,255,95,0.14)",
+      borderColor: "rgba(0,255,95,0.7)",
+    },
+    treatmentName: {
+      color: theme.bookingCardText,
+      fontSize: 14,
+      fontWeight: "700",
+      marginBottom: 6,
+    },
+    treatmentMeta: {
+      color: theme.TextColour,
+      fontSize: 12,
+    },
+    slotHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    dateLabel: {
+      color: theme.bookingCardText,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    slotRow: {
+      flexDirection: "row",
+      marginBottom: 22,
+      gap: 8,
+    },
+    slotCard: {
+      width: 104,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 14,
+      paddingVertical: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: theme.adminBorder,
+    },
+    slotCardSelected: {
+      backgroundColor: "rgba(0,255,95,0.22)",
+    },
+    slotCardDisabled: {
+      opacity: 0.35,
+    },
+    slotText: {
+      color: theme.TextColour,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    slotTextSelected: {
+      color: "#1b1b1b",
+    },
+    slotTextDisabled: {
+      color: theme.TextColour,
+    },
+    confirmationOverlay: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      backgroundColor: "rgba(0,0,0,0.78)",
+    },
+    confirmationModal: {
+      width: "100%",
+      maxWidth: 380,
+      alignItems: "center",
+      backgroundColor: "#10261A",
+      borderColor: "rgba(0,255,95,0.55)",
+      borderRadius: 20,
+      borderWidth: 1,
+      padding: 28,
+    },
+    confirmationTitle: {
+      color: theme.Primary900,
+      fontSize: 22,
+      fontWeight: "800",
+      marginTop: 14,
+    },
+    confirmationMessage: {
+      color: theme.modalText,
+      fontSize: 14,
+      lineHeight: 20,
+      marginTop: 8,
+      textAlign: "center",
+    },
+    confirmationDisclaimer: {
+      color: "#FFD27D",
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: 12,
+      textAlign: "center",
+    },
+    confirmationDetails: {
+      alignSelf: "stretch",
+      backgroundColor: "rgba(0,255,95,0.1)",
+      borderRadius: 12,
+      marginTop: 20,
+      padding: 14,
+    },
+    confirmationDetailLabel: {
+      color: theme.modalText,
+      fontSize: 12,
+      marginBottom: 2,
+      opacity: 0.75,
+    },
+    confirmationDetailValue: {
+      color: "#F5FFF7",
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 10,
+    },
+    confirmationButton: {
+      alignSelf: "stretch",
+      alignItems: "center",
+      backgroundColor: theme.Primary900,
+      borderRadius: 12,
+      marginTop: 6,
+      paddingVertical: 14,
+    },
+    confirmationButtonText: {
+      color: "#0B0F0D",
+      fontSize: 16,
+      fontWeight: "800",
+    },
+    confirmationSecondaryButton: {
+      alignSelf: "stretch",
+      alignItems: "center",
+      borderColor: "rgba(255,255,255,0.35)",
+      borderRadius: 12,
+      borderWidth: 1,
+      marginTop: 10,
+      paddingVertical: 13,
+    },
+    confirmationSecondaryButtonText: {
+      color: theme.modalText,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    bookingDetailsOverlay: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      backgroundColor: "rgba(0,0,0,0.78)",
+    },
+    bookingDetailsModal: {
+      width: "100%",
+      maxWidth: 380,
+      backgroundColor: "#10261A",
+      borderColor: "rgba(0,255,95,0.55)",
+      borderRadius: 20,
+      borderWidth: 1,
+      padding: 28,
+    },
+    rescheduleModal: {
+      width: "100%",
+      maxWidth: 420,
+      maxHeight: "92%",
+      backgroundColor: theme.treatmentModalBackground,
+      borderColor: "rgba(0,255,95,0.55)",
+      borderRadius: 20,
+      borderWidth: 1,
+      padding: 22,
+    },
+    rescheduleSlotRow: {
+      gap: 10,
+      paddingVertical: 10,
+    },
+    rescheduleSlot: {
+      minWidth: 82,
+      alignItems: "center",
+      backgroundColor: theme.treatmentModalItemBackground,
+      borderColor: theme.adminBorder,
+      borderRadius: 10,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    rescheduleSlotSelected: {
+      backgroundColor: theme.Primary900,
+      borderColor: theme.Primary900,
+    },
+    rescheduleSlotText: {
+      color: theme.treatmentModalText,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    rescheduleSlotTextSelected: {
+      color: "#0B0F0D",
+    },
+    bookingDetailsTitle: {
+      color: theme.treatmentModalText,
+      fontSize: 22,
+      fontWeight: "800",
+      marginBottom: 18,
+    },
+    bookingDetailsTreatment: {
+      color: theme.treatmentModalText,
+      fontSize: 19,
+      fontWeight: "800",
+      marginBottom: 14,
+    },
+    bookingDetailsLabel: {
+      color: theme.treatmentModalText,
+      fontSize: 12,
+      marginTop: 8,
+      opacity: 0.75,
+    },
+    bookingDetailsValue: {
+      color: theme.treatmentModalText,
+      fontSize: 16,
+      fontWeight: "700",
+      marginTop: 2,
+    },
+    cancelBookingButton: {
+      alignItems: "center",
+      backgroundColor: "#B94A48",
+      borderRadius: 12,
+      marginTop: 22,
+      paddingVertical: 14,
+    },
+    cancelBookingButtonText: {
+      color: theme.treatmentModalText,
+      fontSize: 15,
+      fontWeight: "800",
+    },
+    bookingDetailsClose: {
+      alignItems: "center",
+      paddingVertical: 14,
+    },
+    bookingDetailsCloseText: {
+      color: theme.treatmentModalText,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    summaryCard: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 18,
+      borderWidth: 2,
+      borderColor: theme.adminBorder,
+    },
+    summaryRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    summaryRowSecondary: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    summaryLabel: {
+      color: theme.bookingCardText,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    summaryLabelMuted: {
+      color: theme.bookingCardText,
+      fontSize: 12,
+    },
+    summaryValue: {
+      color: theme.bookingCardText,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    summaryValueStrong: {
+      color: theme.bookingCardText,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    pointsEarned: {
+      color: theme.Primary900,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    totalValue: {
+      color: theme.bookingCardText,
+      fontSize: 24,
+      fontWeight: "800",
+    },
+    ctaButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      backgroundColor: theme.Primary900,
+      borderRadius: 18,
+      paddingVertical: 22,
+      marginTop: 8,
+    },
+    ctaText: {
+      color: "#0B0F0D",
+      fontWeight: "800",
+      fontSize: 18,
+    },
+    ctaArrow: {
+      color: "#0B0F0D",
+      fontSize: 24,
+      fontWeight: "800",
+    },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 16,
+      marginBottom: 18,
+      borderWidth: 1.5,
+      borderColor: theme.adminBorder,
+    },
+    searchText: {
+      flex: 1,
+      color: theme.modalText,
+      fontSize: 14,
+      opacity: 0.8,
+    },
+    filterRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 18,
+      paddingRight: 4,
+    },
+    filterChip: {
+      minWidth: 104,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.bookingCardBackground,
+      borderWidth: 1,
+      borderColor: theme.adminBorder,
+    },
+    filterChipActive: {
+      backgroundColor: theme.Primary900,
+    },
+    filterChipCancelledActive: {
+      backgroundColor: "rgba(153,27,27,0.14)",
+      borderColor: "#B91C1C",
+    },
+    filterChipText: {
+      color: theme.bookingCardText,
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    filterChipTextActive: {
+      color: "#0B0F0D",
+      fontWeight: "800",
+      fontSize: 13,
+    },
+    filterChipTextCancelledActive: {
+      color: "#991B1B",
+      fontWeight: "800",
+      fontSize: 13,
+    },
+    emptyStateText: {
+      color: theme.modalText,
+      fontSize: 13,
+      fontWeight: "600",
+      marginBottom: 14,
+      opacity: 0.8,
+    },
+    sectionHeading: {
+      color: theme.bookingCardText,
+      fontSize: 18,
+      fontWeight: "800",
+      marginBottom: 14,
+    },
+    countBadge: {
+      alignSelf: "flex-start",
+      backgroundColor: "rgba(255,255,255,0.08)",
+      color: theme.Primary900,
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      fontSize: 10,
+      fontWeight: "700",
+    },
+    bookingCard: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 18,
+      borderWidth: 2,
+      borderColor: theme.adminBorder,
+    },
+    bookingCardPast: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 18,
+      borderWidth: 2,
+      borderColor: theme.adminBorder,
+    },
+    bookingCardPastDay: {
+      borderColor: "rgba(196,154,90,0.75)",
+      borderWidth: 2,
+    },
+    bookingCardCancelled: {
+      backgroundColor: "rgba(127,29,29,0.12)",
+      borderColor: "rgba(248,113,113,0.7)",
+    },
+    cancelledSectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(153,27,27,0.1)",
+      borderColor: "rgba(185,28,28,0.65)",
+      borderRadius: 14,
+      borderWidth: 1,
+      marginBottom: 16,
+      padding: 14,
+    },
+    cancelledSectionIndicator: {
+      backgroundColor: "#B91C1C",
+      borderRadius: 4,
+      height: 34,
+      marginRight: 12,
+      width: 7,
+    },
+    cancelledSectionCopy: {
+      flex: 1,
+    },
+    cancelledSectionTitle: {
+      color: "#991B1B",
+      fontSize: 15,
+      fontWeight: "800",
+    },
+    cancelledSectionSubtitle: {
+      color: theme.TextColour,
+      fontSize: 12,
+      marginTop: 3,
+      opacity: 0.8,
+    },
+    bookingHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    bookingStatusWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    statusDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    statusDotSuccess: {
+      backgroundColor: theme.Primary900,
+    },
+    statusDotWarning: {
+      backgroundColor: "#F1C75B",
+    },
+    statusDotCancelled: {
+      backgroundColor: "#B91C1C",
+    },
+    bookingStatusText: {
+      color: theme.Primary900,
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    bookingStatusTextPast: {
+      color: theme.bookingCardText,
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    bookingStatusTextPastDay: {
+      color: "#C49A5A",
+    },
+    bookingStatusTextWarning: {
+      color: "#F1C75B",
+    },
+    bookingStatusTextCancelled: {
+      color: "#991B1B",
+    },
+    specialistText: {
+      color: theme.bookingCardText,
+      fontWeight: "600",
+      fontSize: 12,
+    },
+    bookingTitle: {
+      color: theme.bookingCardText,
+      fontSize: 18,
+      fontWeight: "800",
+      marginBottom: 12,
+    },
+    bookingMetaRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    metaText: {
+      color: theme.bookingCardText,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    actionRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    actionButton: {
+      flex: 1,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.adminBorder,
+    },
+    iconButton: {
+      width: 52,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.adminBorder,
+    },
+    actionButtonText: {
+      color: theme.bookingCardText,
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    pendingFooter: {
+      gap: 10,
+    },
+    primaryActionWide: {
+      backgroundColor: theme.Primary900,
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    primaryActionWideText: {
+      color: "#0B0F0D",
+      fontWeight: "800",
+      fontSize: 14,
+    },
+    secondaryAction: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.adminBorder,
+    },
+    secondaryActionText: {
+      color: theme.bookingCardText,
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    cancelledSummaryButton: {
+      backgroundColor: "rgba(153,27,27,0.1)",
+      borderColor: "rgba(185,28,28,0.65)",
+    },
+    cancelledSummaryButtonText: {
+      color: "#991B1B",
+      fontWeight: "800",
+      fontSize: 13,
+    },
+    rewardRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    rewardText: {
+      color: theme.Primary900,
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    rewardLabel: {
+      color: theme.modalText,
+      fontSize: 11,
+      fontWeight: "600",
+    },
+    newBookingButton: {
+      backgroundColor: theme.Primary900,
+      borderRadius: 18,
+      paddingVertical: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 8,
+      marginBottom: 30,
+    },
+    newBookingText: {
+      color: "#0B0F0D",
+      fontWeight: "900",
+      fontSize: 16,
+    },
+  });

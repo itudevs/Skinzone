@@ -51,10 +51,14 @@ const BookingCalendar = ({
   const [activeDate, setActiveDate] = useState<Date>(selectedDate);
 
   useEffect(() => {
-    setVisibleMonth(
-      new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
-    );
-    setActiveDate(selectedDate);
+    const timer = setTimeout(() => {
+      setVisibleMonth(
+        new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
+      );
+      setActiveDate(selectedDate);
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [selectedDate]);
 
   const calendarDays = useMemo(() => {

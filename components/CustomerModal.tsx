@@ -17,16 +17,12 @@ import {
   PlusCircle,
   PhoneIcon,
   User,
-  ChevronDown,
-  ChevronUp,
   X,
 } from "lucide-react-native";
-import PrimaryText from "./PrimaryText";
 import PrimaryButton from "./PrimaryButton";
 import { DropDownItems } from "./utils/utilinterfaces";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useMemo, useState } from "react";
-import FreeVisit from "./FreeVisit";
 import Visitation from "./Visitation";
 import DatePicker from "./DatePicker";
 import SearchBar from "./SearchBar";
@@ -39,7 +35,6 @@ import { sendVisitNotification } from "@/lib/notifications";
 import {
   GetTotalFinalPoints,
   Getvisitations,
-  GetLastPointvisit,
 } from "./utils/GetUserData";
 import { cacheManager } from "@/lib/cache";
 
@@ -66,7 +61,6 @@ const CustomerModal = ({
   const [historySearch, setHistorySearch] = useState("");
   const [point, setpoint] = useState(0);
   const [visits, setvisits] = useState<any[]>([]);
-  const [lastvisit, setlastvisit] = useState<number>(0);
   const [idfetched, setidfetched] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [visitDate, setVisitDate] = useState(new Date());
@@ -231,7 +225,7 @@ const CustomerModal = ({
     try {
       const serviceName = selectedItems.map(({ item }) => item.value).join(", ");
       await sendVisitNotification(serviceName, selectedStaffName, idString);
-    } catch (error) {
+    } catch {
       // Notification failed, but visit was added successfully
     }
     // Invalidate cache for this user
@@ -302,23 +296,22 @@ const CustomerModal = ({
 
   useEffect(() => {
     if (!Visible) {
-      // Reset form when modal is closed
-      setSelectedStaffId("");
-      setSelectedStaffName("");
-      setVisitDate(new Date());
-      setnotes("");
-      setTreatmentSearch("");
-      setProductSearch("");
-      setHistorySearch("");
-      setSelectedTreatments([]);
-      setSelectedProducts([]);
-      setHistoryLimit(5);
+      const timer = setTimeout(() => {
+        setSelectedStaffId("");
+        setSelectedStaffName("");
+        setVisitDate(new Date());
+        setnotes("");
+        setTreatmentSearch("");
+        setProductSearch("");
+        setHistorySearch("");
+        setSelectedTreatments([]);
+        setSelectedProducts([]);
+        setHistoryLimit(5);
+      }, 0);
+
+      return () => clearTimeout(timer);
     }
   }, [Visible]);
-
-  const handleClaimSuccess = () => {
-    setRefreshTrigger((prev) => prev + 1);
-  };
 
   useEffect(() => {
     const fetchdata = async () => {
@@ -327,8 +320,6 @@ const CustomerModal = ({
       setpoint(Userpoint);
       const date = await Getvisitations(customerid, 5);
       setvisits(date);
-      const lastVisit = await GetLastPointvisit(customerid);
-      setlastvisit(lastVisit);
       setidfetched(true);
     };
 

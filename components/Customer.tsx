@@ -13,10 +13,10 @@ const Customer = ({ id, Name, Surname, Phone }: CustomerDetails) => {
   };
   let InitialName;
   let InitialSurname;
-  if (Name != undefined) {
+  if (Name !== undefined) {
     InitialName = Name[0];
   }
-  if (Surname != undefined) {
+  if (Surname !== undefined) {
     InitialSurname = Surname[0];
   }
   return (

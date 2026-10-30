@@ -18,8 +18,7 @@ type TabBarProps = Parameters<
 const TabBar = ({
   state,
   descriptors,
-  emitter,
-  navigateToTab,
+  navigation,
 }: TabBarProps) => {
   const theme = useTheme();
 
@@ -54,19 +53,19 @@ const TabBar = ({
         const isFocused = state.index === index;
 
         const onPress = () => {
-          const event = emitter.emit({
+          const event = navigation.emit({
             type: "tabPress",
             target: route.key,
             canPreventDefault: true,
           });
 
           if (!isFocused && !event.defaultPrevented) {
-            navigateToTab(route.key);
+            navigation.navigate(route.name, route.params);
           }
         };
 
         const onLongPress = () => {
-          emitter.emit({
+          navigation.emit({
             type: "tabLongPress",
             target: route.key,
           });

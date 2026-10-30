@@ -207,7 +207,7 @@ const AdminBooking = () => {
               (line.treatment_id !== null
                 ? servicesById.get(line.treatment_id)
                 : undefined) ?? "Treatment",
-            time: line.time.slice(0, 5),
+            time: String(line.time ?? "").slice(0, 5),
           });
           linesByBooking.set(line.booking_id, lines);
         });

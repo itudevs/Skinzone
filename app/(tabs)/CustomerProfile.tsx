@@ -1,8 +1,7 @@
 import "react-native-url-polyfill/auto";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { View, Text, StyleSheet, Alert } from "react-native";
-import { Session } from "@supabase/supabase-js";
 import { Theme, useTheme } from "@/components/utils/Colours";
 import ProfileImage from "../../components/ProfileImage";
 import EditModal from "@/components/EditModal";
@@ -38,7 +37,7 @@ const CustomerProfile = () => {
       if (data?.profile_picture) {
         setProfilePicture(data.profile_picture);
       }
-    } catch (error) {
+    } catch {
       // Error loading profile picture
     }
   }, [userId]);
@@ -77,7 +76,7 @@ const CustomerProfile = () => {
       } else {
         Alert.alert("Upload Failed", "Profile image was not uploaded.");
       }
-    } catch (error) {
+    } catch {
       Alert.alert(
         "Error",
         "Failed to update profile picture. Please try again.",

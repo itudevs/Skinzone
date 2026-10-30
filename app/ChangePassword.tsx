@@ -34,7 +34,7 @@ const ChangePassword = () => {
       }
     };
     checkUser();
-  }, []);
+  }, [router]);
 
   const sendVerificationCode = async () => {
     try {
@@ -125,13 +125,11 @@ const ChangePassword = () => {
         >
           Change Password
         </Text>
-        <PrimaryText
-          children={
-            step === "request"
-              ? "Secure Password Update"
-              : "Verify & Set New Password"
-          }
-        />
+        <PrimaryText>
+          {step === "request"
+            ? "Secure Password Update"
+            : "Verify & Set New Password"}
+        </PrimaryText>
       </View>
 
       <View style={styles(theme).CardContainer}>
@@ -154,7 +152,7 @@ const ChangePassword = () => {
         ) : (
           <>
             <View style={styles(theme).inputcontainer}>
-              <PrimaryText children="VERIFICATION CODE" />
+              <PrimaryText>VERIFICATION CODE</PrimaryText>
               <Input
                 text="123456"
                 value={verificationCode}
@@ -165,7 +163,7 @@ const ChangePassword = () => {
             </View>
 
             <View style={styles(theme).inputcontainer}>
-              <PrimaryText children="NEW PASSWORD" />
+              <PrimaryText>NEW PASSWORD</PrimaryText>
               <PasswordInput
                 placeholder="••••••••"
                 value={newPassword}
@@ -174,7 +172,7 @@ const ChangePassword = () => {
             </View>
 
             <View style={styles(theme).inputcontainer}>
-              <PrimaryText children="CONFIRM PASSWORD" />
+              <PrimaryText>CONFIRM PASSWORD</PrimaryText>
               <PasswordInput
                 placeholder="••••••••"
                 value={confirmPassword}

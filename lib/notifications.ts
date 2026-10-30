@@ -3,17 +3,6 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { supabase } from './supabase';
 
-// Configure how notifications should be handled when app is in foreground
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
-
 async function invokeEdgeFunction(
     functionName: string,
     body: Record<string, unknown>,
@@ -49,7 +38,7 @@ export async function requestNotificationPermissions() {
         if (Platform.OS === 'android') {
             await Notifications.setNotificationChannelAsync('default', {
                 name: 'default',
-                importance: Notifications.AndroidImportance.HIGH,
+                importance: 4,
                 vibrationPattern: [0, 250, 250, 250],
             });
         }

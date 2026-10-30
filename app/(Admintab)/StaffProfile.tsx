@@ -1,8 +1,7 @@
 import "react-native-url-polyfill/auto";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
-import { Session } from "@supabase/supabase-js";
 import { Theme, useTheme } from "@/components/utils/Colours";
 import ProfileImage from "../../components/ProfileImage";
 import EditModal from "@/components/EditModal";
@@ -36,7 +35,7 @@ const StaffProfile = () => {
       if (data?.profile_picture) {
         setProfilePicture(data.profile_picture);
       }
-    } catch (error) {
+    } catch {
       // Error loading profile picture
     }
   }, [userId]);
@@ -72,7 +71,7 @@ const StaffProfile = () => {
         await loadProfilePicture();
         Alert.alert("Success", "Profile picture updated successfully!");
       }
-    } catch (error) {
+    } catch {
       Alert.alert(
         "Error",
         "Failed to update profile picture. Please try again.",

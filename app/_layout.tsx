@@ -9,7 +9,6 @@ import { supabase } from "@/lib/supabase";
 import {
   allocateBirthdayPointsIfEligible,
   registerPushTokenForCurrentUser,
-  requestNotificationPermissions,
 } from "@/lib/notifications";
 import { UserSession } from "@/components/utils/GetUsersession";
 
@@ -64,9 +63,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     let lastHandledUserId: string | null = null;
-
-    // Run startup work in parallel
-    requestNotificationPermissions().catch(() => {});
+    const notificationTimers = new Set<ReturnType<typeof setTimeout>>();
 
     // Handle deep links
     const handleDeepLink = async (url: string | null) => {
@@ -142,22 +139,26 @@ export default function RootLayout() {
 
       lastHandledUserId = currentUserId;
 
-      registerPushTokenForCurrentUser()
-        .then(() => allocateBirthdayPointsIfEligible())
-        .then(async (result) => {
-          if (!result?.awarded) {
-            return;
-          }
+      const notificationTimer = setTimeout(() => {
+        notificationTimers.delete(notificationTimer);
+        registerPushTokenForCurrentUser()
+          .then(() => allocateBirthdayPointsIfEligible())
+          .then(async (result) => {
+            if (!result?.awarded) {
+              return;
+            }
 
-          await AsyncStorage.setItem(
-            BIRTHDAY_BONUS_STORAGE_KEY,
-            JSON.stringify({
-              awardedAt: new Date().toISOString(),
-              pointsAwarded: result.pointsAwarded ?? 100,
-            }),
-          );
-        })
-        .catch(() => {});
+            await AsyncStorage.setItem(
+              BIRTHDAY_BONUS_STORAGE_KEY,
+              JSON.stringify({
+                awardedAt: new Date().toISOString(),
+                pointsAwarded: result.pointsAwarded ?? 100,
+              }),
+            );
+          })
+          .catch(() => {});
+      }, 5000);
+      notificationTimers.add(notificationTimer);
     });
 
     // Listen for auth state changes (diagnostics only).
@@ -172,11 +173,14 @@ export default function RootLayout() {
 
     return () => {
       clearTimeout(timer);
+      notificationTimers.forEach((notificationTimer) =>
+        clearTimeout(notificationTimer),
+      );
       unsubscribeUserSession();
       subscription.remove();
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   return (
     <View

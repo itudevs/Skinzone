@@ -10,7 +10,7 @@ function errorToMessage(error: unknown) {
     if (error instanceof Error) return error.message;
     try {
         return JSON.stringify(error);
-    } catch {
+    } catch (error) {
         return String(error);
     }
 }
@@ -139,7 +139,7 @@ export async function requestImagePermissions(): Promise<boolean> {
         }
 
         return true;
-    } catch (error) {
+    } catch {
         return false;
     }
 }
@@ -198,7 +198,7 @@ export async function pickImage(): Promise<ImagePicker.ImagePickerAsset | null> 
                                 );
                                 resolve(null);
                             }
-                        } catch (error) {
+                        } catch {
                             Alert.alert(
                                 'Image Picker Error',
                                 'Could not open your photo library on this device. Please try taking a photo instead.'

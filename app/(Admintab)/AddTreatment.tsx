@@ -76,9 +76,6 @@ const AddTreatment = () => {
   const Handleduration = (text: string) => {
     setduration(text);
   };
-  const Handlepoints = (text: string) => {
-    setpoints(text);
-  };
   const clearInputs = () => {
     settreatmentname("");
     settreatmenttype("");
@@ -92,7 +89,7 @@ const AddTreatment = () => {
   };
   const ValidateInput = (): boolean => {
     let passed = true;
-    if (selecteditem == "treatment") {
+    if (selecteditem === "treatment") {
       if (treatmentname.length < 3 || treatmenttype.length < 3) {
         Alert.alert("Error", "field must contain 3 or more letters");
         passed = false;
@@ -100,7 +97,7 @@ const AddTreatment = () => {
         Alert.alert("Error", "price must not be characters");
         passed = false;
       }
-      if (typeof +duration != "number" || typeof +points != "number") {
+      if (typeof +duration !== "number" || typeof +points !== "number") {
         Alert.alert("Error", "field must be a number");
         passed = false;
       }
@@ -192,7 +189,7 @@ const AddTreatment = () => {
             setRefreshTrigger((prev) => prev + 1);
 
             Alert.alert("Success", "Treatment removed");
-          } catch (error) {
+          } catch {
             Alert.alert("Error", "An unexpected error occurred");
           }
         },
@@ -275,7 +272,7 @@ const AddTreatment = () => {
             setRefreshTrigger((prev) => prev + 1);
 
             Alert.alert("Success", "Product removed");
-          } catch (error) {
+          } catch {
             Alert.alert("Error", "An unexpected error occurred");
           }
         },
@@ -296,7 +293,7 @@ const AddTreatment = () => {
 
     setclicked(true);
 
-    if (selecteditem == "treatment") {
+    if (selecteditem === "treatment") {
       // Step 1: Insert service FIRST to get ServiceId
       const service: SerivceInsert = {
         servicecategory: "treatment",
@@ -460,11 +457,11 @@ const AddTreatment = () => {
             </Picker>
           </View>
         )}
-        {selecteditem == "treatment" && (
+        {selecteditem === "treatment" && (
           <View style={styles(theme).main}>
             <Text style={styles(theme).maintexts}>Add New Treatment</Text>
             <View style={styles(theme).maininputs}>
-              <PrimaryText children="Treatment Name" />
+              <PrimaryText>Treatment Name</PrimaryText>
               <Input
                 text="e.g ,Deep Tissue Massage"
                 value={treatmentname}
@@ -472,7 +469,7 @@ const AddTreatment = () => {
               />
             </View>
             <View style={styles(theme).maininputs}>
-              <PrimaryText children="Price (R)" />
+              <PrimaryText>Price (R)</PrimaryText>
               <Input
                 keyboardType="numeric"
                 text="e.g, 450"
@@ -481,7 +478,7 @@ const AddTreatment = () => {
               />
             </View>
             <View style={styles(theme).maininputs}>
-              <PrimaryText children="Treatment Type" />
+              <PrimaryText>Treatment Type</PrimaryText>
               <Input
                 keyboardType="default"
                 text="e.g, facial"
@@ -490,7 +487,7 @@ const AddTreatment = () => {
               />
             </View>
             <View style={styles(theme).maininputs}>
-              <PrimaryText children="Duration(mins)" />
+              <PrimaryText>Duration(mins)</PrimaryText>
               <Input
                 keyboardType="numeric"
                 text="e.g, 60"
@@ -555,11 +552,11 @@ const AddTreatment = () => {
             </View>
           </View>
         )}
-        {selecteditem == "product" && (
+        {selecteditem === "product" && (
           <View style={styles(theme).main}>
             <Text style={styles(theme).maintexts}>Add New Product</Text>
             <View style={styles(theme).maininputs}>
-              <PrimaryText children="Product Name" />
+              <PrimaryText>Product Name</PrimaryText>
               <Input
                 text="e.g ,Facial Product"
                 value={productname}
@@ -567,7 +564,7 @@ const AddTreatment = () => {
               />
             </View>
             <View style={styles(theme).maininputs}>
-              <PrimaryText children="Price (R)" />
+              <PrimaryText>Price (R)</PrimaryText>
               <Input
                 keyboardType="numeric"
                 text="e.g, 450"
@@ -576,7 +573,7 @@ const AddTreatment = () => {
               />
             </View>
             <View style={styles(theme).maininputs}>
-              <PrimaryText children="Product Type" />
+              <PrimaryText>Product Type</PrimaryText>
               <Input
                 keyboardType="default"
                 text="e.g, facial"
@@ -585,7 +582,7 @@ const AddTreatment = () => {
               />
             </View>
             <View style={styles(theme).maininputs}>
-              <PrimaryText children="Product Description" />
+              <PrimaryText>Product Description</PrimaryText>
               <TextInput
                 multiline={true}
                 placeholder="Product Description"

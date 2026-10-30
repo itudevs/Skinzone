@@ -70,15 +70,19 @@ const HistoryPage = () => {
 
   const fetchvisitation = useCallback(async () => {
     if (!session?.user.id) {
-      setvisitations([]);
+      setTimeout(() => setvisitations([]), 0);
       return;
     }
     const data = await Getvisitations(session.user.id, 100);
     setvisitations(data);
-  }, [session?.user.id]);
+  }, [session]);
 
   useEffect(() => {
-    fetchvisitation();
+    const timer = setTimeout(() => {
+      void fetchvisitation();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [fetchvisitation]);
 
   const onRefresh = async () => {

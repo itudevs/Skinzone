@@ -1,16 +1,9 @@
 import { Theme, useTheme } from "@/components/utils/Colours";
 import { View, Text, StyleSheet, FlatList, Alert } from "react-native";
 import SearchBar from "../../components/SearchBar";
-import PrimaryText from "@/components/PrimaryText";
 import Customer from "@/components/Customer";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-interface Customer {
-  id: string;
-  Name: string;
-  Surname: string;
-  Phone: string;
-}
 const StaffDashBoard = () => {
   const theme = useTheme();
   const [users, setusers] = useState<any>();
@@ -24,7 +17,7 @@ const StaffDashBoard = () => {
       .select("id,name,surname,phone")
       .eq("role", "user");
 
-    if (data?.length != 0) {
+    if (data?.length !== 0) {
       return data;
     }
     if (error) {

@@ -9,11 +9,16 @@ interface LinkProps {
 const Link = ({ url, children, colour }: LinkProps) => {
   const theme = useTheme();
   const handlePress = useCallback(async () => {
-    // Checking if the link is supported for links with custom URL scheme.
-    const supported = await Linking.openURL(url);
-    if (supported) {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert(`Failed to open: ${url}`);
+        return;
+      }
+
       await Linking.openURL(url);
-    } else {
+    } catch (error) {
+      console.error("Failed to open link:", error);
       Alert.alert(`Failed to open: ${url}`);
     }
   }, [url]);

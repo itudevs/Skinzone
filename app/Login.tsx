@@ -65,16 +65,21 @@ const Login = () => {
         password: password,
       });
 
-      const { data: userData } = await supabase
-        .from("User")
-        .select("role")
-        .eq("id", data.user?.id)
-        .single();
-
       if (error) {
         Alert.alert("Login Failed", error.message);
         return;
       }
+
+      if (!data.user) {
+        Alert.alert("Login Failed", "No user session was returned.");
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from("User")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
 
       if (data?.user) {
         if (userData?.role === "staff") {

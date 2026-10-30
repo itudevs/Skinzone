@@ -7,18 +7,28 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "environment": "development"
+      "environment": "development",
+      "env": {
+        "RCT_NEW_ARCH_ENABLED": "0"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "environment": "preview"
+      "environment": "preview",
+      "env": {
+        "RCT_NEW_ARCH_ENABLED": "0"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "environment": "production"
+      "environment": "production",
+      "env": {
+        "RCT_NEW_ARCH_ENABLED": "0"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "preview": {}
   }
 }

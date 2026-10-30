@@ -2,14 +2,13 @@
   "expo": {
     "name": "Skinzone",
     "slug": "skinzone",
-    "version": "1.2",
+    "version": "2.0",
     "orientation": "portrait",
-    "icon": "./assets/images/SkinzoneLogo.jpeg",
+    "icon": "./assets/images/SkinzoneLogoSquare.png",
     "backgroundColor": "#FFFFFF",
     "scheme": "za.co.skinzone",
     "userInterfaceStyle": "automatic",
     "description": "A loyalty and visit tracking app for Skinzone beauty salon customers",
-    "newArchEnabled": true,
     "primaryColor": "#00C94F",
     "ios": {
       "supportsTablet": true,
@@ -25,11 +24,10 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/SkinzoneLogo.jpeg",
-        "backgroundImage": "./assets/images/SkinzoneLogo.jpeg",
-        "monochromeImage": "./assets/images/SkinzoneLogo.jpeg"
+        "foregroundImage": "./assets/images/SkinzoneLogoSquare.png",
+        "backgroundImage": "./assets/images/SkinzoneLogoSquare.png",
+        "monochromeImage": "./assets/images/SkinzoneLogoSquare.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.skinzone.app",
       "versionCode": 2,
@@ -47,7 +45,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/SkinzoneLogo.jpeg",
+          "image": "./assets/images/SkinzoneLogoSquare.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -60,14 +58,18 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/SkinzoneLogo.jpeg",
+          "icon": "./assets/images/SkinzoneLogoSquare.png",
           "color": "#E6F4FE"
         }
-      ]
+      ],
+      "expo-web-browser",
+      "expo-image",
+      "expo-font",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "router": {},
