@@ -1,70 +1,272 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  Alert,
+  Modal,
+  ActivityIndicator,
   type ViewStyle,
 } from "react-native";
-import { Calendar, Check, ChevronDown, X } from "lucide-react-native";
+import {
+  Calendar,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+} from "lucide-react-native";
 import BookingCalendar from "@/components/BookingCalendar";
 import SearchBar from "@/components/SearchBar";
-import Colors from "@/components/utils/Colours";
-import { SafeAreaView } from "react-native-safe-area-context";
-
+import { Theme, useTheme } from "@/components/utils/Colours";
+import { UserSession } from "@/components/utils/GetUsersession";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
+import { supabase } from "@/lib/supabase";
+import type {
+  BookingInsert,
+  BookingLineInsert,
+} from "@/components/utils/DatabaseTypes";
+import { GetTreatments } from "@/components/utils/GetServices";
+import type { DropDownItems } from "@/components/utils/utilinterfaces";
+import { BookingStatus } from "@/components/utils/utilinterfaces";
 type ClientType = "first" | "returning";
-
-type TreatmentOption = {
-  name: string;
-  duration: string;
-  subtitle: string;
+const UNSURE_TREATMENT_ID = "__unsure__";
+const UNSURE_TREATMENT: DropDownItems = {
+  id: UNSURE_TREATMENT_ID,
+  value: "Unsure about treatment",
+  cost: null,
+  points: null,
+  category: "treatment",
 };
 
-const treatmentOptions: TreatmentOption[] = [
-  {
-    name: "Modified Jessner",
-    duration: "60 Mins",
-    subtitle: "Intensive",
-  },
-  {
-    name: "Microneedling & Peel",
-    duration: "60 Mins",
-    subtitle: "Intensive",
-  },
-  {
-    name: "Facial Hydration",
-    duration: "50 Mins",
-    subtitle: "Radiance",
-  },
-  {
-    name: "Back (Acne/Pimples)",
-    duration: "55 Mins",
-    subtitle: "Clarifying",
-  },
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+const defaultSlotOptions = [
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
 ];
 
-const slotOptions = ["09:30 AM", "11:00 AM", "02:15 PM", "04:00 PM"];
+const getSlotOptionsForDate = (date: Date) =>
+  date.getDay() === 6
+    ? defaultSlotOptions.filter((slot) => slot <= "13:00")
+    : defaultSlotOptions;
+
+const isSunday = (date: Date) => date.getDay() === 0;
+
+const isToday = (date: Date) => {
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+};
+
+const isSlotElapsed = (date: Date, slot: string, now = new Date()) => {
+  if (!isToday(date)) return false;
+
+  const [hours, minutes] = slot.split(":").map(Number);
+  const slotStart = new Date(now);
+  slotStart.setHours(hours, minutes, 0, 0);
+  return new Date() >= slotStart;
+};
+
+const getInitialBookingDate = () => {
+  const date = new Date();
+  if (isSunday(date)) {
+    date.setDate(date.getDate() + 1);
+  }
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+// Keep the selected calendar day stable when serializing it for Supabase.
+// Local midnight becomes the previous UTC day in South Africa.
+const toBookingDateISOString = (date: Date) =>
+  new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0),
+  ).toISOString();
+
+const isCancelledBookingStatus = (
+  status: string | number | null | undefined,
+) => {
+  const normalizedStatus = String(status ?? "")
+    .trim()
+    .toLowerCase();
+  return normalizedStatus === "3" || normalizedStatus.includes("cancel");
+};
+
+const getBookingDayBounds = (date: Date) => {
+  const startOfDay = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+  return { startOfDay, endOfDay };
+};
+
+const getContiguousSlots = (
+  startSlot: string,
+  count: number,
+  availableSlots: string[],
+  slotOptions = defaultSlotOptions,
+) => {
+  const startIndex = slotOptions.indexOf(startSlot);
+  if (startIndex < 0) return [];
+
+  const slots = slotOptions.slice(startIndex, startIndex + count);
+  return slots.length === count &&
+    slots.every((slot) => availableSlots.includes(slot))
+    ? slots
+    : [];
+};
+
+interface userBooking {
+  id: number;
+  bookingDate: Date;
+  status: string;
+  notes: string;
+  time: string;
+  treatmentName: string;
+  slotCount: number;
+  lines: { id: number; time: string }[];
+  bookingState: "active" | "completed" | "cancelled" | "past";
+}
+
+const isDateBeforeToday = (date: Date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const candidate = new Date(date);
+  candidate.setHours(0, 0, 0, 0);
+  return candidate < today;
+};
+
+const formatBookingDate = (date: Date) =>
+  new Intl.DateTimeFormat("en-ZA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
 
 const Booking = () => {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const loggedInUser = UserSession.getSession();
+  const [bookedSlotTimes, setBookedSlotTimes] = useState<string[]>([]);
   const [clientType, setClientType] = useState<ClientType>("returning");
-  const [selectedTreatment, setSelectedTreatment] = useState(
-    "Back (Acne/Pimples)",
-  );
-  const [selectedSlot, setSelectedSlot] = useState("11:00 AM");
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedSlot, setSelectedSlot] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState(getInitialBookingDate);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<
-    "all" | "active" | "completed"
+    "all" | "active" | "completed" | "cancelled"
   >("all");
-
-  const selectedDetail = useMemo(
-    () =>
-      treatmentOptions.find(
-        (treatment) => treatment.name === selectedTreatment,
-      ) ?? treatmentOptions[3],
-    [selectedTreatment],
+  const [bookings, setBookings] = useState<userBooking[]>([]);
+  const [showBookingConfirmation, setShowBookingConfirmation] = useState(false);
+  const [lastCreatedBookingId, setLastCreatedBookingId] = useState<
+    number | null
+  >(null);
+  const [payFastUrl, setPayFastUrl] = useState<string | null>(null);
+  const [payFastHtml, setPayFastHtml] = useState<string | null>(null);
+  const [isPreparingPayment, setIsPreparingPayment] = useState(false);
+  const [isPayFastLoading, setIsPayFastLoading] = useState(false);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<userBooking | null>(
+    null,
   );
+  const [showBookingDetails, setShowBookingDetails] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(new Date());
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [showFeeExplanation, setShowFeeExplanation] = useState(false);
+  const [treatments, setTreatments] = useState<DropDownItems[]>([]);
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [selectedTreatmentId, setSelectedTreatmentId] = useState<string[]>([]);
+  const bookingSubmissionInProgress = useRef(false);
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const selectedTreatmentNames = useMemo(
+    () =>
+      selectedTreatmentId
+        .map(
+          (id: string) =>
+            treatments.find((treatment: DropDownItems) => treatment.id === id)
+              ?.value,
+        )
+        .filter((name): name is string => Boolean(name)),
+    [selectedTreatmentId, treatments],
+  );
+  const slotOptions = useMemo(() => {
+    const dateSlotOptions = getSlotOptionsForDate(selectedDate);
+    const availableSlots = dateSlotOptions.filter(
+      (slot) =>
+        !bookedSlotTimes.includes(slot) &&
+        !isSlotElapsed(selectedDate, slot, currentTime),
+    );
+    const requiredSlots = Math.max(selectedTreatmentId.length, 1);
+
+    return dateSlotOptions.filter(
+      (slot) =>
+        getContiguousSlots(slot, requiredSlots, availableSlots, dateSlotOptions)
+          .length > 0,
+    );
+  }, [bookedSlotTimes, currentTime, selectedDate, selectedTreatmentId.length]);
+
+  const filteredTreatments = useMemo<DropDownItems[]>(() => {
+    const query = treatmentSearch.trim().toLowerCase();
+    if (!query) return treatments;
+
+    return treatments.filter((treatment: DropDownItems) =>
+      treatment.value.toLowerCase().includes(query),
+    );
+  }, [treatments, treatmentSearch]);
+
+  const getBookedSlotsForDate = async (date: Date): Promise<string[]> => {
+    const { startOfDay, endOfDay } = getBookingDayBounds(date);
+    const { data: bookingData, error: bookingError } = await supabase
+      .from("bookings")
+      .select("bookingid,status")
+      .gte("bookingdate", startOfDay.toISOString())
+      .lt("bookingdate", endOfDay.toISOString());
+
+    if (bookingError) throw bookingError;
+
+    const activeBookingIds = (bookingData ?? [])
+      .filter((booking) => !isCancelledBookingStatus(booking.status))
+      .map((booking) => booking.bookingid);
+
+    if (activeBookingIds.length === 0) return [];
+
+    const { data: lineData, error: lineError } = await supabase
+      .from("booking_line")
+      .select("time")
+      .in("booking_id", activeBookingIds);
+
+    if (lineError) throw lineError;
+    return (lineData ?? []).map((line) => String(line.time ?? "").slice(0, 5));
+  };
 
   const selectedDayLabel = useMemo(
     () =>
@@ -86,44 +288,28 @@ const Booking = () => {
       clientType === type ? "rgba(255,255,255,0.08)" : "transparent",
   });
 
-  const currentBookings = [
-    {
-      status: "Confirmed",
-      title: "Modified Jessner Clinical Peel",
-      date: "Mar 26, 2026 • 10:30 AM",
-      room: "Room 02",
-      specialist: "Admin S",
-      isPending: false,
-    },
-    {
-      status: "Pending Payment",
-      title: "Microneedling & Peel",
-      date: "Apr 02, 2026 • 02:15 PM",
-      room: "Room 01",
-      specialist: "Admin S",
-      fee: "R300.00",
-      isPending: true,
-    },
-  ];
+  const normalizeBookingState = (
+    status: string,
+    bookingDate: Date,
+  ): "active" | "completed" | "cancelled" | "past" => {
+    const normalizedStatus = status.trim().toLowerCase();
 
-  const pastBookings = [
-    {
-      status: "Completed",
-      title: "Back (Acne/Pimples)",
-      date: "Mar 19, 2026 • 11:00 AM",
-      specialist: "Admin S",
-      reward: "+100 PTS",
-      rewardLabel: "Earned",
-    },
-    {
-      status: "Completed",
-      title: "Facial Hydration & Glow",
-      date: "Feb 28, 2026 • 01:30 PM",
-      specialist: "Admin S",
-      reward: "+70 PTS",
-      rewardLabel: "Earned",
-    },
-  ];
+    if (isCancelledBookingStatus(normalizedStatus)) {
+      return "cancelled";
+    }
+
+    if (
+      bookingDate.setHours(0, 0, 0, 0) <
+      new Date(new Date().setHours(0, 0, 0, 0)).getTime()
+    ) {
+      return "past";
+    }
+    if (normalizedStatus.includes("complete")) {
+      return "completed";
+    }
+
+    return "active";
+  };
 
   const matchesSearch = (value: string) => {
     const query = searchQuery.trim().toLowerCase();
@@ -132,244 +318,1424 @@ const Booking = () => {
     return value.toLowerCase().includes(query);
   };
 
-  const filteredCurrentBookings = currentBookings.filter(
-    (booking) =>
+  const filteredCurrentBookings = bookings.filter((booking) => {
+    const isActiveBooking = booking.bookingState === "active";
+
+    return (
       (activeFilter === "all" || activeFilter === "active") &&
-      [booking.title, booking.date, booking.specialist, booking.status].some(
-        (value) => matchesSearch(value),
-      ),
-  );
+      isActiveBooking &&
+      [
+        booking.id.toString(),
+        booking.bookingDate.toString(),
+        booking.status,
+        booking.treatmentName,
+        booking.notes,
+      ].some((value) => matchesSearch(value))
+    );
+  });
 
-  const filteredPastBookings = pastBookings.filter(
-    (booking) =>
+  const filteredPastBookings = bookings.filter((booking) => {
+    const isCompletedBooking =
+      booking.bookingState === "completed" || booking.bookingState === "past";
+
+    return (
       (activeFilter === "all" || activeFilter === "completed") &&
-      [booking.title, booking.date, booking.specialist, booking.status].some(
-        (value) => matchesSearch(value),
-      ),
-  );
+      isCompletedBooking &&
+      [
+        booking.id.toString(),
+        booking.bookingDate.toString(),
+        booking.status,
+        booking.treatmentName,
+        booking.notes,
+      ].some((value) => matchesSearch(value))
+    );
+  });
+  const filteredCancelledBookings = bookings.filter((booking) => {
+    return (
+      (activeFilter === "all" || activeFilter === "cancelled") &&
+      booking.bookingState === "cancelled" &&
+      [
+        booking.id.toString(),
+        booking.bookingDate.toString(),
+        booking.status,
+        booking.treatmentName,
+        booking.notes,
+      ].some((value) => matchesSearch(value))
+    );
+  });
+  const activeBookingCount = bookings.filter(
+    (booking) => booking.bookingState === "active",
+  ).length;
+  const completedBookingCount = bookings.filter(
+    (booking) =>
+      booking.bookingState === "completed" || booking.bookingState === "past",
+  ).length;
+  const cancelledBookingCount = bookings.filter(
+    (booking) => booking.bookingState === "cancelled",
+  ).length;
+  const validateBooking = () => {
+    if (!loggedInUser?.user.id) {
+      Alert.alert("Error", "Please sign in before booking");
+      return false;
+    }
+    if (selectedTreatmentId.length === 0) {
+      Alert.alert("Error", "Please select a treatment");
+      return false;
+    }
+    if (selectedSlot.length !== selectedTreatmentId.length) {
+      Alert.alert("Error", "Please select an available slot");
+      return false;
+    }
+    if (selectedSlot.some((slot) => isSlotElapsed(selectedDate, slot))) {
+      Alert.alert(
+        "Error",
+        "One or more selected time slots has already passed.",
+      );
+      setSelectedSlot([]);
+      return false;
+    }
+    if (isSunday(selectedDate)) {
+      Alert.alert("Error", "Bookings are not available on Sundays");
+      return false;
+    }
+    return true;
+  };
 
-  const renderReturningClientScreen = () => (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
+  useEffect(() => {
+    let mounted = true;
+
+    GetTreatments().then((items) => {
+      if (mounted) {
+        setTreatments([UNSURE_TREATMENT, ...items]);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  const userId = loggedInUser?.user.id;
+
+  const refreshUserBookings = useCallback(async () => {
+    if (!userId) {
+      setBookings([]);
+      return;
+    }
+
+    setIsLoadingBookings(true);
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("bookingid,bookingdate,status,notes")
+        .eq("customerid", userId);
+
+      if (error) {
+        console.log("Error", error);
+        return;
+      }
+      if (data) {
+        const bookingIds = data.map((booking) => booking.bookingid);
+        const { data: lineData, error: lineError } =
+          bookingIds.length > 0
+            ? await supabase
+                .from("booking_line")
+                .select("id,booking_id,time")
+                .in("booking_id", bookingIds)
+            : { data: [], error: null };
+
+        if (lineError) {
+          console.log("Could not load booking times:", lineError);
+          return;
+        }
+
+        const linesByBooking = new Map<
+          number,
+          { id: number; time: string }[]
+        >();
+        (lineData ?? []).forEach((line) => {
+          const lines = linesByBooking.get(line.booking_id) ?? [];
+          lines.push({
+            id: line.id,
+            time: String(line.time ?? "").slice(0, 5),
+          });
+          linesByBooking.set(line.booking_id, lines);
+        });
+
+        const formattedBooking: userBooking[] = data.map((booking) => {
+          const rawStatus = String(booking.status ?? "").trim();
+
+          const notes = String(booking.notes ?? "").trim();
+          const bookingLines = (
+            linesByBooking.get(booking.bookingid) ?? []
+          ).sort((left, right) => left.time.localeCompare(right.time));
+          const bookingTimes = bookingLines.map((line) => line.time);
+          const startTime = bookingTimes[0] ?? "";
+          const endTime = bookingTimes[bookingTimes.length - 1] ?? startTime;
+          const bookingDate = new Date(booking.bookingdate);
+          const bookingState = normalizeBookingState(rawStatus, bookingDate);
+
+          return {
+            bookingDate,
+            id: booking.bookingid,
+            status: rawStatus || "Pending",
+            time:
+              startTime && endTime && startTime !== endTime
+                ? `${startTime} - ${endTime}`
+                : startTime || "Time not assigned",
+            notes,
+            treatmentName: notes || "Treatment Booking",
+            slotCount: Math.max(bookingTimes.length, 1),
+            lines: bookingLines,
+            bookingState,
+          };
+        });
+        setBookings(formattedBooking);
+      }
+    } catch (bookingError) {
+      console.log(bookingError);
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    const refreshTimer = setTimeout(() => {
+      void refreshUserBookings();
+    }, 0);
+    return () => clearTimeout(refreshTimer);
+  }, [clientType, refreshUserBookings]);
+  useEffect(() => {
+    let active = true;
+
+    const getAvailableSlots = async () => {
+      try {
+        if (isSunday(selectedDate)) {
+          if (active) {
+            setBookedSlotTimes(getSlotOptionsForDate(selectedDate));
+            setSelectedSlot([]);
+          }
+          return;
+        }
+
+        const bookedSlots = await getBookedSlotsForDate(selectedDate);
+        if (active) {
+          setBookedSlotTimes(bookedSlots);
+        }
+      } catch (availableSlotsError) {
+        console.log("Could not load available slots:", availableSlotsError);
+        if (active) {
+          Alert.alert(
+            "Error",
+            "Could not load available slots. Please try again.",
+          );
+        }
+      }
+    };
+    getAvailableSlots();
+
+    return () => {
+      active = false;
+    };
+  }, [showBookingConfirmation, selectedDate]);
+
+  const BookedUser = async (
+    userid: string,
+    date: string,
+  ): Promise<boolean | null> => {
+    try {
+      const { startOfDay, endOfDay } = getBookingDayBounds(new Date(date));
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("bookingid,status")
+        .eq("customerid", userid)
+        .gte("bookingdate", startOfDay.toISOString())
+        .lt("bookingdate", endOfDay.toISOString())
+        .limit(1);
+
+      if (error) {
+        console.log("Could not check existing booking:", error);
+        Alert.alert("Error", "Could not verify your existing bookings.");
+        return null;
+      }
+      return (data ?? []).some(
+        (booking) => !isCancelledBookingStatus(booking.status),
+      );
+    } catch (error) {
+      console.log("Error", error);
+      return null;
+    }
+  };
+  const areSlotsAvailable = async (
+    date: Date,
+    requestedSlots: string[],
+    excludedBookingId?: number,
+  ): Promise<boolean> => {
+    try {
+      const { startOfDay, endOfDay } = getBookingDayBounds(date);
+
+      const { data: bookingData, error: bookingError } = await supabase
+        .from("bookings")
+        .select("bookingid,status")
+        .gte("bookingdate", startOfDay.toISOString())
+        .lt("bookingdate", endOfDay.toISOString());
+
+      if (bookingError) throw bookingError;
+
+      const activeBookingIds = (bookingData ?? [])
+        .filter((booking) => !isCancelledBookingStatus(booking.status))
+        .filter((booking) => booking.bookingid !== excludedBookingId)
+        .map((booking) => booking.bookingid);
+      if (activeBookingIds.length === 0) return true;
+
+      const { data: lineData, error: lineError } = await supabase
+        .from("booking_line")
+        .select("time")
+        .in("booking_id", activeBookingIds);
+
+      if (lineError) throw lineError;
+
+      const bookedTimes = new Set(
+        (lineData ?? []).map((line) => String(line.time ?? "").slice(0, 5)),
+      );
+      return requestedSlots.every((slot) => !bookedTimes.has(slot));
+    } catch (error) {
+      console.log("Could not verify slot availability:", error);
+      Alert.alert(
+        "Error",
+        "Could not verify slot availability. Please try again.",
+      );
+      return false;
+    }
+  };
+
+  const openRescheduleModal = (booking: userBooking) => {
+    const startTime = booking.time.split(" - ")[0];
+    if (
+      getBookingStatus(booking.status) !== BookingStatus.Booked ||
+      booking.bookingState !== "active" ||
+      startTime === "Time not assigned"
+    ) {
+      Alert.alert("Cannot reschedule", "This booking cannot be rescheduled.");
+      return;
+    }
+
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const bookingStart = new Date(booking.bookingDate);
+    bookingStart.setHours(hours, minutes, 0, 0);
+    if (bookingStart.getTime() - currentTime.getTime() <= 24 * 60 * 60 * 1000) {
+      Alert.alert(
+        "Cannot reschedule",
+        "Bookings can only be rescheduled more than 24 hours before the scheduled start time.",
+      );
+      return;
+    }
+
+    setSelectedBooking(booking);
+    setRescheduleDate(new Date(booking.bookingDate));
+    setRescheduleTime(startTime);
+    setShowRescheduleModal(true);
+  };
+
+  const rescheduleCustomerBooking = async () => {
+    if (!selectedBooking || !rescheduleTime || isRescheduling) return;
+
+    const targetSlotOptions = getSlotOptionsForDate(rescheduleDate);
+    const availableSlots = targetSlotOptions.filter(
+      (slot) => !isSlotElapsed(rescheduleDate, slot, currentTime),
+    );
+    const requestedSlots = getContiguousSlots(
+      rescheduleTime,
+      selectedBooking.slotCount,
+      availableSlots,
+      targetSlotOptions,
+    );
+    const targetStart = new Date(rescheduleDate);
+    const [hours, minutes] = rescheduleTime.split(":").map(Number);
+    targetStart.setHours(hours, minutes, 0, 0);
+
+    if (
+      isSunday(rescheduleDate) ||
+      targetStart.getTime() - Date.now() < 24 * 60 * 60 * 1000 ||
+      requestedSlots.length !== selectedBooking.slotCount
+    ) {
+      Alert.alert(
+        "Invalid reschedule",
+        "Choose an available time that is more than 24 hours away.",
+      );
+      return;
+    }
+
+    if (
+      !(await areSlotsAvailable(
+        rescheduleDate,
+        requestedSlots,
+        selectedBooking.id,
+      ))
+    ) {
+      Alert.alert(
+        "Time unavailable",
+        "One or more selected slots is no longer available.",
+      );
+      return;
+    }
+
+    setIsRescheduling(true);
+    try {
+      if (selectedBooking.lines.length !== selectedBooking.slotCount) {
+        throw new Error("Booking time lines could not be loaded.");
+      }
+
+      const { error: bookingError } = await supabase
+        .from("bookings")
+        .update({ bookingdate: toBookingDateISOString(rescheduleDate) })
+        .eq("bookingid", selectedBooking.id);
+      if (bookingError) throw bookingError;
+
+      const lineUpdates = await Promise.all(
+        selectedBooking.lines.map((line, index) =>
+          supabase
+            .from("booking_line")
+            .update({ time: `${requestedSlots[index]}:00` })
+            .eq("id", line.id)
+            .eq("booking_id", selectedBooking.id),
+        ),
+      );
+      const lineUpdateError = lineUpdates.find((result) => result.error)?.error;
+      if (lineUpdateError) throw lineUpdateError;
+
+      const updatedBooking = {
+        ...selectedBooking,
+        bookingDate: rescheduleDate,
+        time:
+          requestedSlots.length > 1
+            ? `${requestedSlots[0]} - ${requestedSlots[requestedSlots.length - 1]}`
+            : requestedSlots[0],
+      };
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === updatedBooking.id ? updatedBooking : booking,
+        ),
+      );
+      setSelectedBooking(updatedBooking);
+      setShowRescheduleModal(false);
+      Alert.alert(
+        "Booking rescheduled",
+        "Your booking was successfully rescheduled.",
+      );
+    } catch (error) {
+      console.log("Could not reschedule booking:", error);
+      Alert.alert(
+        "Error",
+        "The booking could not be rescheduled. Please try again.",
+      );
+    } finally {
+      setIsRescheduling(false);
+    }
+  };
+  const CancelBooking = async (id: number) => {
+    const foundBooking = bookings.find((booking) => booking.id === id);
+    if (!foundBooking) {
+      Alert.alert("Cancel Error", "Booking details could not be found.");
+      return;
+    }
+    if (isDateBeforeToday(foundBooking.bookingDate)) {
+      Alert.alert("Cancel Error", "Past bookings cannot be cancelled.");
+      return;
+    }
+    if (getBookingStatus(foundBooking.status) === BookingStatus.Cancelled) {
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      if (
+        foundBooking.bookingDate.toDateString() === new Date().toDateString()
+      ) {
+        Alert.alert(
+          "Cancel Error",
+          "Cannot cancel booking on the day of booking. Please call Skinzone Naturel to cancel or reschedule.",
+        );
+        return;
+      }
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status: BookingStatus.Cancelled })
+        .eq("bookingid", id);
+      if (error) {
+        Alert.alert("Error", error.message);
+        console.log("booked user error", error);
+        return;
+      }
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === id
+            ? { ...booking, status: BookingStatus.Cancelled }
+            : booking,
+        ),
+      );
+      setSelectedBooking((current) =>
+        current?.id === id
+          ? { ...current, status: BookingStatus.Cancelled }
+          : current,
+      );
+      Alert.alert("Booking cancelled", "Your booking has been cancelled.");
+    } catch (error) {
+      Alert.alert("Failed to cancel booking", "Please try again.");
+      console.log(error);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+  const bookClient = async () => {
+    if (bookingSubmissionInProgress.current) return;
+    bookingSubmissionInProgress.current = true;
+    setIsSubmittingBooking(true);
+    setClientType("first");
+    if (!validateBooking()) {
+      bookingSubmissionInProgress.current = false;
+      setIsSubmittingBooking(false);
+      return;
+    }
+    try {
+      Alert.alert(
+        "Confirm",
+        `Are you sure you want to confirm your booking for ${selectedDayLabel}? at ${selectedSlot[0]} to ${selectedSlot[selectedSlot.length - 1]}`,
+        [
+          {
+            text: "Confirm",
+            onPress: async () => {
+              if (
+                selectedSlot.some((slot) => isSlotElapsed(selectedDate, slot))
+              ) {
+                Alert.alert(
+                  "Cannot Book",
+                  "One or more selected time slots has already passed.",
+                );
+                setSelectedSlot([]);
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
+                return;
+              }
+              const alreadyBooked = await BookedUser(
+                loggedInUser!.user.id,
+                toBookingDateISOString(selectedDate),
+              );
+              if (alreadyBooked === null) {
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
+                return;
+              }
+              if (alreadyBooked) {
+                Alert.alert(
+                  "Cannot Book",
+                  "Please reschedule or cancel booking ",
+                );
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
+                return;
+              }
+              if (!(await areSlotsAvailable(selectedDate, selectedSlot))) {
+                Alert.alert(
+                  "Cannot Book",
+                  "One or more selected slots are no longer available.",
+                );
+                setSelectedSlot([]);
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
+                return;
+              }
+              const Booking: BookingInsert = {
+                customerid: loggedInUser!.user.id,
+                bookingdate: toBookingDateISOString(selectedDate),
+                status: BookingStatus.Pending,
+                notes: selectedTreatmentNames.join(", ") || "Treatment Booking",
+              };
+              const { data, error } = await supabase
+                .from("bookings")
+                .insert(Booking)
+                .select()
+                .single();
+
+              if (error || !data) {
+                Alert.alert(
+                  "Error",
+                  error?.message ?? "Could not create booking",
+                );
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
+                return;
+              }
+
+              const bookingLines: BookingLineInsert[] = selectedTreatmentId.map(
+                (treatmentId, index) => ({
+                  booking_id: data.bookingid,
+                  treatment_id:
+                    treatmentId === UNSURE_TREATMENT_ID
+                      ? null
+                      : Number(treatmentId),
+                  time: selectedSlot[index],
+                }),
+              );
+              const { error: lineError } = await supabase
+                .from("booking_line")
+                .insert(bookingLines);
+              if (lineError) {
+                await supabase
+                  .from("bookings")
+                  .delete()
+                  .eq("bookingid", data.bookingid);
+                Alert.alert("Booking Error", "Could not book all treatments");
+                console.log("booking line insert error", lineError);
+                bookingSubmissionInProgress.current = false;
+                setIsSubmittingBooking(false);
+                return;
+              }
+
+              const { error: emailError } = await supabase.functions.invoke(
+                "confirmation_email",
+                {
+                  body: {
+                    bookingid: data.bookingid,
+                  },
+                },
+              );
+
+              if (emailError) {
+                console.error("Booking confirmation email failed:", emailError);
+                Alert.alert(
+                  "Booking confirmed",
+                  "Your booking was saved, but we could not send the confirmation email. Please contact SkinZone Naturel.",
+                );
+              }
+
+              setLastCreatedBookingId(data.bookingid);
+              await refreshUserBookings();
+              setShowBookingConfirmation(true);
+              bookingSubmissionInProgress.current = false;
+              setIsSubmittingBooking(false);
+            },
+            style: "default",
+          },
+          {
+            text: "Cancel",
+            onPress: () => {
+              bookingSubmissionInProgress.current = false;
+              setIsSubmittingBooking(false);
+            },
+            style: "cancel",
+          },
+        ],
+      );
+    } catch (bookingError) {
+      bookingSubmissionInProgress.current = false;
+      setIsSubmittingBooking(false);
+      console.log(bookingError);
+    }
+  };
+  const openPayFastPayment = async (bookingId = lastCreatedBookingId) => {
+    if (!bookingId || !loggedInUser?.user.id) {
+      Alert.alert("Payment error", "The booking reference could not be found.");
+      return;
+    }
+
+    const currentBooking = bookings.find((booking) => booking.id === bookingId);
+    if (
+      currentBooking &&
+      getBookingStatus(currentBooking.status) !== BookingStatus.Pending
+    ) {
+      Alert.alert("Payment unavailable", "This booking has already been paid.");
+      return;
+    }
+
+    setIsPreparingPayment(true);
+    const paymentEndpoint = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/payfast-payment`;
+
+    if (!paymentEndpoint.startsWith("http")) {
+      setIsPreparingPayment(false);
+      Alert.alert("Payment error", "PayFast is not configured for this app.");
+      return;
+    }
+
+    const url = new URL(paymentEndpoint);
+    url.searchParams.set("booking_id", String(bookingId));
+    url.searchParams.set("customer_id", loggedInUser.user.id);
+
+    try {
+      const paymentResponse = await fetch(url.toString());
+      const paymentPayload = (await paymentResponse.json()) as {
+        payfastUrl?: string;
+        fields?: Record<string, string>;
+        error?: string;
+      };
+
+      if (
+        !paymentResponse.ok ||
+        !paymentPayload.payfastUrl ||
+        !paymentPayload.fields
+      ) {
+        throw new Error(
+          `Payment form request failed (${paymentResponse.status}): ${
+            paymentPayload.error ??
+            "The PayFast payment form could not be created."
+          }`,
+        );
+      }
+
+      setPayFastUrl(url.toString());
+      const formFields = Object.entries(paymentPayload.fields)
+        .map(
+          ([name, value]) =>
+            `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
+        )
+        .join("");
+      setPayFastHtml(`<!doctype html>
+<html><body>
+<form id="payfast-form" method="post" action="${escapeHtml(paymentPayload.payfastUrl)}">
+${formFields}
+</form>
+<script>document.getElementById("payfast-form").submit();</script>
+</body></html>`);
+      setIsPreparingPayment(false);
+      setIsPayFastLoading(true);
+    } catch (error) {
+      console.error("Could not open PayFast:", error);
+      setIsPreparingPayment(false);
+      Alert.alert(
+        "Payment error",
+        error instanceof Error
+          ? error.message
+          : "Could not open the PayFast payment page.",
+      );
+    }
+  };
+  const payForNewBooking = async () => {
+    if (isPreparingPayment || isPayFastLoading) return;
+    setShowBookingConfirmation(false);
+    await openPayFastPayment(lastCreatedBookingId);
+  };
+  const renderPayFastModal = () => (
+    <Modal
+      visible={isPreparingPayment || Boolean(payFastUrl && payFastHtml)}
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={() => {
+        setIsPreparingPayment(false);
+        setIsPayFastLoading(false);
+        setPayFastUrl(null);
+        setPayFastHtml(null);
+      }}
     >
-      <SafeAreaView>
-        <View style={styles.toggleRow}>
-          <Pressable
-            onPress={() => setClientType("first")}
-            style={toggleButtonStyle("first")}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                clientType === "first" && styles.toggleTextActive,
-              ]}
-            >
-              Book Visit
+      <SafeAreaView
+        style={[
+          styles(theme).paymentWebViewContainer,
+          {
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+          },
+        ]}
+        edges={[]}
+      >
+        <View style={styles(theme).paymentModalContent}>
+          <View style={styles(theme).paymentWebViewHeader}>
+            <Text style={styles(theme).paymentWebViewTitle}>
+              Pay booking fee
             </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setClientType("returning")}
-            style={toggleButtonStyle("returning")}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                clientType === "returning" && styles.toggleTextActive,
-              ]}
+            <Pressable
+              style={styles(theme).paymentWebViewClose}
+              onPress={() => {
+                setIsPreparingPayment(false);
+                setIsPayFastLoading(false);
+                setPayFastUrl(null);
+                setPayFastHtml(null);
+              }}
             >
-              Manage Bookings
-            </Text>
-          </Pressable>
+              <Text style={styles(theme).paymentWebViewCloseText}>Close</Text>
+            </Pressable>
+          </View>
+          {payFastHtml ? (
+            <View style={styles(theme).paymentWebViewContent}>
+              <WebView
+                source={{ html: payFastHtml, baseUrl: payFastUrl ?? undefined }}
+                style={{ opacity: isPayFastLoading ? 0 : 1 }}
+                javaScriptEnabled
+                domStorageEnabled
+                originWhitelist={["*"]}
+                onNavigationStateChange={(navigationState) => {
+                  if (
+                    navigationState.url.includes(
+                      "/functions/v1/payfast-cancel",
+                    ) ||
+                    navigationState.url.includes(
+                      "/functions/v1/payfast-return",
+                    ) ||
+                    navigationState.url.startsWith(
+                      "za.co.skinzone://payment/cancelled",
+                    ) ||
+                    navigationState.url.startsWith(
+                      "za.co.skinzone://payment/complete",
+                    )
+                  ) {
+                    setIsPayFastLoading(false);
+                    setIsPreparingPayment(false);
+                    setPayFastUrl(null);
+                    setPayFastHtml(null);
+                    setShowBookingConfirmation(false);
+                    void refreshUserBookings();
+                  }
+                }}
+                // The initial loading state is set before the WebView mounts.
+                // Do not restart the overlay for PayFast's internal navigation.
+                onLoadStart={() => {}}
+                onLoadEnd={() => setIsPayFastLoading(false)}
+                onShouldStartLoadWithRequest={(request) => {
+                  if (
+                    request.url.includes("/functions/v1/payfast-cancel") ||
+                    request.url.includes("/functions/v1/payfast-return") ||
+                    request.url.startsWith(
+                      "za.co.skinzone://payment/cancelled",
+                    ) ||
+                    request.url.startsWith("za.co.skinzone://payment/complete")
+                  ) {
+                    setIsPayFastLoading(false);
+                    setIsPreparingPayment(false);
+                    setPayFastUrl(null);
+                    setPayFastHtml(null);
+                    setShowBookingConfirmation(false);
+                    void refreshUserBookings();
+                    return false;
+                  }
+                  return true;
+                }}
+              />
+              {isPayFastLoading ? (
+                <View style={styles(theme).paymentLoadingOverlay}>
+                  <ActivityIndicator size="large" color={theme.Primary900} />
+                  <Text style={styles(theme).paymentLoadingText}>
+                    Loading secure payment...
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          {isPreparingPayment ? (
+            <View style={styles(theme).paymentLoadingOverlay}>
+              <ActivityIndicator size="large" color={theme.Primary900} />
+              <Text style={styles(theme).paymentLoadingText}>
+                Preparing secure payment...
+              </Text>
+            </View>
+          ) : null}
         </View>
       </SafeAreaView>
-      <SearchBar
-        Placeholder="Search by treatment"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
+    </Modal>
+  );
+  const getBookingStatus = (status: string | number): BookingStatus => {
+    const normalizedStatus = String(status).trim().toLowerCase();
 
-      <View style={styles.filterRow}>
-        <Pressable
-          onPress={() => setActiveFilter("all")}
-          style={[
-            styles.filterChip,
-            activeFilter === "all" && styles.filterChipActive,
-          ]}
-        >
-          <Text
-            style={
-              activeFilter === "all"
-                ? styles.filterChipTextActive
-                : styles.filterChipText
-            }
-          >
-            All ({currentBookings.length + pastBookings.length})
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveFilter("active")}
-          style={[
-            styles.filterChip,
-            activeFilter === "active" && styles.filterChipActive,
-          ]}
-        >
-          <Text
-            style={
-              activeFilter === "active"
-                ? styles.filterChipTextActive
-                : styles.filterChipText
-            }
-          >
-            Active ({currentBookings.length})
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveFilter("completed")}
-          style={[
-            styles.filterChip,
-            activeFilter === "completed" && styles.filterChipActive,
-          ]}
-        >
-          <Text
-            style={
-              activeFilter === "completed"
-                ? styles.filterChipTextActive
-                : styles.filterChipText
-            }
-          >
-            Completed ({pastBookings.length})
-          </Text>
-        </Pressable>
-      </View>
+    if (normalizedStatus === "0" || normalizedStatus.includes("complete")) {
+      return BookingStatus.Completed;
+    }
 
-      <Text style={styles.sectionHeading}>
-        Current Bookings{" "}
-        <Text style={styles.countBadge}>{filteredCurrentBookings.length}</Text>
-      </Text>
+    if (normalizedStatus === "1" || normalizedStatus.includes("pending")) {
+      return BookingStatus.Pending;
+    }
+    if (normalizedStatus === "2" || normalizedStatus.includes("booked")) {
+      return BookingStatus.Booked;
+    }
+    return BookingStatus.Cancelled;
+  };
+  const renderReturningClientScreen = () => (
+    <>
+      <ScrollView
+        style={styles(theme).screen}
+        contentContainerStyle={styles(theme).contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <SafeAreaView>
+          <View style={styles(theme).toggleRow}>
+            <Pressable
+              onPress={() => setClientType("first")}
+              style={toggleButtonStyle("first")}
+            >
+              <Text
+                style={[
+                  styles(theme).toggleText,
+                  clientType === "first" && styles(theme).toggleTextActive,
+                ]}
+              >
+                Book Visit
+              </Text>
+            </Pressable>
 
-      {filteredCurrentBookings.length === 0 ? (
-        <Text style={styles.emptyStateText}>No matching current bookings.</Text>
-      ) : (
-        filteredCurrentBookings.map((booking) => (
-          <View key={booking.title} style={styles.bookingCard}>
-            <View style={styles.bookingHeaderRow}>
-              <View style={styles.bookingStatusWrap}>
-                <View
-                  style={[
-                    styles.statusDot,
-                    booking.isPending
-                      ? styles.statusDotWarning
-                      : styles.statusDotSuccess,
-                  ]}
-                />
+            <Pressable
+              onPress={() => setClientType("returning")}
+              style={toggleButtonStyle("returning")}
+            >
+              <Text
+                style={[
+                  styles(theme).toggleText,
+                  clientType === "returning" && styles(theme).toggleTextActive,
+                ]}
+              >
+                Manage Bookings
+              </Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+        <SearchBar
+          Placeholder="Search by treatment"
+          size="fullWidthCompact"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles(theme).filterRow}
+        >
+          <Pressable
+            onPress={() => setActiveFilter("all")}
+            style={[
+              styles(theme).filterChip,
+              activeFilter === "all" && styles(theme).filterChipActive,
+            ]}
+          >
+            <Text
+              style={
+                activeFilter === "all"
+                  ? styles(theme).filterChipTextActive
+                  : styles(theme).filterChipText
+              }
+            >
+              All ({bookings.length})
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveFilter("active")}
+            style={[
+              styles(theme).filterChip,
+              activeFilter === "active" && styles(theme).filterChipActive,
+            ]}
+          >
+            <Text
+              style={
+                activeFilter === "active"
+                  ? styles(theme).filterChipTextActive
+                  : styles(theme).filterChipText
+              }
+            >
+              Active ({activeBookingCount})
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveFilter("completed")}
+            style={[
+              styles(theme).filterChip,
+              activeFilter === "completed" && styles(theme).filterChipActive,
+            ]}
+          >
+            <Text
+              style={
+                activeFilter === "completed"
+                  ? styles(theme).filterChipTextActive
+                  : styles(theme).filterChipText
+              }
+            >
+              Completed ({completedBookingCount})
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveFilter("cancelled")}
+            style={[
+              styles(theme).filterChip,
+              activeFilter === "cancelled" &&
+                styles(theme).filterChipCancelledActive,
+            ]}
+          >
+            <Text
+              style={
+                activeFilter === "cancelled"
+                  ? styles(theme).filterChipTextCancelledActive
+                  : styles(theme).filterChipText
+              }
+            >
+              Cancelled ({cancelledBookingCount})
+            </Text>
+          </Pressable>
+        </ScrollView>
+
+        {activeFilter !== "cancelled" ? (
+          <Text style={styles(theme).sectionHeading}>
+            Current Bookings{" "}
+            <Text style={styles(theme).countBadge}>
+              {filteredCurrentBookings.length}
+            </Text>
+          </Text>
+        ) : null}
+
+        {activeFilter !== "cancelled" && isLoadingBookings ? (
+          <View style={styles(theme).bookingListLoading}>
+            <ActivityIndicator size="small" color={theme.Primary900} />
+            <Text style={styles(theme).paymentLoadingText}>
+              Refreshing bookings...
+            </Text>
+          </View>
+        ) : activeFilter !== "cancelled" &&
+          filteredCurrentBookings.length === 0 ? (
+          <Text style={styles(theme).emptyStateText}>
+            No matching current bookings.
+          </Text>
+        ) : activeFilter !== "cancelled" ? (
+          filteredCurrentBookings.map((booking) => {
+            const isPendingBooking =
+              getBookingStatus(booking.status) === BookingStatus.Pending;
+
+            return (
+              <Pressable
+                key={booking.id}
+                style={styles(theme).bookingCard}
+                onPress={() => {
+                  setSelectedBooking(booking);
+                  setShowBookingDetails(true);
+                }}
+              >
+                <View style={styles(theme).bookingHeaderRow}>
+                  <View style={styles(theme).bookingStatusWrap}>
+                    <View
+                      style={[
+                        styles(theme).statusDot,
+                        isPendingBooking
+                          ? styles(theme).statusDotWarning
+                          : styles(theme).statusDotSuccess,
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles(theme).bookingStatusText,
+                        isPendingBooking &&
+                          styles(theme).bookingStatusTextWarning,
+                      ]}
+                    >
+                      {getBookingStatus(booking.status)}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles(theme).bookingTitle}>
+                  {booking.treatmentName}
+                </Text>
+
+                <View style={styles(theme).bookingMetaRow}>
+                  <Text style={styles(theme).metaText}>
+                    {formatBookingDate(booking.bookingDate)}
+                  </Text>
+                  <Text style={styles(theme).metaText}>{booking.time}</Text>
+                </View>
+
+                {isPendingBooking ? (
+                  <View style={styles(theme).pendingFooter}>
+                    <Pressable
+                      style={styles(theme).primaryActionWide}
+                      onPress={() => void openPayFastPayment(booking.id)}
+                    >
+                      <Text style={styles(theme).primaryActionWideText}>
+                        Pay Booking Fee R300
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        Alert.alert(
+                          "Cancel Booking",
+                          `Are you sure you wish to cancel the booking on ${formatBookingDate(
+                            booking.bookingDate,
+                          )}?`,
+                          [
+                            {
+                              text: "Confirm",
+                              onPress: () => {
+                                CancelBooking(booking.id);
+                              },
+                              style: "destructive",
+                            },
+                            {
+                              text: "Cancel",
+                              onPress: () => {},
+                              style: "cancel",
+                            },
+                          ],
+                        );
+                      }}
+                      style={styles(theme).secondaryAction}
+                    >
+                      <Text style={styles(theme).secondaryActionText}>
+                        Cancel
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles(theme).actionRow}>
+                    <Pressable
+                      style={styles(theme).actionButton}
+                      onPress={() => {
+                        openRescheduleModal(booking);
+                      }}
+                    >
+                      <Text style={styles(theme).actionButtonText}>
+                        Manage / Reschedule
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles(theme).iconButton}
+                      onPress={() => {
+                        openRescheduleModal(booking);
+                      }}
+                    >
+                      <Calendar color={theme.TextColour} size={18} />
+                    </Pressable>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })
+        ) : null}
+
+        {activeFilter !== "cancelled" ? (
+          <Text style={styles(theme).sectionHeading}>
+            Past Bookings{" "}
+            <Text style={styles(theme).countBadge}>
+              {filteredPastBookings.length}
+            </Text>
+          </Text>
+        ) : null}
+
+        {activeFilter !== "cancelled" && filteredPastBookings.length === 0 ? (
+          <Text style={styles(theme).emptyStateText}>
+            No matching past bookings.
+          </Text>
+        ) : activeFilter !== "cancelled" ? (
+          filteredPastBookings.map((booking) => (
+            <Pressable
+              key={booking.id}
+              style={[
+                styles(theme).bookingCardPast,
+                booking.bookingState === "past" &&
+                  styles(theme).bookingCardPastDay,
+              ]}
+              onPress={() => {
+                setSelectedBooking(booking);
+                setShowBookingDetails(true);
+              }}
+            >
+              <View style={styles(theme).bookingHeaderRow}>
                 <Text
                   style={[
-                    styles.bookingStatusText,
-                    booking.isPending && styles.bookingStatusTextWarning,
+                    styles(theme).bookingStatusTextPast,
+                    booking.bookingState === "past" &&
+                      styles(theme).bookingStatusTextPastDay,
                   ]}
                 >
-                  {booking.status}
+                  {booking.bookingState === "past" ? "Past" : booking.status}
                 </Text>
               </View>
-              <Text style={styles.specialistText}>{booking.specialist}</Text>
-            </View>
 
-            <Text style={styles.bookingTitle}>{booking.title}</Text>
+              <View style={styles(theme).rewardRow}>
+                <Text style={styles(theme).bookingTitle}>
+                  {booking.treatmentName}
+                </Text>
+              </View>
 
-            <View style={styles.bookingMetaRow}>
-              <Text style={styles.metaText}>{booking.date}</Text>
-              <Text style={styles.metaText}>{booking.room}</Text>
-            </View>
+              <View style={styles(theme).bookingMetaRow}>
+                <Text style={styles(theme).metaText}>
+                  {formatBookingDate(booking.bookingDate)}
+                </Text>
+                <Text style={styles(theme).metaText}>{booking.time}</Text>
+              </View>
 
-            {booking.isPending ? (
-              <View style={styles.pendingFooter}>
-                <Pressable style={styles.primaryActionWide}>
-                  <Text style={styles.primaryActionWideText}>
-                    Pay Booking Fee ({booking.fee})
-                  </Text>
+              <View style={styles(theme).actionRow}>
+                <Pressable
+                  style={styles(theme).actionButton}
+                  onPress={() => {
+                    setSelectedBooking(booking);
+                    setShowBookingDetails(true);
+                  }}
+                >
+                  <Text style={styles(theme).actionButtonText}>Book Again</Text>
                 </Pressable>
-                <Pressable style={styles.secondaryAction}>
-                  <Text style={styles.secondaryActionText}>Cancel</Text>
+                <Pressable
+                  style={styles(theme).actionButton}
+                  onPress={() => {
+                    setSelectedBooking(booking);
+                    setShowBookingDetails(true);
+                  }}
+                >
+                  <Text style={styles(theme).actionButtonText}>Summary</Text>
                 </Pressable>
               </View>
+            </Pressable>
+          ))
+        ) : null}
+
+        {activeFilter === "all" || activeFilter === "cancelled" ? (
+          <>
+            <View style={styles(theme).cancelledSectionHeader}>
+              <View style={styles(theme).cancelledSectionIndicator} />
+              <View style={styles(theme).cancelledSectionCopy}>
+                <Text style={styles(theme).cancelledSectionTitle}>
+                  Cancelled Bookings
+                </Text>
+                <Text style={styles(theme).cancelledSectionSubtitle}>
+                  {filteredCancelledBookings.length} booking
+                  {filteredCancelledBookings.length === 1 ? "" : "s"} not
+                  included in the active schedule
+                </Text>
+              </View>
+            </View>
+            {filteredCancelledBookings.length === 0 ? (
+              <Text style={styles(theme).emptyStateText}>
+                No matching cancelled bookings.
+              </Text>
             ) : (
-              <View style={styles.actionRow}>
-                <Pressable style={styles.actionButton}>
-                  <Text style={styles.actionButtonText}>
-                    Manage / Reschedule
+              filteredCancelledBookings.map((booking) => (
+                <Pressable
+                  key={booking.id}
+                  style={[
+                    styles(theme).bookingCardPast,
+                    styles(theme).bookingCardCancelled,
+                  ]}
+                  onPress={() => {
+                    setSelectedBooking(booking);
+                    setShowBookingDetails(true);
+                  }}
+                >
+                  <View style={styles(theme).bookingHeaderRow}>
+                    <View style={styles(theme).bookingStatusWrap}>
+                      <View
+                        style={[
+                          styles(theme).statusDot,
+                          styles(theme).statusDotCancelled,
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles(theme).bookingStatusTextPast,
+                          styles(theme).bookingStatusTextCancelled,
+                        ]}
+                      >
+                        Cancelled
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles(theme).bookingTitle}>
+                    {booking.treatmentName}
                   </Text>
+                  <View style={styles(theme).bookingMetaRow}>
+                    <Text style={styles(theme).metaText}>
+                      {formatBookingDate(booking.bookingDate)}
+                    </Text>
+                    <Text style={styles(theme).metaText}>{booking.time}</Text>
+                  </View>
+                  <Pressable
+                    style={[
+                      styles(theme).actionButton,
+                      styles(theme).cancelledSummaryButton,
+                    ]}
+                    onPress={() => {
+                      setSelectedBooking(booking);
+                      setShowBookingDetails(true);
+                    }}
+                  >
+                    <Text style={styles(theme).cancelledSummaryButtonText}>
+                      View Summary
+                    </Text>
+                  </Pressable>
                 </Pressable>
-                <Pressable style={styles.iconButton}>
-                  <Calendar color={Colors.TextColour} size={18} />
-                </Pressable>
-              </View>
+              ))
             )}
+          </>
+        ) : null}
+
+        <Pressable
+          onPress={() => setClientType("first")}
+          style={styles(theme).newBookingButton}
+        >
+          <Text style={styles(theme).newBookingText}>
+            + Book New Appointment
+          </Text>
+        </Pressable>
+      </ScrollView>
+      <Modal
+        visible={showBookingDetails}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBookingDetails(false)}
+      >
+        <View style={styles(theme).bookingDetailsOverlay}>
+          <View style={styles(theme).bookingDetailsModal}>
+            <Text style={styles(theme).bookingDetailsTitle}>
+              Booking Details
+            </Text>
+            {selectedBooking ? (
+              <>
+                <Text style={styles(theme).bookingDetailsTreatment}>
+                  {selectedBooking.treatmentName}
+                </Text>
+                <Text style={styles(theme).bookingDetailsLabel}>Status</Text>
+                <Text style={styles(theme).bookingDetailsValue}>
+                  {selectedBooking.bookingState === "cancelled"
+                    ? "Cancelled"
+                    : selectedBooking.bookingState === "past"
+                      ? "Past"
+                      : getBookingStatus(selectedBooking.status)}
+                </Text>
+                <Text style={styles(theme).bookingDetailsLabel}>Date</Text>
+                <Text style={styles(theme).bookingDetailsValue}>
+                  {formatBookingDate(selectedBooking.bookingDate)}
+                </Text>
+                <Text style={styles(theme).bookingDetailsLabel}>Time</Text>
+                <Text style={styles(theme).bookingDetailsValue}>
+                  {selectedBooking.time || "Not assigned"}
+                </Text>
+                {selectedBooking.notes ? (
+                  <>
+                    <Text style={styles(theme).bookingDetailsLabel}>Notes</Text>
+                    <Text style={styles(theme).bookingDetailsValue}>
+                      {selectedBooking.notes}
+                    </Text>
+                  </>
+                ) : null}
+                {getBookingStatus(selectedBooking.status) !==
+                  BookingStatus.Cancelled &&
+                selectedBooking.bookingState !== "past" ? (
+                  <Pressable
+                    style={styles(theme).cancelBookingButton}
+                    disabled={isCancelling}
+                    onPress={() =>
+                      Alert.alert(
+                        "Cancel Booking",
+                        "Are you sure you want to cancel this booking?",
+                        [
+                          { text: "Keep Booking", style: "cancel" },
+                          {
+                            text: "Cancel Booking",
+                            style: "destructive",
+                            onPress: () =>
+                              void CancelBooking(selectedBooking.id),
+                          },
+                        ],
+                      )
+                    }
+                  >
+                    <Text style={styles(theme).cancelBookingButtonText}>
+                      {isCancelling ? "Cancelling..." : "Cancel Booking"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </>
+            ) : null}
+            <Pressable
+              style={styles(theme).bookingDetailsClose}
+              onPress={() => setShowBookingDetails(false)}
+            >
+              <Text style={styles(theme).bookingDetailsCloseText}>Close</Text>
+            </Pressable>
           </View>
-        ))
-      )}
-
-      <Text style={styles.sectionHeading}>
-        Past Bookings{" "}
-        <Text style={styles.countBadge}>{filteredPastBookings.length}</Text>
-      </Text>
-
-      {filteredPastBookings.length === 0 ? (
-        <Text style={styles.emptyStateText}>No matching past bookings.</Text>
-      ) : (
-        filteredPastBookings.map((booking) => (
-          <View key={booking.title} style={styles.bookingCardPast}>
-            <View style={styles.bookingHeaderRow}>
-              <Text style={styles.bookingStatusTextPast}>{booking.status}</Text>
-              <Text style={styles.rewardText}>{booking.reward}</Text>
-            </View>
-
-            <View style={styles.rewardRow}>
-              <Text style={styles.bookingTitle}>{booking.title}</Text>
-              <Text style={styles.rewardLabel}>{booking.rewardLabel}</Text>
-            </View>
-
-            <View style={styles.bookingMetaRow}>
-              <Text style={styles.metaText}>{booking.date}</Text>
-              <Text style={styles.metaText}>{booking.specialist}</Text>
-            </View>
-
-            <View style={styles.actionRow}>
-              <Pressable style={styles.actionButton}>
-                <Text style={styles.actionButtonText}>Book Again</Text>
+        </View>
+      </Modal>
+      <Modal
+        visible={showRescheduleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRescheduleModal(false)}
+      >
+        <View style={styles(theme).bookingDetailsOverlay}>
+          <View style={styles(theme).rescheduleModal}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles(theme).bookingDetailsTitle}>
+                Reschedule Booking
+              </Text>
+              {selectedBooking ? (
+                <Text style={styles(theme).bookingDetailsTreatment}>
+                  {selectedBooking.treatmentName}
+                </Text>
+              ) : null}
+              <Text style={styles(theme).bookingDetailsLabel}>New date</Text>
+              <BookingCalendar
+                selectedDate={rescheduleDate}
+                onDateChange={(date) => {
+                  setRescheduleDate(date);
+                  setRescheduleTime("");
+                }}
+                textColor={theme.treatmentModalText}
+              />
+              <Text style={styles(theme).bookingDetailsLabel}>
+                Available time
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles(theme).rescheduleSlotRow}
+              >
+                {getSlotOptionsForDate(rescheduleDate).map((slot) => {
+                  const isSelected = slot === rescheduleTime;
+                  return (
+                    <Pressable
+                      key={slot}
+                      onPress={() => setRescheduleTime(slot)}
+                      style={[
+                        styles(theme).rescheduleSlot,
+                        isSelected && styles(theme).rescheduleSlotSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles(theme).rescheduleSlotText,
+                          isSelected &&
+                            styles(theme).rescheduleSlotTextSelected,
+                        ]}
+                      >
+                        {slot}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable
+                style={styles(theme).confirmationButton}
+                disabled={isRescheduling}
+                onPress={() => void rescheduleCustomerBooking()}
+              >
+                <Text style={styles(theme).confirmationButtonText}>
+                  {isRescheduling ? "Rescheduling..." : "Confirm Reschedule"}
+                </Text>
               </Pressable>
-              <Pressable style={styles.actionButton}>
-                <Text style={styles.actionButtonText}>Summary</Text>
+              <Pressable
+                style={styles(theme).bookingDetailsClose}
+                onPress={() => setShowRescheduleModal(false)}
+              >
+                <Text style={styles(theme).bookingDetailsCloseText}>Close</Text>
               </Pressable>
-            </View>
+            </ScrollView>
           </View>
-        ))
-      )}
-
-      <Pressable style={styles.newBookingButton}>
-        <Text style={styles.newBookingText}>+ Book New Appointment</Text>
-      </Pressable>
-    </ScrollView>
+        </View>
+      </Modal>
+      {renderPayFastModal()}
+    </>
   );
 
   const renderFirstTimeClientScreen = () => (
     <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.contentContainer}
+      style={styles(theme).screen}
+      contentContainerStyle={styles(theme).contentContainer}
       showsVerticalScrollIndicator={false}
     >
       <SafeAreaView>
-        <View style={styles.toggleRow}>
-          <Pressable
-            onPress={() => setClientType("first")}
-            style={toggleButtonStyle("first")}
-          >
+        <View style={styles(theme).toggleRow}>
+          <Pressable onPress={bookClient} style={toggleButtonStyle("first")}>
             <Text
               style={[
-                styles.toggleText,
-                clientType === "first" && styles.toggleTextActive,
+                styles(theme).toggleText,
+                clientType === "first" && styles(theme).toggleTextActive,
               ]}
             >
               Book Visit
@@ -382,8 +1748,8 @@ const Booking = () => {
           >
             <Text
               style={[
-                styles.toggleText,
-                clientType === "returning" && styles.toggleTextActive,
+                styles(theme).toggleText,
+                clientType === "returning" && styles(theme).toggleTextActive,
               ]}
             >
               Manage Bookings
@@ -392,620 +1758,1188 @@ const Booking = () => {
         </View>
       </SafeAreaView>
 
-      <View style={styles.consultationCard}>
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.checkCircle}>
-            <Check color={Colors.Primary900} size={14} />
+      <View style={styles(theme).consultationCard}>
+        <View style={styles(theme).cardHeaderRow}>
+          <View style={styles(theme).checkCircle}>
+            <Check color={theme.Primary900} size={14} />
           </View>
-          <Text style={styles.cardHeaderText}>CLINICAL DERMAL INTAKE</Text>
-          <View style={styles.cardAction}>
-            <Calendar color={Colors.Primary900} size={20} />
+          <Text style={styles(theme).cardHeaderText}>
+            CLINICAL DERMAL INTAKE
+          </Text>
+          <View style={styles(theme).cardAction}>
+            <Calendar color={theme.Primary900} size={20} />
           </View>
         </View>
 
-        <Text style={styles.feeTitle}>Mandatory Consultation Fee: R300</Text>
-        <Text style={styles.feeDescription}>
+        <Text style={styles(theme).feeTitle}>
+          Mandatory Consultation Fee: R300
+        </Text>
+        <Text style={styles(theme).feeDescription}>
           Includes full skin diagnostic scan, aesthetic regimen blueprint, and
           30-min clinical evaluation. Fully applied to treatments booked within
           14 days.
         </Text>
 
-        <View style={styles.divider} />
+        <View style={styles(theme).divider} />
 
-        <Pressable style={styles.infoRow}>
-          <View style={styles.infoIconWrap}>
-            <Text style={styles.infoIcon}>i</Text>
-          </View>
-          <Text style={styles.infoText}>
-            Why different fees? Consultation vs. Booking Fee
-          </Text>
-          <ChevronDown color={Colors.TextColour} size={20} />
-        </Pressable>
-      </View>
-      <Text style={styles.sectionTitle}>Select Treatment</Text>
-      <View style={styles.treatmentGrid}>
-        {treatmentOptions.map((item) => {
-          const isSelected = item.name === selectedTreatment;
-          return (
+        <View>
+          <View style={styles(theme).infoRow}>
             <Pressable
-              key={item.name}
-              onPress={() => setSelectedTreatment(item.name)}
-              style={[
-                styles.treatmentCard,
-                isSelected && styles.treatmentCardSelected,
-              ]}
+              style={styles(theme).infoIconWrap}
+              onPress={() => setShowFeeExplanation((isOpen) => !isOpen)}
+              accessibilityRole="button"
+              accessibilityLabel="Explain consultation and booking fees"
             >
-              <Text style={styles.treatmentName}>{item.name}</Text>
-              <Text style={styles.treatmentMeta}>
-                {item.duration} • {item.subtitle}
-              </Text>
+              <Text style={styles(theme).infoIcon}>i</Text>
             </Pressable>
-          );
-        })}
+            <Text style={styles(theme).infoText}>
+              Why different fees? Consultation vs. Booking Fee
+            </Text>
+            <Pressable
+              onPress={() => setShowFeeExplanation((isOpen) => !isOpen)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                showFeeExplanation
+                  ? "Hide fee explanation"
+                  : "Show fee explanation"
+              }
+            >
+              <ChevronDown
+                color={theme.TextColour}
+                size={20}
+                style={
+                  showFeeExplanation ? styles(theme).chevronOpen : undefined
+                }
+              />
+            </Pressable>
+          </View>
+          {showFeeExplanation ? (
+            <View style={styles(theme).feeExplanation}>
+              <Text style={styles(theme).feeExplanationText}>
+                Consultation is part of the treatment process for returning
+                clients. The booking fee applies to first-time clients who have
+                never booked before.
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
+      <Text style={styles(theme).sectionTitle}>Select Treatment</Text>
+      <SearchBar
+        Placeholder="Search treatments"
+        size="fullWidthCompact"
+        value={treatmentSearch}
+        onChangeText={setTreatmentSearch}
+      />
+
+      {treatments.length === 0 ? (
+        <Text style={styles(theme).emptyStateText}>Loading treatments...</Text>
+      ) : filteredTreatments.length === 0 ? (
+        <Text style={styles(theme).emptyStateText}>
+          No treatments match your search.
+        </Text>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles(theme).treatmentScroller}
+        >
+          {filteredTreatments.map((treatment) => {
+            const isSelected =
+              selectedTreatmentId.find(
+                (givenTreatment) => givenTreatment === treatment.id,
+              ) === treatment.id;
+            const priceLabel = treatment.cost
+              ? `From R${Number(treatment.cost).toFixed(2)}`
+              : "Price on request";
+
+            return (
+              <Pressable
+                key={treatment.id}
+                onPress={() => {
+                  setSelectedTreatmentId((prevIds) => {
+                    if (isSelected) {
+                      return prevIds.filter((id) => id !== treatment.id);
+                    }
+
+                    if (treatment.id === UNSURE_TREATMENT_ID) {
+                      return [UNSURE_TREATMENT_ID];
+                    }
+
+                    return [
+                      ...prevIds.filter((id) => id !== UNSURE_TREATMENT_ID),
+                      treatment.id,
+                    ];
+                  });
+                  setSelectedSlot([]);
+                }}
+                style={[
+                  styles(theme).treatmentCard,
+                  isSelected && styles(theme).treatmentCardSelected,
+                ]}
+              >
+                <Text style={styles(theme).treatmentName}>
+                  {treatment.value}
+                </Text>
+                <Text style={styles(theme).treatmentMeta}>{priceLabel}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      <Text style={styles(theme).sectionTitle}>Select Booking Date</Text>
       <BookingCalendar
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
       />
-      <View style={styles.slotHeaderRow}>
-        <Text style={styles.sectionTitle}>Available Slots</Text>
-        <Text style={styles.dateLabel}>{selectedDayLabel}</Text>
+      <View style={styles(theme).slotHeaderRow}>
+        <Text style={styles(theme).sectionTitle}>Available Slots</Text>
+        <Text style={styles(theme).dateLabel}>{selectedDayLabel}</Text>
       </View>
-      <View style={styles.slotRow}>
-        {slotOptions.map((slot) => {
-          const active = selectedSlot === slot;
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles(theme).slotRow}
+      >
+        {getSlotOptionsForDate(selectedDate).map((slot) => {
+          const hasTreatments = selectedTreatmentId.length > 0;
+          const isAvailableStart = slotOptions.includes(slot);
+          const active = selectedSlot.includes(slot);
           return (
             <Pressable
               key={slot}
-              onPress={() => setSelectedSlot(slot)}
-              style={[styles.slotCard, active && styles.slotCardSelected]}
+              disabled={false}
+              onPress={async () => {
+                if (!hasTreatments) {
+                  Alert.alert(
+                    "Select a treatment",
+                    "Please select a treatment before choosing a time slot.",
+                  );
+                  return;
+                }
+                const dateSlotOptions = getSlotOptionsForDate(selectedDate);
+                let latestBookedSlotTimes: string[];
+                try {
+                  latestBookedSlotTimes =
+                    await getBookedSlotsForDate(selectedDate);
+                } catch (error) {
+                  console.error("Could not verify selected slot:", error);
+                  Alert.alert(
+                    "Time unavailable",
+                    "Could not verify this slot. Please try again.",
+                  );
+                  return;
+                }
+
+                setBookedSlotTimes(latestBookedSlotTimes);
+                const availableSlots = dateSlotOptions.filter(
+                  (availableSlot) =>
+                    !latestBookedSlotTimes.includes(availableSlot) &&
+                    !isSlotElapsed(selectedDate, availableSlot),
+                );
+                const requiredSlots = Math.max(selectedTreatmentId.length, 1);
+                const contiguousSlots = getContiguousSlots(
+                  slot,
+                  requiredSlots,
+                  availableSlots,
+                  dateSlotOptions,
+                );
+
+                if (contiguousSlots.length !== requiredSlots) {
+                  setSelectedSlot([]);
+                  Alert.alert(
+                    "Time unavailable",
+                    `Please choose a time with ${requiredSlots} consecutive available slot${requiredSlots === 1 ? "" : "s"} for your selected treatment${requiredSlots === 1 ? "" : "s"}.`,
+                  );
+                  return;
+                }
+
+                setSelectedSlot(contiguousSlots);
+              }}
+              style={[
+                styles(theme).slotCard,
+                active && styles(theme).slotCardSelected,
+                (!hasTreatments || !isAvailableStart) &&
+                  styles(theme).slotCardDisabled,
+              ]}
             >
               <Text
-                style={[styles.slotText, active && styles.slotTextSelected]}
+                style={[
+                  styles(theme).slotText,
+                  active && styles(theme).slotTextSelected,
+                  (!hasTreatments || !isAvailableStart) &&
+                    styles(theme).slotTextDisabled,
+                ]}
               >
                 {slot}
               </Text>
             </Pressable>
           );
         })}
-      </View>
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Selected Protocol</Text>
-          <Text style={styles.summaryValue}>{selectedDetail.name}</Text>
-        </View>
+      </ScrollView>
+      <View style={styles(theme).summaryCard}>
+        <View style={styles(theme).summaryRow}></View>
 
-        <View style={styles.summaryRowSecondary}>
-          <Text style={styles.summaryLabelMuted}>Slot & Specialist</Text>
-          <Text style={styles.summaryValueStrong}>
-            {selectedDayLabel} • {selectedSlot}
+        <View style={styles(theme).summaryRowSecondary}>
+          <Text style={styles(theme).summaryLabelMuted}>Treatment</Text>
+          <Text style={styles(theme).summaryValueStrong}>
+            {selectedTreatmentNames.join(", ") || "Not selected"}
           </Text>
         </View>
 
-        <View style={styles.summaryRowSecondary}>
-          <Text style={styles.summaryLabelMuted}>Loyalty Earnings</Text>
-          <Text style={styles.pointsEarned}>+80 PTS</Text>
+        <View style={styles(theme).summaryRowSecondary}>
+          <Text style={styles(theme).summaryLabelMuted}>Slot</Text>
+          <Text style={styles(theme).summaryValueStrong}>
+            {selectedDayLabel} •{" "}
+            {selectedSlot.length > 0
+              ? `${selectedSlot[0]} - ${selectedSlot[selectedSlot.length - 1]}`
+              : "Not selected"}
+          </Text>
         </View>
 
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Due Today</Text>
-          <Text style={styles.totalValue}>R300.00</Text>
+        <View style={styles(theme).summaryRow}>
+          <Text style={styles(theme).summaryLabel}>Due Today</Text>
+          <Text style={styles(theme).totalValue}>R300.00</Text>
         </View>
 
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Consultation Deposit</Text>
-          <Text style={styles.totalValue}>R300.00</Text>
+        <View style={styles(theme).summaryRow}>
+          <Text style={styles(theme).summaryLabel}>Consultation Deposit</Text>
+          <Text style={styles(theme).totalValue}>R300.00</Text>
         </View>
       </View>
-      <Pressable style={styles.ctaButton}>
-        <Text style={styles.ctaText}>Continue to Confirmation</Text>
-        <Text style={styles.ctaArrow}>→</Text>
+      <Pressable
+        onPress={bookClient}
+        disabled={isSubmittingBooking}
+        style={styles(theme).ctaButton}
+      >
+        {isSubmittingBooking ? (
+          <>
+            <ActivityIndicator size="small" color={theme.Primary900} />
+            <Text style={styles(theme).ctaText}>Loading...</Text>
+          </>
+        ) : (
+          <Text style={styles(theme).ctaText}>Continue to Confirmation</Text>
+        )}
+        {!isSubmittingBooking ? (
+          <Text style={styles(theme).ctaArrow}>→</Text>
+        ) : null}
       </Pressable>
     </ScrollView>
   );
 
-  return clientType === "returning"
-    ? renderReturningClientScreen()
-    : renderFirstTimeClientScreen();
+  return clientType === "returning" ? (
+    renderReturningClientScreen()
+  ) : (
+    <>
+      {renderFirstTimeClientScreen()}
+      <Modal
+        visible={showBookingConfirmation}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBookingConfirmation(false)}
+      >
+        <View style={styles(theme).confirmationOverlay}>
+          <View style={styles(theme).confirmationModal}>
+            <CheckCircle2
+              color={theme.Primary900}
+              size={58}
+              strokeWidth={2.5}
+            />
+            <Text style={styles(theme).confirmationTitle}>
+              Booking Confirmed
+            </Text>
+            <Text style={styles(theme).confirmationMessage}>
+              Your appointment has been successfully confirmed. Please check
+              your email for your booking confirmation and amount due.
+            </Text>
+            <Text style={styles(theme).confirmationDisclaimer}>
+              Your booking is not secured until the R300 consultation fee has
+              been received.
+            </Text>
+            <View style={styles(theme).confirmationDetails}>
+              <Text style={styles(theme).confirmationDetailLabel}>Date</Text>
+              <Text style={styles(theme).confirmationDetailValue}>
+                {selectedDayLabel}
+              </Text>
+              <Text style={styles(theme).confirmationDetailLabel}>Time</Text>
+              <Text style={styles(theme).confirmationDetailValue}>
+                {selectedSlot.join(", ")}
+              </Text>
+            </View>
+            <Pressable
+              style={styles(theme).confirmationButton}
+              onPress={() => void payForNewBooking()}
+              disabled={isPreparingPayment || isPayFastLoading}
+            >
+              {isPreparingPayment ? (
+                <ActivityIndicator size="small" color={theme.Primary900} />
+              ) : (
+                <Text style={styles(theme).confirmationButtonText}>
+                  Pay R300
+                </Text>
+              )}
+            </Pressable>
+            <Pressable
+              style={styles(theme).confirmationSecondaryButton}
+              onPress={() => {
+                setShowBookingConfirmation(false);
+              }}
+            >
+              <Text style={styles(theme).confirmationSecondaryButtonText}>
+                Done
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      {renderPayFastModal()}
+    </>
+  );
 };
 
 export default Booking;
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#111315",
-  },
-  contentContainer: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 120,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 18,
-  },
-  closeButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageTitle: {
-    flex: 1,
-    textAlign: "center",
-    color: Colors.TextColour,
-    fontSize: 22,
-    fontWeight: "700",
-    letterSpacing: -0.8,
-  },
-  pointsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 4,
-  },
-  pointsText: {
-    color: Colors.Primary900,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  pointsTextSmall: {
-    color: Colors.Primary900,
-    fontSize: 9,
-    fontWeight: "700",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 18,
-  },
-  toggleText: {
-    color: Colors.TextColour,
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  toggleTextActive: {
-    color: Colors.Primary900,
-  },
-  consultationCard: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20,
-  },
-  cardHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0,255,95,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  cardHeaderText: {
-    flex: 1,
-    color: Colors.TextColour,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    fontSize: 14,
-  },
-  cardAction: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "rgba(0,255,95,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  feeTitle: {
-    color: "#F2F2F2",
-    fontWeight: "700",
-    fontSize: 22,
-    lineHeight: 28,
-    marginBottom: 8,
-  },
-  feeDescription: {
-    color: Colors.TextColour,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.12)",
-    marginVertical: 16,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  infoIconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: Colors.Primary900,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  infoIcon: {
-    color: Colors.Primary900,
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  infoText: {
-    flex: 1,
-    color: Colors.TextColour,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  sectionTitle: {
-    color: "#F3F3F3",
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  treatmentGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 18,
-    gap: 12,
-  },
-  treatmentCard: {
-    width: "48%",
-    minHeight: 98,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    padding: 16,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  treatmentCardSelected: {
-    backgroundColor: "rgba(0,255,95,0.14)",
-    borderColor: "rgba(0,255,95,0.7)",
-  },
-  treatmentName: {
-    color: "#F5F5F5",
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  treatmentMeta: {
-    color: Colors.TextColour,
-    fontSize: 12,
-  },
-  slotHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  dateLabel: {
-    color: "#F2F2F2",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  slotRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 22,
-    gap: 8,
-  },
-  slotCard: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  slotCardSelected: {
-    backgroundColor: "rgba(0,255,95,0.22)",
-  },
-  slotText: {
-    color: Colors.TextColour,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  slotTextSelected: {
-    color: "#1b1b1b",
-  },
-  summaryCard: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 18,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  summaryRowSecondary: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  summaryLabel: {
-    color: Colors.TextColour,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  summaryLabelMuted: {
-    color: Colors.TextColour,
-    fontSize: 12,
-  },
-  summaryValue: {
-    color: "#F2F2F2",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  summaryValueStrong: {
-    color: "#F2F2F2",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  pointsEarned: {
-    color: Colors.Primary900,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  totalValue: {
-    color: "#F2F2F2",
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  ctaButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: Colors.Primary900,
-    borderRadius: 18,
-    paddingVertical: 22,
-    marginTop: 8,
-  },
-  ctaText: {
-    color: "#0B0F0D",
-    fontWeight: "800",
-    fontSize: 18,
-  },
-  ctaArrow: {
-    color: "#0B0F0D",
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    marginBottom: 18,
-  },
-  searchText: {
-    flex: 1,
-    color: Colors.TextColour,
-    fontSize: 14,
-    opacity: 0.8,
-  },
-  filterRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 18,
-  },
-  filterChip: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  filterChipActive: {
-    backgroundColor: Colors.Primary900,
-  },
-  filterChipText: {
-    color: Colors.TextColour,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  filterChipTextActive: {
-    color: "#0B0F0D",
-    fontWeight: "800",
-    fontSize: 13,
-  },
-  emptyStateText: {
-    color: Colors.TextColour,
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 14,
-    opacity: 0.8,
-  },
-  sectionHeading: {
-    color: "#F3F3F3",
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 14,
-  },
-  countBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    color: Colors.Primary900,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  bookingCard: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 18,
-  },
-  bookingCardPast: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 18,
-  },
-  bookingHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  bookingStatusWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  statusDotSuccess: {
-    backgroundColor: Colors.Primary900,
-  },
-  statusDotWarning: {
-    backgroundColor: "#F1C75B",
-  },
-  bookingStatusText: {
-    color: Colors.Primary900,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  bookingStatusTextPast: {
-    color: Colors.TextColour,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  bookingStatusTextWarning: {
-    color: "#F1C75B",
-  },
-  specialistText: {
-    color: "#F4F4F4",
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  bookingTitle: {
-    color: "#F3F3F3",
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 12,
-  },
-  bookingMetaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  metaText: {
-    color: Colors.TextColour,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconButton: {
-    width: 52,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionButtonText: {
-    color: Colors.TextColour,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  pendingFooter: {
-    gap: 10,
-  },
-  primaryActionWide: {
-    backgroundColor: Colors.Primary900,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryActionWideText: {
-    color: "#0B0F0D",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  secondaryAction: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryActionText: {
-    color: Colors.TextColour,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  rewardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  rewardText: {
-    color: Colors.Primary900,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  rewardLabel: {
-    color: Colors.TextColour,
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  newBookingButton: {
-    backgroundColor: Colors.Primary900,
-    borderRadius: 18,
-    paddingVertical: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    marginBottom: 30,
-  },
-  newBookingText: {
-    color: "#0B0F0D",
-    fontWeight: "900",
-    fontSize: 16,
-  },
-});
+const styles = (theme: Theme) =>
+  StyleSheet.create({
+    paymentWebViewContainer: {
+      flex: 1,
+      backgroundColor: theme.bookingBackground,
+    },
+    paymentModalContent: {
+      flex: 1,
+      position: "relative",
+    },
+    paymentWebViewContent: {
+      flex: 1,
+      position: "relative",
+    },
+    paymentLoadingOverlay: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.bookingBackground,
+      zIndex: 10,
+      elevation: 10,
+    },
+    paymentLoadingText: {
+      color: theme.TextColour,
+      marginTop: 12,
+      textAlign: "center",
+    },
+    bookingListLoading: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 8,
+      justifyContent: "center",
+      paddingVertical: 24,
+    },
+    paymentWebViewHeader: {
+      minHeight: 56,
+      paddingHorizontal: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.bordercolor,
+    },
+    paymentWebViewTitle: {
+      color: theme.TextColour,
+      fontSize: 18,
+      fontWeight: "600",
+    },
+    paymentWebViewClose: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    paymentWebViewCloseText: {
+      color: theme.Primary900,
+      fontWeight: "600",
+    },
+    screen: {
+      flex: 1,
+      backgroundColor: theme.bookingBackground,
+    },
+    contentContainer: {
+      paddingHorizontal: 18,
+      paddingTop: 18,
+      paddingBottom: 120,
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 18,
+    },
+    closeButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pageTitle: {
+      flex: 1,
+      textAlign: "center",
+      color: theme.TextColour,
+      fontSize: 22,
+      fontWeight: "700",
+      letterSpacing: -0.8,
+    },
+    pointsBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(255,255,255,0.06)",
+      borderRadius: 18,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      gap: 4,
+    },
+    pointsText: {
+      color: theme.Primary900,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    pointsTextSmall: {
+      color: theme.Primary900,
+      fontSize: 9,
+      fontWeight: "700",
+    },
+    toggleRow: {
+      flexDirection: "row",
+      backgroundColor: "rgba(255,255,255,0.08)",
+      borderRadius: 14,
+      padding: 4,
+      marginBottom: 18,
+    },
+    toggleText: {
+      color: theme.TextColour,
+      fontWeight: "600",
+      fontSize: 14,
+    },
+    toggleTextActive: {
+      color: theme.Primary900,
+    },
+    consultationCard: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 20,
+      borderWidth: 2,
+      borderColor: theme.adminBorder,
+    },
+    cardHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    checkCircle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "rgba(0,255,95,0.12)",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 10,
+    },
+    cardHeaderText: {
+      flex: 1,
+      color: theme.TextColour,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      fontSize: 14,
+    },
+    cardAction: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: "rgba(0,255,95,0.08)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    feeTitle: {
+      color: theme.TextColour,
+      fontWeight: "700",
+      fontSize: 22,
+      lineHeight: 28,
+      marginBottom: 8,
+    },
+    feeDescription: {
+      color: theme.TextColour,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    divider: {
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(255,255,255,0.12)",
+      marginVertical: 16,
+    },
+    infoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    infoIconWrap: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: theme.Primary900,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    chevronOpen: {
+      transform: [{ rotate: "180deg" }],
+    },
+    feeExplanation: {
+      backgroundColor: "rgba(0,255,95,0.08)",
+      borderRadius: 12,
+      marginTop: 12,
+      padding: 12,
+    },
+    feeExplanationText: {
+      color: theme.TextColour,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    infoIcon: {
+      color: theme.Primary900,
+      fontWeight: "700",
+      fontSize: 14,
+    },
+    infoText: {
+      flex: 1,
+      color: theme.TextColour,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    sectionTitle: {
+      color: theme.bookingCardText,
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 12,
+    },
+    treatmentScroller: {
+      paddingRight: 6,
+      paddingBottom: 4,
+      gap: 12,
+    },
+    treatmentCard: {
+      width: 180,
+      minHeight: 108,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 16,
+      padding: 16,
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: theme.adminBorder,
+      marginRight: 12,
+    },
+    treatmentCardSelected: {
+      backgroundColor: "rgba(0,255,95,0.14)",
+      borderColor: "rgba(0,255,95,0.7)",
+    },
+    treatmentName: {
+      color: theme.bookingCardText,
+      fontSize: 14,
+      fontWeight: "700",
+      marginBottom: 6,
+    },
+    treatmentMeta: {
+      color: theme.TextColour,
+      fontSize: 12,
+    },
+    slotHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    dateLabel: {
+      color: theme.bookingCardText,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    slotRow: {
+      flexDirection: "row",
+      marginBottom: 22,
+      gap: 8,
+    },
+    slotCard: {
+      width: 104,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 14,
+      paddingVertical: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1.5,
+      borderColor: theme.adminBorder,
+    },
+    slotCardSelected: {
+      backgroundColor: "rgba(0,255,95,0.22)",
+    },
+    slotCardDisabled: {
+      opacity: 0.35,
+    },
+    slotText: {
+      color: theme.TextColour,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    slotTextSelected: {
+      color: "#1b1b1b",
+    },
+    slotTextDisabled: {
+      color: theme.TextColour,
+    },
+    confirmationOverlay: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      backgroundColor: "rgba(0,0,0,0.78)",
+    },
+    confirmationModal: {
+      width: "100%",
+      maxWidth: 380,
+      alignItems: "center",
+      backgroundColor: "#10261A",
+      borderColor: "rgba(0,255,95,0.55)",
+      borderRadius: 20,
+      borderWidth: 1,
+      padding: 28,
+    },
+    confirmationTitle: {
+      color: theme.Primary900,
+      fontSize: 22,
+      fontWeight: "800",
+      marginTop: 14,
+    },
+    confirmationMessage: {
+      color: theme.modalText,
+      fontSize: 14,
+      lineHeight: 20,
+      marginTop: 8,
+      textAlign: "center",
+    },
+    confirmationDisclaimer: {
+      color: "#FFD27D",
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: 12,
+      textAlign: "center",
+    },
+    confirmationDetails: {
+      alignSelf: "stretch",
+      backgroundColor: "rgba(0,255,95,0.1)",
+      borderRadius: 12,
+      marginTop: 20,
+      padding: 14,
+    },
+    confirmationDetailLabel: {
+      color: theme.modalText,
+      fontSize: 12,
+      marginBottom: 2,
+      opacity: 0.75,
+    },
+    confirmationDetailValue: {
+      color: "#F5FFF7",
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: 10,
+    },
+    confirmationButton: {
+      alignSelf: "stretch",
+      alignItems: "center",
+      backgroundColor: theme.Primary900,
+      borderRadius: 12,
+      marginTop: 6,
+      paddingVertical: 14,
+    },
+    confirmationButtonText: {
+      color: "#0B0F0D",
+      fontSize: 16,
+      fontWeight: "800",
+    },
+    confirmationSecondaryButton: {
+      alignSelf: "stretch",
+      alignItems: "center",
+      borderColor: "rgba(255,255,255,0.35)",
+      borderRadius: 12,
+      borderWidth: 1,
+      marginTop: 10,
+      paddingVertical: 13,
+    },
+    confirmationSecondaryButtonText: {
+      color: theme.modalText,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    bookingDetailsOverlay: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+      backgroundColor: "rgba(0,0,0,0.78)",
+    },
+    bookingDetailsModal: {
+      width: "100%",
+      maxWidth: 380,
+      backgroundColor: "#10261A",
+      borderColor: "rgba(0,255,95,0.55)",
+      borderRadius: 20,
+      borderWidth: 1,
+      padding: 28,
+    },
+    rescheduleModal: {
+      width: "100%",
+      maxWidth: 420,
+      maxHeight: "92%",
+      backgroundColor: theme.treatmentModalBackground,
+      borderColor: "rgba(0,255,95,0.55)",
+      borderRadius: 20,
+      borderWidth: 1,
+      padding: 22,
+    },
+    rescheduleSlotRow: {
+      gap: 10,
+      paddingVertical: 10,
+    },
+    rescheduleSlot: {
+      minWidth: 82,
+      alignItems: "center",
+      backgroundColor: theme.treatmentModalItemBackground,
+      borderColor: theme.adminBorder,
+      borderRadius: 10,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    rescheduleSlotSelected: {
+      backgroundColor: theme.Primary900,
+      borderColor: theme.Primary900,
+    },
+    rescheduleSlotText: {
+      color: theme.treatmentModalText,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    rescheduleSlotTextSelected: {
+      color: "#0B0F0D",
+    },
+    bookingDetailsTitle: {
+      color: theme.treatmentModalText,
+      fontSize: 22,
+      fontWeight: "800",
+      marginBottom: 18,
+    },
+    bookingDetailsTreatment: {
+      color: theme.treatmentModalText,
+      fontSize: 19,
+      fontWeight: "800",
+      marginBottom: 14,
+    },
+    bookingDetailsLabel: {
+      color: theme.treatmentModalText,
+      fontSize: 12,
+      marginTop: 8,
+      opacity: 0.75,
+    },
+    bookingDetailsValue: {
+      color: theme.treatmentModalText,
+      fontSize: 16,
+      fontWeight: "700",
+      marginTop: 2,
+    },
+    cancelBookingButton: {
+      alignItems: "center",
+      backgroundColor: "#B94A48",
+      borderRadius: 12,
+      marginTop: 22,
+      paddingVertical: 14,
+    },
+    cancelBookingButtonText: {
+      color: theme.treatmentModalText,
+      fontSize: 15,
+      fontWeight: "800",
+    },
+    bookingDetailsClose: {
+      alignItems: "center",
+      paddingVertical: 14,
+    },
+    bookingDetailsCloseText: {
+      color: theme.treatmentModalText,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    summaryCard: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 18,
+      borderWidth: 2,
+      borderColor: theme.adminBorder,
+    },
+    summaryRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    summaryRowSecondary: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    summaryLabel: {
+      color: theme.bookingCardText,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    summaryLabelMuted: {
+      color: theme.bookingCardText,
+      fontSize: 12,
+    },
+    summaryValue: {
+      color: theme.bookingCardText,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    summaryValueStrong: {
+      color: theme.bookingCardText,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    pointsEarned: {
+      color: theme.Primary900,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    totalValue: {
+      color: theme.bookingCardText,
+      fontSize: 24,
+      fontWeight: "800",
+    },
+    ctaButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12,
+      backgroundColor: theme.Primary900,
+      borderRadius: 18,
+      paddingVertical: 22,
+      marginTop: 8,
+    },
+    ctaText: {
+      color: "#0B0F0D",
+      fontWeight: "800",
+      fontSize: 18,
+    },
+    ctaArrow: {
+      color: "#0B0F0D",
+      fontSize: 24,
+      fontWeight: "800",
+    },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 16,
+      marginBottom: 18,
+      borderWidth: 1.5,
+      borderColor: theme.adminBorder,
+    },
+    searchText: {
+      flex: 1,
+      color: theme.modalText,
+      fontSize: 14,
+      opacity: 0.8,
+    },
+    filterRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 18,
+      paddingRight: 4,
+    },
+    filterChip: {
+      minWidth: 104,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.bookingCardBackground,
+      borderWidth: 1,
+      borderColor: theme.adminBorder,
+    },
+    filterChipActive: {
+      backgroundColor: theme.Primary900,
+    },
+    filterChipCancelledActive: {
+      backgroundColor: "rgba(153,27,27,0.14)",
+      borderColor: "#B91C1C",
+    },
+    filterChipText: {
+      color: theme.bookingCardText,
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    filterChipTextActive: {
+      color: "#0B0F0D",
+      fontWeight: "800",
+      fontSize: 13,
+    },
+    filterChipTextCancelledActive: {
+      color: "#991B1B",
+      fontWeight: "800",
+      fontSize: 13,
+    },
+    emptyStateText: {
+      color: theme.modalText,
+      fontSize: 13,
+      fontWeight: "600",
+      marginBottom: 14,
+      opacity: 0.8,
+    },
+    sectionHeading: {
+      color: theme.bookingCardText,
+      fontSize: 18,
+      fontWeight: "800",
+      marginBottom: 14,
+    },
+    countBadge: {
+      alignSelf: "flex-start",
+      backgroundColor: "rgba(255,255,255,0.08)",
+      color: theme.Primary900,
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      fontSize: 10,
+      fontWeight: "700",
+    },
+    bookingCard: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 18,
+      borderWidth: 2,
+      borderColor: theme.adminBorder,
+    },
+    bookingCardPast: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 18,
+      borderWidth: 2,
+      borderColor: theme.adminBorder,
+    },
+    bookingCardPastDay: {
+      borderColor: "rgba(196,154,90,0.75)",
+      borderWidth: 2,
+    },
+    bookingCardCancelled: {
+      backgroundColor: "rgba(127,29,29,0.12)",
+      borderColor: "rgba(248,113,113,0.7)",
+    },
+    cancelledSectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(153,27,27,0.1)",
+      borderColor: "rgba(185,28,28,0.65)",
+      borderRadius: 14,
+      borderWidth: 1,
+      marginBottom: 16,
+      padding: 14,
+    },
+    cancelledSectionIndicator: {
+      backgroundColor: "#B91C1C",
+      borderRadius: 4,
+      height: 34,
+      marginRight: 12,
+      width: 7,
+    },
+    cancelledSectionCopy: {
+      flex: 1,
+    },
+    cancelledSectionTitle: {
+      color: "#991B1B",
+      fontSize: 15,
+      fontWeight: "800",
+    },
+    cancelledSectionSubtitle: {
+      color: theme.TextColour,
+      fontSize: 12,
+      marginTop: 3,
+      opacity: 0.8,
+    },
+    bookingHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    bookingStatusWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    statusDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    statusDotSuccess: {
+      backgroundColor: theme.Primary900,
+    },
+    statusDotWarning: {
+      backgroundColor: "#F1C75B",
+    },
+    statusDotCancelled: {
+      backgroundColor: "#B91C1C",
+    },
+    bookingStatusText: {
+      color: theme.Primary900,
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    bookingStatusTextPast: {
+      color: theme.bookingCardText,
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    bookingStatusTextPastDay: {
+      color: "#C49A5A",
+    },
+    bookingStatusTextWarning: {
+      color: "#F1C75B",
+    },
+    bookingStatusTextCancelled: {
+      color: "#991B1B",
+    },
+    specialistText: {
+      color: theme.bookingCardText,
+      fontWeight: "600",
+      fontSize: 12,
+    },
+    bookingTitle: {
+      color: theme.bookingCardText,
+      fontSize: 18,
+      fontWeight: "800",
+      marginBottom: 12,
+    },
+    bookingMetaRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    metaText: {
+      color: theme.bookingCardText,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    actionRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    actionButton: {
+      flex: 1,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.adminBorder,
+    },
+    iconButton: {
+      width: 52,
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.adminBorder,
+    },
+    actionButtonText: {
+      color: theme.bookingCardText,
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    pendingFooter: {
+      gap: 10,
+    },
+    primaryActionWide: {
+      backgroundColor: theme.Primary900,
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    primaryActionWideText: {
+      color: "#0B0F0D",
+      fontWeight: "800",
+      fontSize: 14,
+    },
+    secondaryAction: {
+      backgroundColor: theme.bookingCardBackground,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.adminBorder,
+    },
+    secondaryActionText: {
+      color: theme.bookingCardText,
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    cancelledSummaryButton: {
+      backgroundColor: "rgba(153,27,27,0.1)",
+      borderColor: "rgba(185,28,28,0.65)",
+    },
+    cancelledSummaryButtonText: {
+      color: "#991B1B",
+      fontWeight: "800",
+      fontSize: 13,
+    },
+    rewardRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    rewardText: {
+      color: theme.Primary900,
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    rewardLabel: {
+      color: theme.modalText,
+      fontSize: 11,
+      fontWeight: "600",
+    },
+    newBookingButton: {
+      backgroundColor: theme.Primary900,
+      borderRadius: 18,
+      paddingVertical: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 8,
+      marginBottom: 30,
+    },
+    newBookingText: {
+      color: "#0B0F0D",
+      fontWeight: "900",
+      fontSize: 16,
+    },
+  });

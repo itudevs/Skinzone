@@ -53,7 +53,9 @@ export const GetServices = async (
 export const GetTreatments = async (points?: number, forceRefresh?: boolean): Promise<DropDownItems[]> => {
     return GetServices(points, "treatment", forceRefresh);
 };
-
+export const GetAllTreatments = async (): Promise<DropDownItems[]> => {
+    return GetServices(undefined, "treatment", undefined);
+};
 export const GetProducts = async (points?: number, forceRefresh?: boolean): Promise<DropDownItems[]> => {
     return GetServices(points, "product", forceRefresh);
 };

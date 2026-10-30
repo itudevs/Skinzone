@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ArrowLeft, ArrowRight } from "lucide-react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 
 const weekDays = ["M", "T", "W", "T", "F", "S", "S"];
 const monthNames = [
@@ -22,22 +22,43 @@ const monthNames = [
 interface BookingCalendarProps {
   selectedDate?: Date;
   onDateChange?: (date: Date) => void;
+  textColor?: string;
 }
 
+const isBeforeToday = (date: Date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const candidate = new Date(date);
+  candidate.setHours(0, 0, 0, 0);
+
+  return candidate < today;
+};
+
+const isSunday = (date: Date) => date.getDay() === 0;
+
 const BookingCalendar = ({
-  selectedDate = new Date(2026, 2, 19),
+  selectedDate = new Date(),
   onDateChange,
+  textColor,
 }: BookingCalendarProps) => {
+  const theme = useTheme();
+  const calendarTextColor = textColor ?? theme.TextColour;
+  const calendarStyles = styles(theme, calendarTextColor);
   const [visibleMonth, setVisibleMonth] = useState(
     new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
   );
   const [activeDate, setActiveDate] = useState<Date>(selectedDate);
 
   useEffect(() => {
-    setVisibleMonth(
-      new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
-    );
-    setActiveDate(selectedDate);
+    const timer = setTimeout(() => {
+      setVisibleMonth(
+        new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
+      );
+      setActiveDate(selectedDate);
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [selectedDate]);
 
   const calendarDays = useMemo(() => {
@@ -49,11 +70,11 @@ const BookingCalendar = ({
     const startDayIndex = (firstDay.getDay() + 6) % 7;
     const prevMonthLastDate = new Date(year, month, 0).getDate();
 
-    const items: Array<{
+    const items: {
       date: Date;
       isCurrentMonth: boolean;
       isMuted: boolean;
-    }> = [];
+    }[] = [];
 
     for (let i = 0; i < startDayIndex; i += 1) {
       const day = prevMonthLastDate - startDayIndex + i + 1;
@@ -85,6 +106,10 @@ const BookingCalendar = ({
   }, [visibleMonth]);
 
   const handlePress = (date: Date) => {
+    if (isBeforeToday(date) || isSunday(date)) {
+      return;
+    }
+
     setActiveDate(date);
     setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1));
     onDateChange?.(date);
@@ -100,32 +125,32 @@ const BookingCalendar = ({
   };
 
   return (
-    <View style={styles.calendarCard}>
-      <View style={styles.calendarHeaderRow}>
-        <Text style={styles.monthTitle}>
+    <View style={calendarStyles.calendarCard}>
+      <View style={calendarStyles.calendarHeaderRow}>
+        <Text style={calendarStyles.monthTitle}>
           {monthNames[visibleMonth.getMonth()]} {visibleMonth.getFullYear()}
         </Text>
-        <View style={styles.navArrows}>
+        <View style={calendarStyles.navArrows}>
           <Pressable
-            style={styles.arrowButton}
+            style={calendarStyles.arrowButton}
             onPress={() => changeMonth(-1)}
             accessibilityRole="button"
           >
-            <ArrowLeft color={Colors.TextColour} size={18} />
+            <ArrowLeft color={calendarTextColor} size={18} />
           </Pressable>
           <Pressable
-            style={styles.arrowButton}
+            style={calendarStyles.arrowButton}
             onPress={() => changeMonth(1)}
             accessibilityRole="button"
           >
-            <ArrowRight color={Colors.TextColour} size={18} />
+            <ArrowRight color={calendarTextColor} size={18} />
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.gridHeader}>
+      <View style={calendarStyles.gridHeader}>
         {weekDays.map((day, index) => (
-          <Text key={`${day}-${index}`} style={styles.gridWeekday}>
+          <Text key={`${day}-${index}`} style={calendarStyles.gridWeekday}>
             {day}
           </Text>
         ))}
@@ -136,33 +161,38 @@ const BookingCalendar = ({
           const week = calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7);
 
           return (
-            <View key={`week-${weekIndex}`} style={styles.gridRow}>
+            <View key={`week-${weekIndex}`} style={calendarStyles.gridRow}>
               {week.map((cell, dayIndex) => {
                 const isSelected =
                   cell.date.toDateString() === activeDate.toDateString();
+                const isPast = isBeforeToday(cell.date);
+                const isUnavailable = isPast || isSunday(cell.date);
 
                 return (
                   <Pressable
                     key={`${weekIndex}-${dayIndex}-${cell.date.toISOString()}`}
+                    disabled={isUnavailable}
                     onPress={() => handlePress(cell.date)}
                     style={[
-                      styles.dateCell,
-                      isSelected && styles.dateCellSelected,
-                      cell.isMuted && styles.dateCellMuted,
+                      calendarStyles.dateCell,
+                      isSelected && calendarStyles.dateCellSelected,
+                      cell.isMuted && calendarStyles.dateCellMuted,
+                      isUnavailable && calendarStyles.dateCellDisabled,
                     ]}
                   >
                     <Text
                       style={[
-                        styles.dateText,
-                        isSelected && styles.dateTextSelected,
-                        cell.isMuted && styles.dateTextMuted,
+                        calendarStyles.dateText,
+                        isSelected && calendarStyles.dateTextSelected,
+                        cell.isMuted && calendarStyles.dateTextMuted,
+                        isUnavailable && calendarStyles.dateTextDisabled,
                       ]}
                     >
                       {cell.date.getDate()}
                     </Text>
                     {cell.date.getDate() === 16 ||
                     cell.date.getDate() === 18 ? (
-                      <View style={styles.dateDot} />
+                      <View style={calendarStyles.dateDot} />
                     ) : null}
                   </Pressable>
                 );
@@ -177,7 +207,7 @@ const BookingCalendar = ({
 
 export default BookingCalendar;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme, textColor: string) => StyleSheet.create({
   calendarCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 18,
@@ -191,7 +221,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   monthTitle: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     fontSize: 24,
     fontWeight: "700",
   },
@@ -215,7 +245,7 @@ const styles = StyleSheet.create({
   },
   gridWeekday: {
     flex: 1,
-    color: Colors.TextColour,
+    color: textColor,
     textAlign: "center",
     fontSize: 12,
     fontWeight: "600",
@@ -235,22 +265,28 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   dateCellSelected: {
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
   },
   dateCellMuted: {
     opacity: 0.4,
   },
+  dateCellDisabled: {
+    opacity: 0.25,
+  },
   dateText: {
-    color: Colors.TextColour,
+    color: textColor,
     fontSize: 13,
     fontWeight: "600",
   },
   dateTextSelected: {
-    color: "#111315",
+    color: textColor,
     fontWeight: "800",
   },
   dateTextMuted: {
     color: "#a4a4a4",
+  },
+  dateTextDisabled: {
+    color: "#777777",
   },
   dateDot: {
     position: "absolute",
@@ -258,6 +294,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
   },
 });

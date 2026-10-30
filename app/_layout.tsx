@@ -1,14 +1,14 @@
 import { Stack, useRouter } from "expo-router";
-import { StatusBar, StyleSheet, View } from "react-native";
+import { StatusBar, StyleSheet, View, useColorScheme } from "react-native";
 import { useEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
+import * as SystemUI from "expo-system-ui";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import {
   allocateBirthdayPointsIfEligible,
   registerPushTokenForCurrentUser,
-  requestNotificationPermissions,
 } from "@/lib/notifications";
 import { UserSession } from "@/components/utils/GetUsersession";
 
@@ -53,12 +53,17 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(
+      colorScheme === "light" ? "#FFFFFF" : "#191919",
+    ).catch(() => {});
+  }, [colorScheme]);
 
   useEffect(() => {
     let lastHandledUserId: string | null = null;
-
-    // Run startup work in parallel
-    requestNotificationPermissions().catch(() => {});
+    const notificationTimers = new Set<ReturnType<typeof setTimeout>>();
 
     // Handle deep links
     const handleDeepLink = async (url: string | null) => {
@@ -134,22 +139,26 @@ export default function RootLayout() {
 
       lastHandledUserId = currentUserId;
 
-      registerPushTokenForCurrentUser()
-        .then(() => allocateBirthdayPointsIfEligible())
-        .then(async (result) => {
-          if (!result?.awarded) {
-            return;
-          }
+      const notificationTimer = setTimeout(() => {
+        notificationTimers.delete(notificationTimer);
+        registerPushTokenForCurrentUser()
+          .then(() => allocateBirthdayPointsIfEligible())
+          .then(async (result) => {
+            if (!result?.awarded) {
+              return;
+            }
 
-          await AsyncStorage.setItem(
-            BIRTHDAY_BONUS_STORAGE_KEY,
-            JSON.stringify({
-              awardedAt: new Date().toISOString(),
-              pointsAwarded: result.pointsAwarded ?? 100,
-            }),
-          );
-        })
-        .catch(() => {});
+            await AsyncStorage.setItem(
+              BIRTHDAY_BONUS_STORAGE_KEY,
+              JSON.stringify({
+                awardedAt: new Date().toISOString(),
+                pointsAwarded: result.pointsAwarded ?? 100,
+              }),
+            );
+          })
+          .catch(() => {});
+      }, 5000);
+      notificationTimers.add(notificationTimer);
     });
 
     // Listen for auth state changes (diagnostics only).
@@ -164,15 +173,23 @@ export default function RootLayout() {
 
     return () => {
       clearTimeout(timer);
+      notificationTimers.forEach((notificationTimer) =>
+        clearTimeout(notificationTimer),
+      );
       unsubscribeUserSession();
       subscription.remove();
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   return (
-    <View style={styles.main}>
-      <StatusBar barStyle={"dark-content"} />
+    <View
+      style={[
+        styles.main,
+        { backgroundColor: colorScheme === "light" ? "#FFFFFF" : "#191919" },
+      ]}
+    >
+      <StatusBar barStyle={colorScheme === "light" ? "dark-content" : "light-content"} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="SignUp" />
@@ -200,5 +217,5 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  main: { color: "#000000ff", flex: 1 },
+  main: { flex: 1 },
 });

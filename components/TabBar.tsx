@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Colors from "./utils/Colours";
+import { Tabs } from "expo-router";
+import { Theme, useTheme } from "./utils/Colours";
 import {
   Home,
   User,
@@ -10,8 +11,16 @@ import {
   Calendar,
 } from "lucide-react-native";
 
-const TabBar = (props: any) => {
-  const { state, navigation, descriptors } = props;
+type TabBarProps = Parameters<
+  NonNullable<React.ComponentProps<typeof Tabs>["tabBar"]>
+>[0];
+
+const TabBar = ({
+  state,
+  descriptors,
+  navigation,
+}: TabBarProps) => {
+  const theme = useTheme();
 
   const icons: Record<
     string,
@@ -25,10 +34,11 @@ const TabBar = (props: any) => {
     StaffDashBoard: Home,
     StaffProfile: Settings,
     AddTreatment: Stethoscope,
+    AdminBooking: Calendar,
   };
 
   return (
-    <View style={styles.tabbar}>
+    <View style={styles(theme).tabbar}>
       {state.routes.map((route: any, index: number) => {
         const { options } = descriptors[route.key];
         const label =
@@ -37,6 +47,8 @@ const TabBar = (props: any) => {
             : options.title !== undefined
               ? options.title
               : route.name;
+        const displayLabel =
+            typeof label === "string" ? label : route.name;
 
         const isFocused = state.index === index;
 
@@ -70,19 +82,19 @@ const TabBar = (props: any) => {
             accessibilityState={
               isFocused ? { selected: true } : { selected: false }
             }
-            style={styles.tabitem}
+            style={styles(theme).tabitem}
           >
             <Icon
               size={24}
-              color={isFocused ? Colors.Primary900 : Colors.TextColour}
+              color={isFocused ? theme.Primary900 : theme.TextColour}
             />
             <Text
               style={{
-                color: isFocused ? Colors.Primary900 : Colors.TextColour,
+                color: isFocused ? theme.Primary900 : theme.TextColour,
                 marginTop: 4,
               }}
             >
-              {label}
+              {displayLabel}
             </Text>
           </Pressable>
         );
@@ -93,7 +105,7 @@ const TabBar = (props: any) => {
 
 export default TabBar;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   tabbar: {
     position: "absolute",
     left: 16,
@@ -102,12 +114,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
     borderRadius: 24,
     paddingHorizontal: 8,
     paddingVertical: 8,
     elevation: 6,
-    shadowColor: "#000000",
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 12,

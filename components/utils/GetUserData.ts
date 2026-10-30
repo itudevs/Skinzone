@@ -46,10 +46,12 @@ const fetchVisitations = async (id: string, limit?: number) => {
 
     // Get staff information separately
     const staffIds = [...new Set(visitsData.map(v => v.staffid))];
-    const { data: staffData } = await supabase
-        .from("User")
-        .select("id, name, surname")
-        .in("id", staffIds);
+    const { data: staffData } = staffIds.length > 0
+        ? await supabase
+            .from("User")
+            .select("id, name, surname")
+            .in("id", staffIds)
+        : { data: [] };
 
     // Get all unique treatment IDs
     const treatmentIds = visitsData
@@ -57,16 +59,20 @@ const fetchVisitations = async (id: string, limit?: number) => {
         .filter(Boolean);
 
     // Get treatments information (treatmentid IS the ServiceId)
-    const { data: treatmentsData } = await supabase
-        .from("treatments")
-        .select("treatmentid, duration_minutes")
-        .in("treatmentid", treatmentIds);
+    const { data: treatmentsData } = treatmentIds.length > 0
+        ? await supabase
+            .from("treatments")
+            .select("treatmentid, duration_minutes")
+            .in("treatmentid", treatmentIds)
+        : { data: [] };
 
     // Get services information (ServiceId matches treatmentid)
-    const { data: servicesData } = await supabase
-        .from("Services")
-        .select("ServiceId, servicename, servicecost, servicepoints, servicecategory")
-        .in("ServiceId", treatmentIds);
+    const { data: servicesData } = treatmentIds.length > 0
+        ? await supabase
+            .from("Services")
+            .select("ServiceId, servicename, servicecost, servicepoints, servicecategory")
+            .in("ServiceId", treatmentIds)
+        : { data: [] };
 
     // Combine the data
     const enrichedData = visitsData.map(visit => ({
@@ -231,4 +237,3 @@ const fetchLastPointVisit = async (id: string) => {
 
     return last;
 };
-

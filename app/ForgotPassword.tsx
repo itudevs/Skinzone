@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, FlatList, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import PrimaryText from "@/components/PrimaryText";
 import PasswordInput from "@/components/PasswordInput";
 import Input from "../components/Input";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/forgot-password";
 
 const ForgotPassword = () => {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -103,39 +104,37 @@ const ForgotPassword = () => {
   };
 
   const renderContent = () => (
-    <View style={styles.content}>
+    <View style={styles(theme).content}>
       <View style={{ alignItems: "center", marginBottom: 30 }}>
         <Text
           style={{
             fontSize: 32,
-            color: "white",
+            color: theme.TextColour,
             fontWeight: "bold",
             textAlign: "center",
           }}
         >
           Forgot Password
         </Text>
-        <PrimaryText
-          children={
-            step === "request"
-              ? "Secure Password Update"
-              : "Verify & Set New Password"
-          }
-        />
+        <PrimaryText>
+          {step === "request"
+            ? "Secure Password Update"
+            : "Verify & Set New Password"}
+        </PrimaryText>
       </View>
 
-      <View style={styles.CardContainer}>
+      <View style={styles(theme).CardContainer}>
         {step === "request" ? (
           <>
-            <View style={styles.infoContainer}>
-              <Text style={styles.infoText}>
+            <View style={styles(theme).infoContainer}>
+              <Text style={styles(theme).infoText}>
                 Enter your email and we will send you a reset token to verify
                 your account.
               </Text>
             </View>
 
-            <View style={styles.inputcontainer}>
-              <PrimaryText children="EMAIL" />
+            <View style={styles(theme).inputcontainer}>
+              <PrimaryText>EMAIL</PrimaryText>
               <Input
                 text="user@example.com"
                 value={email}
@@ -145,7 +144,7 @@ const ForgotPassword = () => {
               />
             </View>
 
-            <View style={styles.buttonContainer}>
+            <View style={styles(theme).buttonContainer}>
               <PrimaryButton
                 text={loading ? "Sending..." : "SEND RESET TOKEN"}
                 onPressHandler={sendVerificationCode}
@@ -154,8 +153,8 @@ const ForgotPassword = () => {
           </>
         ) : (
           <>
-            <View style={styles.inputcontainer}>
-              <PrimaryText children="EMAIL" />
+            <View style={styles(theme).inputcontainer}>
+              <PrimaryText>EMAIL</PrimaryText>
               <Input
                 text="user@example.com"
                 value={email}
@@ -165,8 +164,8 @@ const ForgotPassword = () => {
               />
             </View>
 
-            <View style={styles.inputcontainer}>
-              <PrimaryText children="VERIFICATION TOKEN" />
+            <View style={styles(theme).inputcontainer}>
+              <PrimaryText>VERIFICATION TOKEN</PrimaryText>
               <Input
                 text="12345678"
                 value={verificationToken}
@@ -175,8 +174,8 @@ const ForgotPassword = () => {
               />
             </View>
 
-            <View style={styles.inputcontainer}>
-              <PrimaryText children="NEW PASSWORD" />
+            <View style={styles(theme).inputcontainer}>
+              <PrimaryText>NEW PASSWORD</PrimaryText>
               <PasswordInput
                 placeholder="••••••••"
                 value={newPassword}
@@ -184,8 +183,8 @@ const ForgotPassword = () => {
               />
             </View>
 
-            <View style={styles.inputcontainer}>
-              <PrimaryText children="CONFIRM PASSWORD" />
+            <View style={styles(theme).inputcontainer}>
+              <PrimaryText>CONFIRM PASSWORD</PrimaryText>
               <PasswordInput
                 placeholder="••••••••"
                 value={confirmPassword}
@@ -193,7 +192,7 @@ const ForgotPassword = () => {
               />
             </View>
 
-            <View style={styles.buttonContainer}>
+            <View style={styles(theme).buttonContainer}>
               <PrimaryButton
                 text={loading ? "Updating..." : "CHANGE PASSWORD"}
                 onPressHandler={updatePassword}
@@ -214,9 +213,11 @@ const ForgotPassword = () => {
           </>
         )}
 
-        <View style={styles.backContainer}>
-          <PrimaryText children="Remember your password?" />
-          <PrimaryLink colour="#00FF5F" url="/Login" children="Back to Login" />
+        <View style={styles(theme).backContainer}>
+          <PrimaryText>Remember your password?</PrimaryText>
+          <PrimaryLink colour="#00FF5F" url="/Login">
+            Back to Login
+          </PrimaryLink>
         </View>
       </View>
     </View>
@@ -225,7 +226,7 @@ const ForgotPassword = () => {
   return (
     <View
       style={[
-        styles.Container,
+        styles(theme).Container,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}
     >
@@ -233,7 +234,7 @@ const ForgotPassword = () => {
         data={[{ key: "form" }]}
         renderItem={renderContent}
         keyExtractor={(item) => item.key}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles(theme).scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -244,9 +245,9 @@ const ForgotPassword = () => {
 
 export default ForgotPassword;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Container: {
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     flex: 1,
   },
   content: {
@@ -262,7 +263,7 @@ const styles = StyleSheet.create({
   },
   CardContainer: {
     marginTop: 20,
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     padding: 30,
     borderColor: "#5f5e5eff",
     borderWidth: 2,
@@ -273,7 +274,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   infoText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 14,
     lineHeight: 20,
     textAlign: "center",

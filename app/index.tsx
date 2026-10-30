@@ -3,8 +3,10 @@ import { ActivityIndicator, View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Theme, useTheme } from "@/components/utils/Colours";
 
 const Index = () => {
+  const theme = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -64,18 +66,18 @@ const Index = () => {
     };
   }, [router]);
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color="#ffffff" />
+    <View style={styles(theme).container}>
+      <ActivityIndicator size="large" color={theme.TextColour} />
     </View>
   );
 };
 
 export default Index;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: theme.PrimaryBackground,
     alignItems: "center",
     justifyContent: "center",
   },

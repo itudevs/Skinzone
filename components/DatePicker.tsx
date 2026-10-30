@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   TextInput,
   StyleSheet,
@@ -6,7 +6,7 @@ import {
   View,
   Platform,
 } from "react-native";
-import Colors from "./utils/Colours";
+import { Theme, useTheme } from "./utils/Colours";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 interface DatePickerProps {
@@ -16,19 +16,12 @@ interface DatePickerProps {
 }
 
 const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
-  const [date, setDate] = useState<Date | undefined>(value);
+  const theme = useTheme();
   const [show, setShow] = useState(false);
 
-  useEffect(() => {
-    setDate(value);
-  }, [value]);
-
-  const onChange = (event: any, selectedDate?: Date) => {
-    setTimeout(() => {
-      setShow(false);
-    }, 5000);
+  const onChange = (_event: any, selectedDate?: Date) => {
+    setShow(false);
     if (selectedDate) {
-      setDate(selectedDate);
       onDateChange?.(selectedDate);
     }
   };
@@ -44,22 +37,22 @@ const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
     <View>
       <TouchableOpacity onPress={() => setShow(true)}>
         <TextInput
-          style={styles.main}
+          style={styles(theme).main}
           placeholder={placeholder}
-          placeholderTextColor="#666"
-          value={date ? formatDate(date) : ""}
+          placeholderTextColor={theme.placeholder}
+          value={value ? formatDate(value) : ""}
           editable={false}
           pointerEvents="none"
         />
       </TouchableOpacity>
       {show && (
         <DateTimePicker
-          value={date || new Date()}
+          value={value || new Date()}
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={onChange}
           maximumDate={new Date()}
-          textColor="#ffffff"
+          textColor={theme.TextColour}
         />
       )}
     </View>
@@ -68,13 +61,13 @@ const DatePicker = ({ placeholder, value, onDateChange }: DatePickerProps) => {
 
 export default DatePicker;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   main: {
     marginTop: 8,
     padding: 15,
-    color: Colors.TextColour,
-    backgroundColor: Colors.PrimaryBackground,
-    borderColor: "#8b8b8bff",
+    color: theme.TextColour,
+    backgroundColor: theme.PrimaryBackground,
+    borderColor: theme.bordercolor,
     borderWidth: 0.5,
     borderRadius: 10,
   },

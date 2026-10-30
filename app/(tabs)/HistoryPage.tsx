@@ -1,5 +1,5 @@
 import PrimaryText from "@/components/PrimaryText";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import {
   View,
   Text,
@@ -9,17 +9,54 @@ import {
 } from "react-native";
 import { History } from "lucide-react-native";
 import { Getvisitations } from "@/components/utils/GetUserData";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { UserSession } from "@/components/utils/GetUsersession";
 import { Session } from "@supabase/supabase-js";
 import Visitation from "@/components/Visitation";
+import SearchBar from "@/components/SearchBar";
+
+type DateFilter = "all" | "30days" | "90days" | "year";
 
 const HistoryPage = () => {
+  const theme = useTheme();
   const [visitations, setvisitations] = useState<any[]>([]);
   const [session, setSession] = useState<Session | null>(
     UserSession.getSession(),
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+
+  const filteredVisitations = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const today = new Date();
+    const startDate = new Date(today);
+
+    if (dateFilter === "30days") {
+      startDate.setDate(today.getDate() - 30);
+    } else if (dateFilter === "90days") {
+      startDate.setDate(today.getDate() - 90);
+    } else if (dateFilter === "year") {
+      startDate.setMonth(0, 1);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    return visitations.filter((visit) => {
+      const visitDate = new Date(visit.visit_date);
+      const matchesDate =
+        dateFilter === "all" || (visitDate >= startDate && visitDate <= today);
+      const service = visit.customervisitlines?.[0]?.treatments?.Services || {};
+      const matchesSearch = [
+        service.servicename,
+        service.servicecategory,
+        visit.notes,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+
+      return matchesDate && (!query || matchesSearch);
+    });
+  }, [dateFilter, searchQuery, visitations]);
 
   useEffect(() => {
     const unsubscribe = UserSession.onSessionChange((nextSession) => {
@@ -33,15 +70,19 @@ const HistoryPage = () => {
 
   const fetchvisitation = useCallback(async () => {
     if (!session?.user.id) {
-      setvisitations([]);
+      setTimeout(() => setvisitations([]), 0);
       return;
     }
     const data = await Getvisitations(session.user.id, 100);
     setvisitations(data);
-  }, [session?.user.id]);
+  }, [session]);
 
   useEffect(() => {
-    fetchvisitation();
+    const timer = setTimeout(() => {
+      void fetchvisitation();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [fetchvisitation]);
 
   const onRefresh = async () => {
@@ -51,15 +92,15 @@ const HistoryPage = () => {
   };
 
   return (
-    <View style={styles.Container}>
-      <View style={styles.header}>
-        <Text style={{ color: "white", fontWeight: "bold", fontSize: 40 }}>
+    <View style={styles(theme).Container}>
+      <View style={styles(theme).header}>
+        <Text style={{ color: theme.TextColour, fontWeight: "bold", fontSize: 40 }}>
           History
         </Text>
         <PrimaryText>Track your loyalty visitations</PrimaryText>
       </View>
       <ScrollView
-        style={styles.CardContainer}
+        style={styles(theme).CardContainer}
         contentContainerStyle={{ paddingBottom: 20 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -73,13 +114,13 @@ const HistoryPage = () => {
             paddingRight: 15,
           }}
         >
-          <Text style={{ color: Colors.Primary900, padding: 15 }}>Logs</Text>
-          <History color={Colors.TextColour} size={20} />
+          <Text style={{ color: theme.Primary900, padding: 15 }}>Logs</Text>
+          <History color={theme.TextColour} size={20} />
         </View>
-        <View style={styles.InnerCard}>
+        <View style={styles(theme).InnerCard}>
           <Text
             style={{
-              color: "white",
+              color: theme.TextColour,
               fontWeight: "bold",
               fontSize: 20,
               paddingHorizontal: 15,
@@ -91,23 +132,50 @@ const HistoryPage = () => {
           </Text>
           <Text
             style={{
-              color: Colors.TextColour,
+              color: theme.TextColour,
               paddingHorizontal: 20,
               paddingBottom: 10,
             }}
           >
             ---------------------------------------
           </Text>
+          <SearchBar
+            Placeholder="Search treatments or products"
+            size="compact"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <View style={styles(theme).filterRow}>
+            {(
+              [
+                ["all", "All"],
+                ["30days", "30 days"],
+                ["90days", "90 days"],
+                ["year", "This year"],
+              ] as [DateFilter, string][]
+            ).map(([value, label]) => (
+              <Text
+                key={value}
+                onPress={() => setDateFilter(value)}
+                style={[
+                  styles(theme).filterChip,
+                  dateFilter === value && styles(theme).filterChipActive,
+                ]}
+              >
+                {label}
+              </Text>
+            ))}
+          </View>
           <View style={{ paddingHorizontal: 15 }}>
             <Visitation
               id={session?.user.id || ""}
               limit={100}
-              visitsData={visitations}
+              visitsData={filteredVisitations}
             />
           </View>
-          {visitations.length === 0 && (
+          {filteredVisitations.length === 0 && (
             <View style={{ alignItems: "center", padding: 20 }}>
-              <Text style={{ color: Colors.TextColour }}>No visits found</Text>
+              <Text style={{ color: theme.TextColour }}>No visits found</Text>
             </View>
           )}
           <View style={{ alignItems: "center", padding: 20 }}>
@@ -121,10 +189,10 @@ const HistoryPage = () => {
 
 export default HistoryPage;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Container: {
     flex: 1,
-    backgroundColor: Colors.PrimaryBackground,
+    backgroundColor: theme.PrimaryBackground,
   },
   header: {
     paddingTop: 60,
@@ -133,8 +201,8 @@ const styles = StyleSheet.create({
   },
   CardContainer: {
     flex: 1,
-    backgroundColor: Colors.background100,
-    borderColor: Colors.bordercolor,
+    backgroundColor: theme.background100,
+    borderColor: theme.bordercolor,
     borderWidth: 1,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -142,12 +210,32 @@ const styles = StyleSheet.create({
   },
   InnerCard: {
     flex: 1,
-    backgroundColor: Colors.PrimaryBackground,
-    borderColor: Colors.bordercolor,
+    backgroundColor: theme.PrimaryBackground,
+    borderColor: theme.bordercolor,
     borderWidth: 0.5,
     borderRadius: 20,
     marginHorizontal: 10,
     marginBottom: 20,
     paddingBottom: 20,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 15,
+    marginBottom: 12,
+  },
+  filterChip: {
+    flex: 1,
+    color: theme.TextColour,
+    backgroundColor: theme.background100,
+    borderRadius: 8,
+    paddingVertical: 8,
+    textAlign: "center",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  filterChipActive: {
+    color: theme.PrimaryBackground,
+    backgroundColor: theme.Primary900,
   },
 });

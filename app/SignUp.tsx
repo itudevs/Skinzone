@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import PrimaryText from "@/components/PrimaryText";
 import Input from "../components/Input";
 import PrimaryButton from "@/components/PrimaryButton";
@@ -26,6 +26,7 @@ import {
 } from "../lib/error-handler";
 
 const SignUp = () => {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
@@ -94,7 +95,7 @@ const SignUp = () => {
   };
   const getPasswordStrength = (value: string) => {
     if (!value) {
-      return { label: "", color: Colors.TextColour };
+      return { label: "", color: theme.TextColour };
     }
 
     let score = 0;
@@ -241,12 +242,12 @@ const SignUp = () => {
 
   //end magic link handling function
   const renderContent = () => (
-    <View style={styles.content}>
+    <View style={styles(theme).content}>
       <View style={{ alignItems: "center" }}>
         <Text
           style={{
             fontSize: 32,
-            color: "white",
+            color: theme.TextColour,
             fontWeight: "bold",
             textAlign: "center",
           }}
@@ -256,47 +257,47 @@ const SignUp = () => {
         <PrimaryText>Welcome to your Skin journey</PrimaryText>
       </View>
       {/*Sign Up Card*/}
-      <View style={styles.CardContainer}>
+      <View style={styles(theme).CardContainer}>
         {/*Required Field Legend */}
-        <Text style={styles.legendText}>
-          <Text style={styles.asterisk}>*</Text>
+        <Text style={styles(theme).legendText}>
+          <Text style={styles(theme).asterisk}>*</Text>
           <Text> = Required field</Text>
         </Text>
 
         {/*Name and Surname Row */}
-        <View style={styles.rowContainer}>
-          <View style={styles.halfInput}>
+        <View style={styles(theme).rowContainer}>
+          <View style={styles(theme).halfInput}>
             <PrimaryText required={true}>NAME</PrimaryText>
             <TextInput
-              style={styles.textinputheader}
+              style={styles(theme).textinputheader}
               placeholder="John"
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.placeholder}
               value={name}
               onChangeText={handleNameChange}
               autoCapitalize="words"
             />
             {!!nameError && (
-              <Text style={styles.inlineErrorText}>{nameError}</Text>
+              <Text style={styles(theme).inlineErrorText}>{nameError}</Text>
             )}
           </View>
-          <View style={styles.halfInput}>
+          <View style={styles(theme).halfInput}>
             <PrimaryText required={true}>SURNAME</PrimaryText>
             <TextInput
-              style={styles.textinputheader}
+              style={styles(theme).textinputheader}
               placeholder="Doe"
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.placeholder}
               value={surname}
               onChangeText={handleSurnameChange}
               autoCapitalize="words"
             />
             {!!surnameError && (
-              <Text style={styles.inlineErrorText}>{surnameError}</Text>
+              <Text style={styles(theme).inlineErrorText}>{surnameError}</Text>
             )}
           </View>
         </View>
 
         {/*Email Field */}
-        <View style={styles.inputcontainer}>
+        <View style={styles(theme).inputcontainer}>
           <PrimaryText required={true}>EMAIL</PrimaryText>
           <Input
             text="john.doe@example.com"
@@ -308,7 +309,7 @@ const SignUp = () => {
         </View>
 
         {/*Phone Field */}
-        <View style={styles.inputcontainer}>
+        <View style={styles(theme).inputcontainer}>
           <PrimaryText required={true}>PHONE</PrimaryText>
           <Input
             text="+27 (81) 555-4444"
@@ -319,7 +320,7 @@ const SignUp = () => {
         </View>
 
         {/*Date of Birth Field */}
-        <View style={styles.inputcontainer}>
+        <View style={styles(theme).inputcontainer}>
           <PrimaryText required={true}>DATE OF BIRTH</PrimaryText>
           <DatePicker
             placeholder="mm/dd/yyyy"
@@ -329,21 +330,21 @@ const SignUp = () => {
         </View>
 
         {/*Password Field */}
-        <View style={styles.inputcontainer}>
+        <View style={styles(theme).inputcontainer}>
           <PrimaryText required={true}>PASSWORD</PrimaryText>
           <PasswordInput
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
           />
-          <Text style={styles.passwordHelperText}>
+          <Text style={styles(theme).passwordHelperText}>
             Use at least 8 characters with at least one letter and one number.
           </Text>
           {!!password && (
-            <View style={styles.passwordFeedbackContainer}>
+            <View style={styles(theme).passwordFeedbackContainer}>
               <Text
                 style={[
-                  styles.passwordStrengthText,
+                  styles(theme).passwordStrengthText,
                   { color: passwordStrength.color },
                 ]}
               >
@@ -351,30 +352,30 @@ const SignUp = () => {
               </Text>
               <Text
                 style={[
-                  styles.passwordRuleText,
+                  styles(theme).passwordRuleText,
                   passwordChecks.hasMinLength
-                    ? styles.passwordRuleMet
-                    : styles.passwordRuleUnmet,
+                    ? styles(theme).passwordRuleMet
+                    : styles(theme).passwordRuleUnmet,
                 ]}
               >
                 • At least 8 characters
               </Text>
               <Text
                 style={[
-                  styles.passwordRuleText,
+                  styles(theme).passwordRuleText,
                   passwordChecks.hasLetter
-                    ? styles.passwordRuleMet
-                    : styles.passwordRuleUnmet,
+                    ? styles(theme).passwordRuleMet
+                    : styles(theme).passwordRuleUnmet,
                 ]}
               >
                 • Contains a letter
               </Text>
               <Text
                 style={[
-                  styles.passwordRuleText,
+                  styles(theme).passwordRuleText,
                   passwordChecks.hasNumber
-                    ? styles.passwordRuleMet
-                    : styles.passwordRuleUnmet,
+                    ? styles(theme).passwordRuleMet
+                    : styles(theme).passwordRuleUnmet,
                 ]}
               >
                 • Contains a number
@@ -384,7 +385,7 @@ const SignUp = () => {
         </View>
 
         {/*Confirm Password Field */}
-        <View style={styles.inputcontainer}>
+        <View style={styles(theme).inputcontainer}>
           <PrimaryText required={true}>CONFIRM PASSWORD</PrimaryText>
           <PasswordInput
             placeholder="••••••••"
@@ -394,29 +395,29 @@ const SignUp = () => {
         </View>
 
         {/*Terms and Privacy Consent */}
-        <View style={styles.consentContainer}>
+        <View style={styles(theme).consentContainer}>
           <Pressable
-            style={styles.checkboxContainer}
+            style={styles(theme).checkboxContainer}
             onPress={() => setAgreedToTerms(!agreedToTerms)}
           >
             <View
-              style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
+              style={[styles(theme).checkbox, agreedToTerms && styles(theme).checkboxChecked]}
             >
-              {agreedToTerms && <Text style={styles.checkmark}>✓</Text>}
+              {agreedToTerms && <Text style={styles(theme).checkmark}>✓</Text>}
             </View>
-            <View style={styles.consentTextContainer}>
-              <Text style={styles.consentText}>
+            <View style={styles(theme).consentTextContainer}>
+              <Text style={styles(theme).consentText}>
                 I agree to the collection and processing of my personal data as
                 described in the{" "}
                 <Text
-                  style={styles.consentLink}
+                  style={styles(theme).consentLink}
                   onPress={() => router.navigate("/PrivacyPolicy")}
                 >
                   Privacy Policy
                 </Text>{" "}
                 and{" "}
                 <Text
-                  style={styles.consentLink}
+                  style={styles(theme).consentLink}
                   onPress={() => router.navigate("/TermsOfService")}
                 >
                   Terms of Service
@@ -425,14 +426,14 @@ const SignUp = () => {
               </Text>
             </View>
           </Pressable>
-          <Text style={styles.dataCollectionNotice}>
+          <Text style={styles(theme).dataCollectionNotice}>
             We collect: Name, Email, Phone, DOB, Visit History, and Loyalty
             Points to provide our services.
           </Text>
         </View>
 
         {/*Create Account Button */}
-        <View style={styles.buttonContainer}>
+        <View style={styles(theme).buttonContainer}>
           <PrimaryButton
             text={loading ? "Creating Account..." : "CREATE ACCOUNT →"}
             onPressHandler={SignUpHandler}
@@ -440,7 +441,7 @@ const SignUp = () => {
         </View>
 
         {/*Login Link */}
-        <View style={styles.signupcontainer}>
+        <View style={styles(theme).signupcontainer}>
           <PrimaryText>Already a Member?</PrimaryText>
           <PrimaryLink colour="#00FF5F" url="/Login">
             Login
@@ -451,10 +452,10 @@ const SignUp = () => {
   );
 
   return (
-    <View style={styles.Container}>
+    <View style={styles(theme).Container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
+        style={styles(theme).keyboardView}
         keyboardVerticalOffset={0}
       >
         <FlatList
@@ -462,7 +463,7 @@ const SignUp = () => {
           renderItem={renderContent}
           keyExtractor={(item) => item.key}
           contentContainerStyle={[
-            styles.scrollContent,
+            styles(theme).scrollContent,
             { paddingTop: insets.top, paddingBottom: insets.bottom },
           ]}
           showsVerticalScrollIndicator={false}
@@ -476,9 +477,9 @@ const SignUp = () => {
 
 export default SignUp;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   Container: {
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     flex: 1,
   },
   keyboardView: {
@@ -495,9 +496,9 @@ const styles = StyleSheet.create({
   textinputheader: {
     marginTop: 8,
     padding: 15,
-    color: Colors.TextColour,
-    backgroundColor: Colors.PrimaryBackground,
-    borderColor: "#8b8b8bff",
+    color: theme.TextColour,
+    backgroundColor: theme.PrimaryBackground,
+    borderColor: theme.bordercolor,
     borderWidth: 0.5,
     borderRadius: 10,
   },
@@ -514,7 +515,7 @@ const styles = StyleSheet.create({
   },
   CardContainer: {
     marginTop: 20,
-    backgroundColor: "#000000ff",
+    backgroundColor: theme.PrimaryBackground,
     padding: 30,
     borderColor: "#5f5e5eff",
     borderWidth: 2,
@@ -542,7 +543,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: Colors.TextColour,
+    borderColor: theme.TextColour,
     borderRadius: 6,
     marginRight: 12,
     justifyContent: "center",
@@ -550,11 +551,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkboxChecked: {
-    backgroundColor: Colors.Primary900,
-    borderColor: Colors.Primary900,
+    backgroundColor: theme.Primary900,
+    borderColor: theme.Primary900,
   },
   checkmark: {
-    color: "#FFFFFF",
+    color: theme.TextColour,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -562,17 +563,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   consentText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 13,
     lineHeight: 20,
   },
   consentLink: {
-    color: Colors.Primary900,
+    color: theme.Primary900,
     textDecorationLine: "underline",
     fontWeight: "bold",
   },
   dataCollectionNotice: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 11,
     lineHeight: 16,
     fontStyle: "italic",
@@ -580,7 +581,7 @@ const styles = StyleSheet.create({
     paddingLeft: 36,
   },
   legendText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 12,
     marginBottom: 15,
     marginTop: 5,
@@ -591,7 +592,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   passwordHelperText: {
-    color: Colors.TextColour,
+    color: theme.TextColour,
     fontSize: 11,
     lineHeight: 16,
     marginTop: 6,

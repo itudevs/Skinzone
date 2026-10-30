@@ -7,3 +7,9 @@ export interface DropDownItems {
 
 
 }
+export enum BookingStatus {
+    Completed = "Completed",
+    Pending = "Pending",
+    Booked = "Booked",
+    Cancelled = "Cancelled"
+}

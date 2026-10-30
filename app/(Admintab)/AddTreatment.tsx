@@ -9,7 +9,7 @@ import {
   Alert,
   Pressable,
   TextInput,
-} from "react-native";
+ ScrollView } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Input from "@/components/Input";
 import PrimaryButton from "@/components/PrimaryButton";
@@ -18,14 +18,16 @@ import {
   SerivceInsert,
   TrearmentInsert,
 } from "@/components/utils/DatabaseTypes";
-import Colors from "@/components/utils/Colours";
-import { ScrollView } from "react-native";
+import { Theme, useTheme } from "@/components/utils/Colours";
+
 import { supabase } from "@/lib/supabase";
 import { GetTreatments, GetProducts } from "@/components/utils/GetServices";
 import { DropDownItems } from "@/components/utils/utilinterfaces";
 import { TrashIcon } from "lucide-react-native";
 import { cacheManager } from "@/lib/cache";
+import SearchBar from "@/components/SearchBar";
 const AddTreatment = () => {
+  const theme = useTheme();
   const [treatmentname, settreatmentname] = useState("");
   const [price, setprice] = useState("");
   const [treatmenttype, settreatmenttype] = useState("");
@@ -40,6 +42,15 @@ const AddTreatment = () => {
   const [productprice, setproductprice] = useState("");
   const [producttype, setproducttype] = useState("");
   const [productdescription, setproductdescription] = useState("");
+  const [treatmentSearch, setTreatmentSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+
+  const filteredTreatments = treatments.filter((item) =>
+    item.value.toLowerCase().includes(treatmentSearch.trim().toLowerCase()),
+  );
+  const filteredProducts = products.filter((item) =>
+    item.value.toLowerCase().includes(productSearch.trim().toLowerCase()),
+  );
 
   const HandleproductName = (text: string) => {
     setproductname(text);
@@ -65,9 +76,6 @@ const AddTreatment = () => {
   const Handleduration = (text: string) => {
     setduration(text);
   };
-  const Handlepoints = (text: string) => {
-    setpoints(text);
-  };
   const clearInputs = () => {
     settreatmentname("");
     settreatmenttype("");
@@ -81,7 +89,7 @@ const AddTreatment = () => {
   };
   const ValidateInput = (): boolean => {
     let passed = true;
-    if (selecteditem == "treatment") {
+    if (selecteditem === "treatment") {
       if (treatmentname.length < 3 || treatmenttype.length < 3) {
         Alert.alert("Error", "field must contain 3 or more letters");
         passed = false;
@@ -89,7 +97,7 @@ const AddTreatment = () => {
         Alert.alert("Error", "price must not be characters");
         passed = false;
       }
-      if (typeof +duration != "number" || typeof +points != "number") {
+      if (typeof +duration !== "number" || typeof +points !== "number") {
         Alert.alert("Error", "field must be a number");
         passed = false;
       }
@@ -181,7 +189,7 @@ const AddTreatment = () => {
             setRefreshTrigger((prev) => prev + 1);
 
             Alert.alert("Success", "Treatment removed");
-          } catch (error) {
+          } catch {
             Alert.alert("Error", "An unexpected error occurred");
           }
         },
@@ -264,7 +272,7 @@ const AddTreatment = () => {
             setRefreshTrigger((prev) => prev + 1);
 
             Alert.alert("Success", "Product removed");
-          } catch (error) {
+          } catch {
             Alert.alert("Error", "An unexpected error occurred");
           }
         },
@@ -285,7 +293,7 @@ const AddTreatment = () => {
 
     setclicked(true);
 
-    if (selecteditem == "treatment") {
+    if (selecteditem === "treatment") {
       // Step 1: Insert service FIRST to get ServiceId
       const service: SerivceInsert = {
         servicecategory: "treatment",
@@ -415,7 +423,7 @@ const AddTreatment = () => {
   }, [refreshTrigger, selecteditem]);
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: Colors.PrimaryBackground }}
+      style={{ flex: 1, backgroundColor: theme.PrimaryBackground }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
@@ -434,34 +442,34 @@ const AddTreatment = () => {
             <Picker.Item value={"product"} label="Product" />
           </Picker>
         ) : (
-          <View style={styles.androidPickerContainer}>
+          <View style={styles(theme).androidPickerContainer}>
             <Picker
               selectedValue={selecteditem}
               onValueChange={(itemValue) => {
                 setselecteditem(itemValue);
               }}
               mode="dropdown"
-              style={styles.androidPicker}
-              dropdownIconColor="#ffffff"
+              style={styles(theme).androidPicker}
+              dropdownIconColor={theme.TextColour}
             >
               <Picker.Item value={"treatment"} label="Treatment" />
               <Picker.Item value={"product"} label="Product" />
             </Picker>
           </View>
         )}
-        {selecteditem == "treatment" && (
-          <View style={styles.main}>
-            <Text style={styles.maintexts}>Add New Treatment</Text>
-            <View style={styles.maininputs}>
-              <PrimaryText children="Treatment Name" />
+        {selecteditem === "treatment" && (
+          <View style={styles(theme).main}>
+            <Text style={styles(theme).maintexts}>Add New Treatment</Text>
+            <View style={styles(theme).maininputs}>
+              <PrimaryText>Treatment Name</PrimaryText>
               <Input
                 text="e.g ,Deep Tissue Massage"
                 value={treatmentname}
                 onChangeText={HandleChangetreatment}
               />
             </View>
-            <View style={styles.maininputs}>
-              <PrimaryText children="Price (R)" />
+            <View style={styles(theme).maininputs}>
+              <PrimaryText>Price (R)</PrimaryText>
               <Input
                 keyboardType="numeric"
                 text="e.g, 450"
@@ -469,8 +477,8 @@ const AddTreatment = () => {
                 onChangeText={HandlePrice}
               />
             </View>
-            <View style={styles.maininputs}>
-              <PrimaryText children="Treatment Type" />
+            <View style={styles(theme).maininputs}>
+              <PrimaryText>Treatment Type</PrimaryText>
               <Input
                 keyboardType="default"
                 text="e.g, facial"
@@ -478,8 +486,8 @@ const AddTreatment = () => {
                 onChangeText={Handletreatmenttype}
               />
             </View>
-            <View style={styles.maininputs}>
-              <PrimaryText children="Duration(mins)" />
+            <View style={styles(theme).maininputs}>
+              <PrimaryText>Duration(mins)</PrimaryText>
               <Input
                 keyboardType="numeric"
                 text="e.g, 60"
@@ -493,14 +501,20 @@ const AddTreatment = () => {
                 onPressHandler={HandleAdd}
               />
             </View>
-            <Text style={styles.maintexts}>Current Treatments</Text>
+            <Text style={styles(theme).maintexts}>Current Treatments</Text>
+            <SearchBar
+              Placeholder="Search current treatments"
+              size="compact"
+              value={treatmentSearch}
+              onChangeText={setTreatmentSearch}
+            />
             <View>
-              {treatments.map((item) => (
-                <View key={item.id} style={styles.TreatMain}>
-                  <View style={styles.Treatment}>
+              {filteredTreatments.map((item) => (
+                <View key={item.id} style={styles(theme).TreatMain}>
+                  <View style={styles(theme).Treatment}>
                     <Text
                       style={{
-                        color: "white",
+                        color: theme.TextColour,
                         fontWeight: "bold",
                         fontSize: 20,
                         paddingVertical: 5,
@@ -509,27 +523,27 @@ const AddTreatment = () => {
                     >
                       {item.value}
                     </Text>
-                    <Text style={{ color: Colors.Primary900 }}>
+                    <Text style={{ color: theme.Primary900 }}>
                       {formatter.format(parseFloat(item.cost || "0"))}
                     </Text>
                   </View>
                   <Text
                     style={{
-                      color: "white",
+                      color: theme.TextColour,
                       paddingVertical: 20,
                     }}
                   >
                     {item.points}pts
                   </Text>
                   <Pressable
-                    style={({ pressed }) => pressed && styles.presseditem}
+                    style={({ pressed }) => pressed && styles(theme).presseditem}
                     onPress={HandleDeleteTreatment.bind(
                       null,
                       item.id,
                       item.value,
                     )}
                   >
-                    <View style={styles.Trash}>
+                    <View style={styles(theme).Trash}>
                       <TrashIcon color={"#ff0101e0"} />
                     </View>
                   </Pressable>
@@ -538,19 +552,19 @@ const AddTreatment = () => {
             </View>
           </View>
         )}
-        {selecteditem == "product" && (
-          <View style={styles.main}>
-            <Text style={styles.maintexts}>Add New Product</Text>
-            <View style={styles.maininputs}>
-              <PrimaryText children="Product Name" />
+        {selecteditem === "product" && (
+          <View style={styles(theme).main}>
+            <Text style={styles(theme).maintexts}>Add New Product</Text>
+            <View style={styles(theme).maininputs}>
+              <PrimaryText>Product Name</PrimaryText>
               <Input
                 text="e.g ,Facial Product"
                 value={productname}
                 onChangeText={HandleproductName}
               />
             </View>
-            <View style={styles.maininputs}>
-              <PrimaryText children="Price (R)" />
+            <View style={styles(theme).maininputs}>
+              <PrimaryText>Price (R)</PrimaryText>
               <Input
                 keyboardType="numeric"
                 text="e.g, 450"
@@ -558,8 +572,8 @@ const AddTreatment = () => {
                 onChangeText={Handleproductprice}
               />
             </View>
-            <View style={styles.maininputs}>
-              <PrimaryText children="Product Type" />
+            <View style={styles(theme).maininputs}>
+              <PrimaryText>Product Type</PrimaryText>
               <Input
                 keyboardType="default"
                 text="e.g, facial"
@@ -567,23 +581,23 @@ const AddTreatment = () => {
                 onChangeText={Handleproducttype}
               />
             </View>
-            <View style={styles.maininputs}>
-              <PrimaryText children="Product Description" />
+            <View style={styles(theme).maininputs}>
+              <PrimaryText>Product Description</PrimaryText>
               <TextInput
                 multiline={true}
                 placeholder="Product Description"
                 style={{
-                  color: Colors.TextColour,
+                  color: theme.TextColour,
                   paddingVertical: 10,
                   paddingLeft: 10,
                   paddingBottom: 50,
                   marginVertical: 10,
                   marginRight: 0,
-                  backgroundColor: Colors.PrimaryBackground,
+                  backgroundColor: theme.PrimaryBackground,
                   borderRadius: 10,
                   borderWidth: 0.5,
 
-                  borderColor: "#8b8b8bff",
+                  borderColor: theme.bordercolor,
                 }}
                 blurOnSubmit={true}
                 value={productdescription}
@@ -596,14 +610,20 @@ const AddTreatment = () => {
                 onPressHandler={HandleAdd}
               />
             </View>
-            <Text style={styles.maintexts}>Current Products</Text>
+            <Text style={styles(theme).maintexts}>Current Products</Text>
+            <SearchBar
+              Placeholder="Search current products"
+              size="compact"
+              value={productSearch}
+              onChangeText={setProductSearch}
+            />
             <View>
-              {products.map((item) => (
-                <View key={item.id} style={styles.TreatMain}>
-                  <View style={styles.Treatment}>
+              {filteredProducts.map((item) => (
+                <View key={item.id} style={styles(theme).TreatMain}>
+                  <View style={styles(theme).Treatment}>
                     <Text
                       style={{
-                        color: "white",
+                        color: theme.TextColour,
                         fontWeight: "bold",
                         fontSize: 20,
                         paddingVertical: 5,
@@ -612,27 +632,27 @@ const AddTreatment = () => {
                     >
                       {item.value}
                     </Text>
-                    <Text style={{ color: Colors.Primary900 }}>
+                    <Text style={{ color: theme.Primary900 }}>
                       {formatter.format(parseFloat(item.cost || "0"))}
                     </Text>
                   </View>
                   <Text
                     style={{
-                      color: "white",
+                      color: theme.TextColour,
                       paddingVertical: 20,
                     }}
                   >
                     {item.points}pts
                   </Text>
                   <Pressable
-                    style={({ pressed }) => pressed && styles.presseditem}
+                    style={({ pressed }) => pressed && styles(theme).presseditem}
                     onPress={HandleDeleteProduct.bind(
                       null,
                       item.id,
                       item.value,
                     )}
                   >
-                    <View style={styles.Trash}>
+                    <View style={styles(theme).Trash}>
                       <TrashIcon color={"#ff0101e0"} />
                     </View>
                   </Pressable>
@@ -648,13 +668,13 @@ const AddTreatment = () => {
 
 export default AddTreatment;
 
-const styles = StyleSheet.create({
+const styles = (theme: Theme) => StyleSheet.create({
   main: {
     paddingTop: 60,
   },
-  maininputs: { paddingHorizontal: 25, padding: 5, borderColor: "#8b8b8bff" },
+  maininputs: { paddingHorizontal: 25, padding: 5, borderColor: theme.bordercolor },
   maintexts: {
-    color: "white",
+    color: theme.TextColour,
     fontSize: 25,
     fontWeight: "bold",
     paddingLeft: 20,
@@ -676,7 +696,7 @@ const styles = StyleSheet.create({
   },
   TreatMain: {
     flexDirection: "row",
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
     margin: 10,
     borderRadius: 10,
     alignItems: "center",
@@ -689,14 +709,14 @@ const styles = StyleSheet.create({
     marginVertical: 15,
     marginTop: 40,
     borderRadius: 8,
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
     borderWidth: 1,
-    borderColor: "#8b8b8bff",
+    borderColor: theme.bordercolor,
     overflow: "hidden",
   },
   androidPicker: {
-    color: "white",
+    color: theme.TextColour,
     height: 50,
-    backgroundColor: Colors.background100,
+    backgroundColor: theme.background100,
   },
 });

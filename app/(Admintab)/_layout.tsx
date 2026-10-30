@@ -10,6 +10,10 @@ const TabLayout = () => {
         options={{ headerShown: false, title: "Home" }}
       />
       <Tabs.Screen
+        name="AdminBooking"
+        options={{ headerShown: false, title: "Bookings" }}
+      />
+      <Tabs.Screen
         name="AddTreatment"
         options={{ headerShown: false, title: "Services" }}
       />

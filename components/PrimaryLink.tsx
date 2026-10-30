@@ -1,5 +1,4 @@
-import { useCallback } from "react";
-import { Text, Linking, Alert, Pressable, StyleSheet } from "react-native";
+import { Text, Pressable, StyleSheet } from "react-native";
 import { Href, useRouter } from "expo-router";
 
 interface PrimaryLinkProps {

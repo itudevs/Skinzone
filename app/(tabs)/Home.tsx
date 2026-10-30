@@ -10,11 +10,11 @@ import {
   FlatList,
 } from "react-native";
 import ProfileImage from "@/components/ProfileImage";
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Session } from "@supabase/supabase-js";
 import { useFocusEffect } from "expo-router";
 import { supabase } from "@/lib/supabase";
-import Colors from "@/components/utils/Colours";
+import { Theme, useTheme } from "@/components/utils/Colours";
 import { Bell, TrendingUp, X, Calendar, Clock } from "lucide-react-native";
 import Visitation from "@/components/Visitation";
 import { UserSession } from "@/components/utils/GetUsersession";
@@ -43,6 +43,7 @@ interface BirthdayBonusStatus {
 const BIRTHDAY_BONUS_STORAGE_KEY = "birthday_bonus_awarded";
 
 const Home = () => {
+  const theme = useTheme();
   const [session, setSession] = useState<Session | null>(
     UserSession.getSession(),
   );
@@ -60,27 +61,14 @@ const Home = () => {
   >([]);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const slideAnim = useRef(new Animated.Value(-100)).current;
+  const [slideAnim] = useState(() => new Animated.Value(-100));
   const [visitations, setVisitations] = useState<any[]>([]);
   const [birthdayBonus, setBirthdayBonus] = useState<BirthdayBonusStatus>({
     awardedToday: false,
     points: 0,
   });
 
-  useEffect(() => {
-    const unsubscribe = UserSession.onSessionChange((nextSession) => {
-      setSession(nextSession);
-    });
-
-    loadNotificationHistory();
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  // Load notification history from storage
-  const loadNotificationHistory = async () => {
+  async function loadNotificationHistory() {
     try {
       const stored = await AsyncStorage.getItem("notificationHistory");
       if (stored) {
@@ -89,9 +77,25 @@ const Home = () => {
         setUnreadCount(notifications.filter((n) => !n.read).length);
       }
     } catch {
-      // Error loading notifications
+      setNotificationHistory([]);
+      setUnreadCount(0);
     }
-  };
+  }
+
+  useEffect(() => {
+    const unsubscribe = UserSession.onSessionChange((nextSession) => {
+      setSession(nextSession);
+    });
+
+    const timer = setTimeout(() => {
+      void loadNotificationHistory();
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, []);
 
   const loadBirthdayBonusStatus = useCallback(async () => {
     try {
@@ -278,7 +282,7 @@ const Home = () => {
         }
       }
     },
-    [session?.user.id],
+    [session],
   );
 
   const fetchpoints = useCallback(
@@ -302,7 +306,7 @@ const Home = () => {
         console.error(e);
       }
     },
-    [session?.user.id],
+    [session],
   );
 
   const fetchVisitations = useCallback(
@@ -317,7 +321,7 @@ const Home = () => {
         console.error(e);
       }
     },
-    [session?.user.id],
+    [session],
   );
 
   useFocusEffect(
@@ -346,53 +350,53 @@ const Home = () => {
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
+      style={styles(theme).container}
+      contentContainerStyle={styles(theme).contentContainer}
     >
       {/* Notification Banner */}
       {showNotificationBanner && notification && (
         <Animated.View
           style={[
-            styles.notificationBanner,
+            styles(theme).notificationBanner,
             { transform: [{ translateY: slideAnim }] },
           ]}
         >
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>
+          <View style={styles(theme).notificationContent}>
+            <Text style={styles(theme).notificationTitle}>
               {notification.request.content.title}
             </Text>
-            <Text style={styles.notificationBody}>
+            <Text style={styles(theme).notificationBody}>
               {notification.request.content.body}
             </Text>
           </View>
           <Pressable
             onPress={hideNotificationBanner}
-            style={styles.notificationClose}
+            style={styles(theme).notificationClose}
           >
-            <X color={Colors.TextColour} size={20} />
+            <X color={theme.TextColour} size={20} />
           </Pressable>
         </Animated.View>
       )}
 
       {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
+      <View style={styles(theme).header}>
+        <View style={styles(theme).headerLeft}>
           <ProfileImage imagehandler={() => {}} imageUrl={profilePicture} />
-          <View style={styles.welcomeContainer}>
-            <Text style={styles.welcomeText}>WELCOME BACK</Text>
-            <Text style={styles.usernameText}>
+          <View style={styles(theme).welcomeContainer}>
+            <Text style={styles(theme).welcomeText}>WELCOME BACK</Text>
+            <Text style={styles(theme).usernameText}>
               {loading ? "Loading..." : username}
             </Text>
           </View>
         </View>
         <Pressable
-          style={styles.notificationBtn}
+          style={styles(theme).notificationBtn}
           onPress={openNotificationModal}
         >
-          <Bell color={"white"} />
+          <Bell color={theme.TextColour} />
           {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
+            <View style={styles(theme).badge}>
+              <Text style={styles(theme).badgeText}>{unreadCount}</Text>
             </View>
           )}
         </Pressable>
@@ -404,29 +408,31 @@ const Home = () => {
         animationType="slide"
         onRequestClose={() => setShowNotificationModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Notifications</Text>
-            <View style={styles.modalHeaderRight}>
+        <View style={styles(theme).modalContainer}>
+          <View style={styles(theme).modalHeader}>
+            <Text style={styles(theme).modalTitle}>Notifications</Text>
+            <View style={styles(theme).modalHeaderRight}>
               {notificationHistory.length > 0 && (
                 <Pressable
                   onPress={clearAllNotifications}
-                  style={styles.clearAllBtn}
+                  style={styles(theme).clearAllBtn}
                 >
-                  <Text style={styles.clearAllBtnText}>Clear All</Text>
+                  <Text style={styles(theme).clearAllBtnText}>Clear All</Text>
                 </Pressable>
               )}
               <Pressable onPress={() => setShowNotificationModal(false)}>
-                <X color={Colors.TextColour} size={28} />
+                <X color={theme.notificationModalText} size={28} />
               </Pressable>
             </View>
           </View>
 
           {notificationHistory.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Bell color={Colors.TextColour} size={64} />
-              <Text style={styles.emptyStateText}>No notifications yet</Text>
-              <Text style={styles.emptyStateSubtext}>
+            <View style={styles(theme).emptyState}>
+              <Bell color={theme.notificationModalText} size={64} />
+              <Text style={styles(theme).emptyStateText}>
+                No notifications yet
+              </Text>
+              <Text style={styles(theme).emptyStateSubtext}>
                 You&apos;ll see your visit updates here
               </Text>
             </View>
@@ -434,25 +440,27 @@ const Home = () => {
             <FlatList
               data={notificationHistory}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.notificationList}
+              contentContainerStyle={styles(theme).notificationList}
               renderItem={({ item }) => (
                 <View
                   style={[
-                    styles.notificationItem,
-                    !item.read && styles.notificationItemUnread,
+                    styles(theme).notificationItem,
+                    !item.read && styles(theme).notificationItemUnread,
                   ]}
                 >
-                  <View style={styles.notificationIconContainer}>
-                    <Calendar color={Colors.Primary900} size={24} />
+                  <View style={styles(theme).notificationIconContainer}>
+                    <Calendar color={theme.Primary900} size={24} />
                   </View>
-                  <View style={styles.notificationItemContent}>
-                    <Text style={styles.notificationItemTitle}>
+                  <View style={styles(theme).notificationItemContent}>
+                    <Text style={styles(theme).notificationItemTitle}>
                       {item.title}
                     </Text>
-                    <Text style={styles.notificationItemBody}>{item.body}</Text>
-                    <View style={styles.notificationItemFooter}>
-                      <Clock color={Colors.TextColour} size={12} />
-                      <Text style={styles.notificationItemTime}>
+                    <Text style={styles(theme).notificationItemBody}>
+                      {item.body}
+                    </Text>
+                    <View style={styles(theme).notificationItemFooter}>
+                      <Clock color={theme.notificationModalText} size={12} />
+                      <Text style={styles(theme).notificationItemTime}>
                         {new Date(item.timestamp).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -462,7 +470,7 @@ const Home = () => {
                       </Text>
                     </View>
                   </View>
-                  {!item.read && <View style={styles.unreadDot} />}
+                  {!item.read && <View style={styles(theme).unreadDot} />}
                 </View>
               )}
             />
@@ -471,46 +479,46 @@ const Home = () => {
       </Modal>
 
       {/* Balance Card */}
-      <View style={styles.balanceCard}>
+      <View style={styles(theme).balanceCard}>
         {birthdayBonus.awardedToday && (
-          <View style={styles.birthdayBadge}>
-            <Text style={styles.birthdayBadgeText}>
+          <View style={styles(theme).birthdayBadge}>
+            <Text style={styles(theme).birthdayBadgeText}>
               Birthday bonus awarded: +{birthdayBonus.points} pts
             </Text>
           </View>
         )}
-        <View style={styles.balanceAmountRow}>
-          <Text style={styles.balanceAmount}>
+        <View style={styles(theme).balanceAmountRow}>
+          <Text style={styles(theme).balanceAmount}>
             {" "}
             {loading ? "Loading..." : total}
           </Text>
           {!loading && (
-            <Text style={styles.pointsLeftText}>
+            <Text style={styles(theme).pointsLeftText}>
               {pointsLeftToClaim} points left to claim
             </Text>
           )}
         </View>
-        <Text style={styles.balanceLabel}>OVERALL BALANCE</Text>
+        <Text style={styles(theme).balanceLabel}>OVERALL BALANCE</Text>
 
-        <View style={styles.balanceFooter}>
+        <View style={styles(theme).balanceFooter}>
           <View>
-            <Text style={styles.pointsAmount}>
+            <Text style={styles(theme).pointsAmount}>
               {loading ? "Loading..." : lastp}{" "}
-              <Text style={styles.pointsUnit}>pts</Text>
+              <Text style={styles(theme).pointsUnit}>pts</Text>
             </Text>
-            <Text style={styles.visitationLabel}>VISITATION</Text>
+            <Text style={styles(theme).visitationLabel}>VISITATION</Text>
           </View>
-          <Text style={styles.trendIcon}>
+          <Text style={styles(theme).trendIcon}>
             <TrendingUp />
           </Text>
         </View>
       </View>
 
       {/* Visitations Section */}
-      <View style={styles.visitationsHeader}>
-        <Text style={styles.visitationsTitle}>Visitations</Text>
-        <Pressable style={styles.recentBtn}>
-          <Text style={styles.recentBtnText}>Recent</Text>
+      <View style={styles(theme).visitationsHeader}>
+        <Text style={styles(theme).visitationsTitle}>Visitations</Text>
+        <Pressable style={styles(theme).recentBtn}>
+          <Text style={styles(theme).recentBtnText}>Recent</Text>
         </Pressable>
       </View>
       {/**Free Visitation Area */}
@@ -528,303 +536,304 @@ const Home = () => {
 
 export default Home;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
-  contentContainer: {
-    padding: 20,
-    paddingBottom: 100,
-  },
-  notificationBanner: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.Primary900,
-    padding: 15,
-    paddingTop: 50,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    zIndex: 1000,
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  notificationContent: {
-    flex: 1,
-    marginRight: 10,
-  },
-  notificationTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  notificationBody: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    opacity: 0.9,
-  },
-  notificationClose: {
-    padding: 5,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
-    paddingTop: 10,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingRight: 120,
-    flex: 1,
-  },
-  welcomeContainer: {
-    marginLeft: 5,
-  },
-  welcomeText: {
-    color: "#999999",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  usernameText: {
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  notificationBtn: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#1A1A1A",
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  balanceCard: {
-    backgroundColor: "#D4F5E9",
-    borderRadius: 20,
-    padding: 25,
-    marginBottom: 25,
-  },
-  balanceAmount: {
-    fontSize: 56,
-    fontWeight: "bold",
-    color: "#000000",
-    marginBottom: 5,
-  },
-  balanceAmountRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  pointsLeftText: {
-    fontSize: 12,
-    color: "#2E7D65",
-    marginBottom: 14,
-    maxWidth: 140,
-    textAlign: "right",
-    fontWeight: "600",
-  },
-  birthdayBadge: {
-    backgroundColor: "#000000",
-    borderRadius: 999,
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 10,
-  },
-  birthdayBadgeText: {
-    color: "#D4F5E9",
-    fontWeight: "700",
-    fontSize: 12,
-    letterSpacing: 0.4,
-  },
-  balanceLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#666666",
-    letterSpacing: 1,
-    marginBottom: 25,
-  },
-  balanceFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  pointsAmount: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#000000",
-  },
-  pointsUnit: {
-    fontSize: 16,
-    fontWeight: "normal",
-    color: "#666666",
-  },
-  visitationLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#00CC88",
-    letterSpacing: 0.5,
-    marginTop: 2,
-  },
-  trendIcon: {
-    fontSize: 24,
-  },
-  visitationsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  visitationsTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  recentBtn: {
-    backgroundColor: "#1A1A1A",
-    paddingHorizontal: 15,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  recentBtnText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  badge: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: "#FF3B30",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 5,
-  },
-  badgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: Colors.PrimaryBackground,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.background100,
-  },
-  modalTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  modalHeaderRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 15,
-  },
-  clearAllBtn: {
-    backgroundColor: Colors.background100,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  clearAllBtnText: {
-    color: "#FF3B30",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
-  },
-  emptyStateText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    marginTop: 20,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: Colors.TextColour,
-    marginTop: 8,
-    textAlign: "center",
-  },
-  notificationList: {
-    padding: 20,
-  },
-  notificationItem: {
-    backgroundColor: Colors.background100,
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 15,
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  notificationItemUnread: {
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.Primary900,
-  },
-  notificationIconContainer: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    backgroundColor: Colors.PrimaryBackground,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  notificationItemContent: {
-    flex: 1,
-  },
-  notificationItemTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    marginBottom: 5,
-  },
-  notificationItemBody: {
-    fontSize: 14,
-    color: Colors.TextColour,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  notificationItemFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  notificationItemTime: {
-    fontSize: 12,
-    color: Colors.TextColour,
-    marginLeft: 5,
-  },
-  unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Colors.Primary900,
-    marginLeft: 10,
-  },
-});
+const styles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.PrimaryBackground,
+    },
+    contentContainer: {
+      padding: 20,
+      paddingBottom: 100,
+    },
+    notificationBanner: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.Primary900,
+      padding: 15,
+      paddingTop: 50,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      zIndex: 1000,
+      elevation: 10,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+    },
+    notificationContent: {
+      flex: 1,
+      marginRight: 10,
+    },
+    notificationTitle: {
+      color: theme.TextColour,
+      fontSize: 16,
+      fontWeight: "bold",
+      marginBottom: 4,
+    },
+    notificationBody: {
+      color: theme.TextColour,
+      fontSize: 14,
+      opacity: 0.9,
+    },
+    notificationClose: {
+      padding: 5,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 25,
+      paddingTop: 10,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingRight: 120,
+      flex: 1,
+    },
+    welcomeContainer: {
+      marginLeft: 5,
+    },
+    welcomeText: {
+      color: "#999999",
+      fontSize: 12,
+      fontWeight: "600",
+      letterSpacing: 1,
+      marginBottom: 2,
+    },
+    usernameText: {
+      color: theme.TextColour,
+      fontSize: 20,
+      fontWeight: "bold",
+    },
+    notificationBtn: {
+      width: 40,
+      height: 40,
+      backgroundColor: theme.adminBorder,
+      borderRadius: 20,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    balanceCard: {
+      backgroundColor: "#D4F5E9",
+      borderRadius: 20,
+      padding: 25,
+      marginBottom: 25,
+    },
+    balanceAmount: {
+      fontSize: 56,
+      fontWeight: "bold",
+      color: theme.TextColour,
+      marginBottom: 5,
+    },
+    balanceAmountRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    pointsLeftText: {
+      fontSize: 12,
+      color: "#2E7D65",
+      marginBottom: 14,
+      maxWidth: 140,
+      textAlign: "right",
+      fontWeight: "600",
+    },
+    birthdayBadge: {
+      backgroundColor: theme.PrimaryBackground,
+      borderRadius: 999,
+      alignSelf: "flex-start",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      marginBottom: 10,
+    },
+    birthdayBadgeText: {
+      color: "#D4F5E9",
+      fontWeight: "700",
+      fontSize: 12,
+      letterSpacing: 0.4,
+    },
+    balanceLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: "#666666",
+      letterSpacing: 1,
+      marginBottom: 25,
+    },
+    balanceFooter: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    pointsAmount: {
+      fontSize: 28,
+      fontWeight: "bold",
+      color: theme.TextColour,
+    },
+    pointsUnit: {
+      fontSize: 16,
+      fontWeight: "normal",
+      color: "#666666",
+    },
+    visitationLabel: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: "#00CC88",
+      letterSpacing: 0.5,
+      marginTop: 2,
+    },
+    trendIcon: {
+      fontSize: 24,
+    },
+    visitationsHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 15,
+    },
+    visitationsTitle: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: theme.TextColour,
+    },
+    recentBtn: {
+      backgroundColor: theme.adminBorder,
+      paddingHorizontal: 15,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    recentBtnText: {
+      color: theme.TextColour,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    badge: {
+      position: "absolute",
+      top: -5,
+      right: -5,
+      backgroundColor: "#FF3B30",
+      borderRadius: 10,
+      minWidth: 20,
+      height: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 5,
+    },
+    badgeText: {
+      color: theme.TextColour,
+      fontSize: 12,
+      fontWeight: "bold",
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: theme.notificationModalBackground,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: 20,
+      paddingTop: 60,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.background100,
+    },
+    modalTitle: {
+      fontSize: 28,
+      fontWeight: "bold",
+      color: theme.notificationModalText,
+    },
+    modalHeaderRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 15,
+    },
+    clearAllBtn: {
+      backgroundColor: theme.background100,
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    clearAllBtnText: {
+      color: "#FF3B30",
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    emptyState: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 40,
+    },
+    emptyStateText: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: theme.notificationModalText,
+      marginTop: 20,
+    },
+    emptyStateSubtext: {
+      fontSize: 14,
+      color: theme.notificationModalText,
+      marginTop: 8,
+      textAlign: "center",
+    },
+    notificationList: {
+      padding: 20,
+    },
+    notificationItem: {
+      backgroundColor: theme.notificationModalBackground,
+      borderRadius: 15,
+      padding: 15,
+      marginBottom: 15,
+      flexDirection: "row",
+      alignItems: "flex-start",
+    },
+    notificationItemUnread: {
+      borderLeftWidth: 4,
+      borderLeftColor: theme.Primary900,
+    },
+    notificationIconContainer: {
+      width: 45,
+      height: 45,
+      borderRadius: 22.5,
+      backgroundColor: theme.PrimaryBackground,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
+    notificationItemContent: {
+      flex: 1,
+    },
+    notificationItemTitle: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: theme.notificationModalText,
+      marginBottom: 5,
+    },
+    notificationItemBody: {
+      fontSize: 14,
+      color: theme.notificationModalText,
+      lineHeight: 20,
+      marginBottom: 8,
+    },
+    notificationItemFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    notificationItemTime: {
+      fontSize: 12,
+      color: theme.notificationModalText,
+      marginLeft: 5,
+    },
+    unreadDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: theme.Primary900,
+      marginLeft: 10,
+    },
+  });
